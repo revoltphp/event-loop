@@ -1,0 +1,66 @@
+{
+    "name": "revolt/event-loop",
+    "description": "Rock-solid event loop for concurrent PHP applications.",
+    "keywords": [
+        "async",
+        "asynchronous",
+        "concurrency",
+        "non-blocking",
+        "event",
+        "event-loop"
+    ],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Aaron Piotrowski",
+            "email": "aaron@trowski.com"
+        },
+        {
+            "name": "Cees-Jan Kiewiet",
+            "email": "ceesjank@gmail.com"
+        },
+        {
+            "name": "Christian Lück",
+            "email": "christian@clue.engineering"
+        },
+        {
+            "name": "Niklas Keller",
+            "email": "me@kelunik.com"
+        }
+    ],
+    "require": {
+        "php": ">=8"
+    },
+    "require-dev": {
+        "ext-json": "*",
+        "phpunit/phpunit": "^9",
+        "jetbrains/phpstorm-stubs": "^2019.3",
+        "psalm/phar": "^4.7"
+    },
+    "autoload": {
+        "psr-4": {
+            "Revolt\\": "src"
+        },
+        "files": [
+            "src/functions.php",
+            "src/EventLoop/Internal/functions.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Revolt\\EventLoop\\": "test"
+        }
+    },
+    "support": {
+        "issues": "https://github.com/revoltphp/event-loop/issues"
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "1.x-dev"
+        }
+    },
+    "scripts": {
+        "test": "@php -dzend.assertions=1 -dassert.exception=1 ./vendor/bin/phpunit",
+        "code-style": "@php tools/php-cs-fixer/vendor/bin/php-cs-fixer fix"
+    }
+}

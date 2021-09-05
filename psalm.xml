@@ -1,0 +1,70 @@
+<?xml version="1.0"?>
+<psalm
+        errorLevel="2"
+        resolveFromConfigFile="true"
+        totallyTyped="false"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="https://getpsalm.org/schema/config"
+        xsi:schemaLocation="https://getpsalm.org/schema/config vendor/vimeo/psalm/config.xsd"
+>
+    <projectFiles>
+        <directory name="examples"/>
+        <directory name="src"/>
+        <ignoreFiles>
+            <directory name="vendor"/>
+        </ignoreFiles>
+    </projectFiles>
+
+    <issueHandlers>
+        <StringIncrement>
+            <errorLevel type="suppress">
+                <directory name="examples"/>
+                <directory name="src"/>
+            </errorLevel>
+        </StringIncrement>
+
+        <RedundantConditionGivenDocblockType>
+            <errorLevel type="suppress">
+                <directory name="src"/>
+            </errorLevel>
+        </RedundantConditionGivenDocblockType>
+
+        <DocblockTypeContradiction>
+            <errorLevel type="suppress">
+                <directory name="src"/>
+            </errorLevel>
+        </DocblockTypeContradiction>
+
+        <MissingClosureParamType>
+            <errorLevel type="suppress">
+                <directory name="examples"/>
+                <directory name="src"/>
+            </errorLevel>
+        </MissingClosureParamType>
+
+        <MissingClosureReturnType>
+            <errorLevel type="suppress">
+                <directory name="examples"/>
+                <directory name="src"/>
+            </errorLevel>
+        </MissingClosureReturnType>
+
+        <PossiblyInvalidArgument>
+            <errorLevel type="suppress">
+                <file name="src/EventLoop/Driver/UvDriver.php"/>
+            </errorLevel>
+        </PossiblyInvalidArgument>
+    </issueHandlers>
+
+    <stubs>
+        <file name="vendor/jetbrains/phpstorm-stubs/Ev/Ev.php"/>
+        <file name="vendor/jetbrains/phpstorm-stubs/event/event.php"/>
+        <file name="vendor/jetbrains/phpstorm-stubs/uv/UV.php"/>
+        <file name="vendor/jetbrains/phpstorm-stubs/uv/uv_functions.php"/>
+        <file name="stubs/uv.php"/>
+        <file name="stubs/Fiber.php"/>
+        <file name="stubs/FiberError.php"/>
+        <file name="stubs/FiberExit.php"/>
+        <file name="stubs/ReflectionFiber.php"/>
+    </stubs>
+</psalm>
