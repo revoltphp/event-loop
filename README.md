@@ -25,7 +25,7 @@ This installs the basic building block for building concurrent applications in P
 
 ## Documentation
 
-Documentation can be found in the [`./docs`](./docs) directory.
+Documentation can be found on [`revolt.run`](https://revolt.run/).
 
 ## Requirements
 
