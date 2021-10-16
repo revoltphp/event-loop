@@ -169,7 +169,7 @@ interface Driver
      *
      * @return string The callback identifier.
      *
-     * @throws InvalidWatcherError If the callback identifier is invalid.
+     * @throws InvalidCallbackError If the callback identifier is invalid.
      */
     public function enable(string $callbackId): string;
 
@@ -208,7 +208,7 @@ interface Driver
      *
      * @return string The callback identifier.
      *
-     * @throws InvalidWatcherError If the callback identifier is invalid.
+     * @throws InvalidCallbackError If the callback identifier is invalid.
      */
     public function reference(string $callbackId): string;
 

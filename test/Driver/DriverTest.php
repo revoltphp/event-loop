@@ -4,7 +4,7 @@ namespace Revolt\EventLoop\Driver;
 
 use PHPUnit\Framework\TestCase;
 use Revolt\EventLoop\Driver;
-use Revolt\EventLoop\InvalidWatcherError;
+use Revolt\EventLoop\InvalidCallbackError;
 use Revolt\EventLoop\UnsupportedFeatureException;
 use function Revolt\now;
 
@@ -764,12 +764,12 @@ abstract class DriverTest extends TestCase
 
     public function testExceptionOnEnableNonexistentCallback(): void
     {
-        $this->expectException(InvalidWatcherError::class);
+        $this->expectException(InvalidCallbackError::class);
 
         try {
             $this->loop->enable("nonexistent");
-        } catch (InvalidWatcherError $e) {
-            self::assertSame("nonexistent", $e->getWatcherId());
+        } catch (InvalidCallbackError $e) {
+            self::assertSame("nonexistent", $e->getCallbackId());
             throw $e;
         }
     }
@@ -792,12 +792,12 @@ abstract class DriverTest extends TestCase
 
     public function testExceptionOnReferenceNonexistentCallback(): void
     {
-        $this->expectException(InvalidWatcherError::class);
+        $this->expectException(InvalidCallbackError::class);
 
         try {
             $this->loop->reference("nonexistent");
-        } catch (InvalidWatcherError $e) {
-            self::assertSame("nonexistent", $e->getWatcherId());
+        } catch (InvalidCallbackError $e) {
+            self::assertSame("nonexistent", $e->getCallbackId());
             throw $e;
         }
     }
@@ -812,7 +812,7 @@ abstract class DriverTest extends TestCase
 
     public function testInvalidityOnDefer(): void
     {
-        $this->expectException(InvalidWatcherError::class);
+        $this->expectException(InvalidCallbackError::class);
 
         $this->start(function (Driver $loop): void {
             $loop->defer(function ($callbackId) use ($loop): void {
@@ -823,7 +823,7 @@ abstract class DriverTest extends TestCase
 
     public function testInvalidityOnDelay(): void
     {
-        $this->expectException(InvalidWatcherError::class);
+        $this->expectException(InvalidCallbackError::class);
 
         $this->start(function (Driver $loop): void {
             $loop->delay(0, function ($callbackId) use ($loop): void {

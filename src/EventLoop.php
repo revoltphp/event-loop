@@ -6,7 +6,7 @@ use Revolt\EventLoop\Driver;
 use Revolt\EventLoop\DriverFactory;
 use Revolt\EventLoop\Internal\AbstractDriver;
 use Revolt\EventLoop\Internal\Callback;
-use Revolt\EventLoop\InvalidWatcherError;
+use Revolt\EventLoop\InvalidCallbackError;
 use Revolt\EventLoop\Suspension;
 use Revolt\EventLoop\UnsupportedFeatureException;
 
@@ -223,7 +223,7 @@ final class EventLoop
      *
      * @return string The callback identifier.
      *
-     * @throws InvalidWatcherError If the callback identifier is invalid.
+     * @throws InvalidCallbackError If the callback identifier is invalid.
      */
     public static function enable(string $callbackId): string
     {
@@ -271,7 +271,7 @@ final class EventLoop
      *
      * @return string The callback identifier.
      *
-     * @throws InvalidWatcherError If the callback identifier is invalid.
+     * @throws InvalidCallbackError If the callback identifier is invalid.
      */
     public static function reference(string $callbackId): string
     {

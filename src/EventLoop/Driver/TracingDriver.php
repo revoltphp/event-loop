@@ -3,7 +3,7 @@
 namespace Revolt\EventLoop\Driver;
 
 use Revolt\EventLoop\Driver;
-use Revolt\EventLoop\InvalidWatcherError;
+use Revolt\EventLoop\InvalidCallbackError;
 
 final class TracingDriver implements Driver
 {
@@ -112,11 +112,11 @@ final class TracingDriver implements Driver
         try {
             $this->driver->enable($callbackId);
             $this->enabledCallbacks[$callbackId] = true;
-        } catch (InvalidWatcherError $e) {
-            throw new InvalidWatcherError(
-                $callbackId,
-                $e->getMessage() . "\r\n\r\n" . $this->getTraces($callbackId)
-            );
+        } catch (InvalidCallbackError $e) {
+            $e->addInfo("Creation trace", $this->getCreationTrace($callbackId));
+            $e->addInfo("Cancellation trace", $this->getCancelTrace($callbackId));
+
+            throw $e;
         }
 
         return $callbackId;
@@ -146,11 +146,11 @@ final class TracingDriver implements Driver
         try {
             $this->driver->reference($callbackId);
             unset($this->unreferencedCallbacks[$callbackId]);
-        } catch (InvalidWatcherError $e) {
-            throw new InvalidWatcherError(
-                $callbackId,
-                $e->getMessage() . "\r\n\r\n" . $this->getTraces($callbackId)
-            );
+        } catch (InvalidCallbackError $e) {
+            $e->addInfo("Creation trace", $this->getCreationTrace($callbackId));
+            $e->addInfo("Cancellation trace", $this->getCancelTrace($callbackId));
+
+            throw $e;
         }
 
         return $callbackId;
@@ -207,12 +207,6 @@ final class TracingDriver implements Driver
         $this->driver->queue($callback, ...$args);
     }
 
-    private function getTraces(string $callbackId): string
-    {
-        return "Creation Trace:\r\n" . $this->getCreationTrace($callbackId) . "\r\n\r\n" .
-            "Cancellation Trace:\r\n" . $this->getCancelTrace($callbackId);
-    }
-
     private function getCreationTrace(string $callbackId): string
     {
         return $this->creationTraces[$callbackId] ?? 'No creation trace, yet.';
@@ -226,8 +220,8 @@ final class TracingDriver implements Driver
     /**
      * Formats a stacktrace obtained via `debug_backtrace()`.
      *
-     * @param array<array{file?: string, line: int, type?: string, class?: class-string, function: string}> $trace Output of
-     *     `debug_backtrace()`.
+     * @param array<array{file?: string, line: int, type?: string, class?: class-string, function: string}> $trace
+     *     Output of `debug_backtrace()`.
      *
      * @return string Formatted stacktrace.
      */

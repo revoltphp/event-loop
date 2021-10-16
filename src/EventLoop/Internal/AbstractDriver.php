@@ -5,7 +5,6 @@ namespace Revolt\EventLoop\Internal;
 use Revolt\EventLoop;
 use Revolt\EventLoop\Driver;
 use Revolt\EventLoop\InvalidCallbackError;
-use Revolt\EventLoop\InvalidWatcherError;
 use Revolt\EventLoop\UnsupportedFeatureException;
 
 /**
@@ -301,12 +300,12 @@ abstract class AbstractDriver implements Driver
      *
      * @return string The callback identifier.
      *
-     * @throws InvalidWatcherError If the callback identifier is invalid.
+     * @throws InvalidCallbackError If the callback identifier is invalid.
      */
     public function enable(string $callbackId): string
     {
         if (!isset($this->callbacks[$callbackId])) {
-            throw new InvalidWatcherError($callbackId, "Cannot enable an invalid callback identifier: '{$callbackId}'");
+            throw InvalidCallbackError::invalidIdentifier($callbackId);
         }
 
         $callback = $this->callbacks[$callbackId];
@@ -400,12 +399,12 @@ abstract class AbstractDriver implements Driver
      *
      * @return string The callback identifier.
      *
-     * @throws InvalidWatcherError If the callback identifier is invalid.
+     * @throws InvalidCallbackError If the callback identifier is invalid.
      */
     public function reference(string $callbackId): string
     {
         if (!isset($this->callbacks[$callbackId])) {
-            throw new InvalidWatcherError($callbackId, "Cannot reference an invalid callback identifier: '{$callbackId}'");
+            throw InvalidCallbackError::invalidIdentifier($callbackId);
         }
 
         $this->callbacks[$callbackId]->referenced = true;
@@ -680,7 +679,7 @@ abstract class AbstractDriver implements Driver
                 };
 
                 if ($result !== null) {
-                    throw InvalidCallbackError::noVoid($callback->id, $callback->callback);
+                    throw InvalidCallbackError::nonNullReturn($callback->id, $callback->callback);
                 }
             }
         });
