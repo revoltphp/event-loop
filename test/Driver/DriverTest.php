@@ -110,10 +110,10 @@ abstract class DriverTest extends TestCase
         }
 
         try {
-            $callbackId = $this->loop->onSignal(SIGUSR1, function (): void {
+            $callbackId = $this->loop->onSignal(SIGUSR1, static function (): void {
             });
             $this->loop->cancel($callbackId);
-        } catch (UnsupportedFeatureException $e) {
+        } catch (UnsupportedFeatureException) {
             self::markTestSkipped("The event loop is not capable of handling signals properly. Skipping.");
         }
     }
@@ -198,7 +198,7 @@ abstract class DriverTest extends TestCase
         $this->checkForSignalCapability();
         $invoked = false;
         $this->start(function (Driver $loop) use (&$invoked): void {
-            $callbackId = $loop->onSignal(SIGUSR1, function () {
+            $callbackId = $loop->onSignal(SIGUSR1, static function () {
                 // empty
             });
             $callbackId = $loop->delay(0.1, function () use (&$invoked, $loop, $callbackId): void {
@@ -218,7 +218,7 @@ abstract class DriverTest extends TestCase
                 $invoked = true;
             });
             $loop->unreference($callbackId);
-            $loop->defer(function () {
+            $loop->defer(static function () {
                 // just to keep loop running
             });
         });
@@ -256,11 +256,11 @@ abstract class DriverTest extends TestCase
 
     public function provideRegistrationArgs(): array
     {
-        $args = [
+        return [
             [
                 "defer",
                 [
-                    function () {
+                    static function () {
                     },
                 ],
             ],
@@ -268,7 +268,7 @@ abstract class DriverTest extends TestCase
                 "delay",
                 [
                     0.005,
-                    function () {
+                    static function () {
                     },
                 ],
             ],
@@ -276,7 +276,7 @@ abstract class DriverTest extends TestCase
                 "repeat",
                 [
                     0.005,
-                    function () {
+                    static function () {
                     },
                 ],
             ],
@@ -284,7 +284,7 @@ abstract class DriverTest extends TestCase
                 "onWritable",
                 [
                     \STDOUT,
-                    function () {
+                    static function () {
                     },
                 ],
             ],
@@ -292,7 +292,7 @@ abstract class DriverTest extends TestCase
                 "onReadable",
                 [
                     \STDIN,
-                    function () {
+                    static function () {
                     },
                 ],
             ],
@@ -300,13 +300,11 @@ abstract class DriverTest extends TestCase
                 "onSignal",
                 [
                     \SIGUSR1,
-                    function () {
+                    static function () {
                     },
                 ],
             ],
         ];
-
-        return $args;
     }
 
     /** @dataProvider provideRegistrationArgs */
@@ -340,7 +338,7 @@ abstract class DriverTest extends TestCase
         $loop = $this->loop;
 
         $func = [$loop, $type];
-        if (\substr($type, 0, 2) === "on") {
+        if (\str_starts_with($type, "on")) {
             $type = "on_" . \lcfirst(\substr($type, 2));
         }
 
@@ -378,7 +376,7 @@ abstract class DriverTest extends TestCase
         $expected = ["referenced" => 2, "unreferenced" => 0];
         self::assertSame($expected, $info["enabled_watchers"]);
 
-        // cancelling an referenced callback should decrement the referenced count
+        // cancelling a referenced callback should decrement the referenced count
         $loop->cancel($callbackId2);
         $info = $loop->getInfo();
         $expected = ["referenced" => 1, "unreferenced" => 0];
@@ -407,7 +405,7 @@ abstract class DriverTest extends TestCase
         $loop = $this->loop;
 
         $func = [$loop, $type];
-        if (\substr($type, 0, 2) === "on") {
+        if (\str_starts_with($type, "on")) {
             $type = "on_" . \lcfirst(\substr($type, 2));
         }
 
@@ -417,13 +415,13 @@ abstract class DriverTest extends TestCase
         $expected = ["enabled" => 1, "disabled" => 0];
         self::assertSame($expected, $info[$type]);
 
-        // invoke enable() on active callback to ensure it has no side-effects
+        // invoke enable() on active callback to ensure it has no side effects
         $loop->enable($callbackId);
         $info = $loop->getInfo();
         $expected = ["enabled" => 1, "disabled" => 0];
         self::assertSame($expected, $info[$type]);
 
-        // invoke disable() twice to ensure it has no side-effects
+        // invoke disable() twice to ensure it has no side effects
         $loop->disable($callbackId);
         $loop->disable($callbackId);
 
@@ -484,7 +482,7 @@ abstract class DriverTest extends TestCase
 
         $this->start(function (Driver $loop) use ($type, $args, $runs) {
             $initialMem = \memory_get_usage();
-            $cb = function ($runs) use ($loop, $type, $args): void {
+            $cb = static function ($runs) use ($loop, $type, $args): void {
                 $func = [$loop, $type];
                 for ($callbacks = [], $i = 0; $i < $runs; $i++) {
                     $callbacks[] = $func(...$args);
@@ -568,10 +566,7 @@ abstract class DriverTest extends TestCase
                             if ($i--) {
                                 // explicitly use *different* streams with *different* resource ids
                                 $ends = \stream_socket_pair(
-                                    \stripos(
-                                        PHP_OS,
-                                        "win"
-                                    ) === 0 ? STREAM_PF_INET : STREAM_PF_UNIX,
+                                    \DIRECTORY_SEPARATOR === "\\" ? STREAM_PF_INET : STREAM_PF_UNIX,
                                     STREAM_SOCK_STREAM,
                                     STREAM_IPPROTO_IP
                                 );
@@ -588,7 +583,7 @@ abstract class DriverTest extends TestCase
                     $loop->run();
                 }
                 if ($type === "onSignal") {
-                    $sendSignal = function (): void {
+                    $sendSignal = static function (): void {
                         \posix_kill(\getmypid(), \SIGUSR1);
                     };
                     $loop->onSignal(
@@ -732,8 +727,8 @@ abstract class DriverTest extends TestCase
 
         $this->expectOutputString("122222");
         $this->start(function (Driver $loop): void {
-            $f = function ($i) use ($loop) {
-                return function ($callbackId) use ($loop, $i): void {
+            $f = static function ($i) use ($loop) {
+                return static function ($callbackId) use ($loop, $i): void {
                     $loop->cancel($callbackId);
                     echo $i;
                 };
@@ -1036,7 +1031,7 @@ abstract class DriverTest extends TestCase
     public function testErrorHandlerCapturesUncaughtException(): void
     {
         $msg = "";
-        $this->loop->setErrorHandler($f = function (): void {
+        $this->loop->setErrorHandler($f = static function (): void {
         });
         $oldErrorHandler = $this->loop->setErrorHandler(function (\Exception $error) use (&$msg): void {
             $msg = $error->getMessage();
@@ -1283,17 +1278,17 @@ abstract class DriverTest extends TestCase
         $callbackData = new \StdClass();
 
         $this->start(function (Driver $loop) use ($callbackData): void {
-            $loop->defer(function ($callbackId) use ($callbackData): void {
+            $loop->defer(function () use ($callbackData): void {
                 $callbackData->defer = true;
             });
-            $loop->delay(0.001, function ($callbackId) use ($callbackData): void {
+            $loop->delay(0.001, function () use ($callbackData): void {
                 $callbackData->delay = true;
             });
             $loop->repeat(0.001, function ($callbackId) use ($loop, $callbackData): void {
                 $callbackData->repeat = true;
                 $loop->cancel($callbackId);
             });
-            $loop->onWritable(STDERR, function ($callbackId, $stream) use ($loop, $callbackData): void {
+            $loop->onWritable(STDERR, function ($callbackId) use ($loop, $callbackData): void {
                 $callbackData->onWritable = true;
                 $loop->cancel($callbackId);
             });
@@ -1345,7 +1340,7 @@ abstract class DriverTest extends TestCase
 
     public function testMicrotaskExecutedImmediatelyAfterCallback(): void
     {
-        self::expectOutputString('12835674');
+        $this->expectOutputString('12835674');
 
         $this->loop->queue(function (): void {
             print 1;
@@ -1427,7 +1422,7 @@ abstract class DriverTest extends TestCase
 
                     case "onReadable":
                         $ends = \stream_socket_pair(
-                            \stripos(PHP_OS, "win") === 0 ? STREAM_PF_INET : STREAM_PF_UNIX,
+                            \DIRECTORY_SEPARATOR === "\\" ? STREAM_PF_INET : STREAM_PF_UNIX,
                             STREAM_SOCK_STREAM,
                             STREAM_IPPROTO_IP
                         );
@@ -1466,7 +1461,7 @@ abstract class DriverTest extends TestCase
     public function testMultipleCallbacksOnSameDescriptor(): void
     {
         $sockets = \stream_socket_pair(
-            \stripos(PHP_OS, "win") === 0 ? STREAM_PF_INET : STREAM_PF_UNIX,
+            \DIRECTORY_SEPARATOR === "\\" ? STREAM_PF_INET : STREAM_PF_UNIX,
             STREAM_SOCK_STREAM,
             STREAM_IPPROTO_IP
         );
