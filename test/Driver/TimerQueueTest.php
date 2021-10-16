@@ -3,8 +3,8 @@
 namespace Revolt\EventLoop\Driver;
 
 use PHPUnit\Framework\TestCase;
-use Revolt\EventLoop\Internal\TimerQueue;
 use Revolt\EventLoop\Internal\TimerCallback;
+use Revolt\EventLoop\Internal\TimerQueue;
 
 class TimerQueueTest extends TestCase
 {

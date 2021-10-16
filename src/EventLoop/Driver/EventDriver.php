@@ -5,12 +5,12 @@
 namespace Revolt\EventLoop\Driver;
 
 use Revolt\EventLoop\Internal\AbstractDriver;
+use Revolt\EventLoop\Internal\Callback;
 use Revolt\EventLoop\Internal\SignalCallback;
-use Revolt\EventLoop\Internal\StreamReadableCallback;
 use Revolt\EventLoop\Internal\StreamCallback;
+use Revolt\EventLoop\Internal\StreamReadableCallback;
 use Revolt\EventLoop\Internal\StreamWritableCallback;
 use Revolt\EventLoop\Internal\TimerCallback;
-use Revolt\EventLoop\Internal\Callback;
 
 final class EventDriver extends AbstractDriver
 {
