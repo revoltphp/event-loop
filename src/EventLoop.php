@@ -18,7 +18,7 @@ use Revolt\EventLoop\UnsupportedFeatureException;
 final class EventLoop
 {
     private static Driver $driver;
-    private static ?\Fiber $fiber;
+    private static ?\Fiber $fiber = null;
 
     /**
      * Sets the driver to be used as the event loop.
@@ -112,7 +112,7 @@ final class EventLoop
      * The created callback MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
-     * @param float   $delay The amount of time, in seconds, to delay the execution for.
+     * @param float $delay The amount of time, in seconds, to delay the execution for.
      * @param callable(string) $callback The callback to delay. The `$callbackId` will be invalidated before
      *     the callback invocation.
      *
@@ -133,7 +133,7 @@ final class EventLoop
      * The created callback MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
-     * @param float   $interval The time interval, in seconds, to wait between executions.
+     * @param float $interval The time interval, in seconds, to wait between executions.
      * @param callable(string) $callback The callback to repeat.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
@@ -201,7 +201,7 @@ final class EventLoop
      * The created callback MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
-     * @param int   $signo The signal number to monitor.
+     * @param int $signo The signal number to monitor.
      * @param callable(string, int) $callback The callback to execute.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
@@ -347,6 +347,7 @@ final class EventLoop
     {
         /** @psalm-suppress RedundantPropertyInitializationCheck, RedundantCondition */
         if (!isset(self::$driver)) {
+            self::checkFiberSupport();
             self::setDriver((new DriverFactory())->create());
         }
 
@@ -362,10 +363,7 @@ final class EventLoop
     {
         /** @psalm-suppress RedundantPropertyInitializationCheck */
         if (!isset(self::$fiber) || self::$fiber->isTerminated()) {
-            if (!\class_exists(\Fiber::class, false)) {
-                throw new \Error("Fibers required to create loop suspensions");
-            }
-
+            self::checkFiberSupport();
             self::$fiber = self::createFiber();
         }
 
@@ -383,14 +381,7 @@ final class EventLoop
      */
     public static function run(): void
     {
-        if (!\class_exists(\Fiber::class, false)) {
-            if (self::getDriver()->isRunning()) {
-                throw new \Error("The event loop is already running");
-            }
-
-            self::getDriver()->run();
-            return;
-        }
+        self::checkFiberSupport();
 
         if (\Fiber::getCurrent()) {
             throw new \Error(\sprintf("Can't call %s() within a fiber (i.e., outside of {main})", __METHOD__));
@@ -415,6 +406,31 @@ final class EventLoop
     private static function createFiber(): \Fiber
     {
         return new \Fiber([self::getDriver(), 'run']);
+    }
+
+    private static function checkFiberSupport(): void
+    {
+        if (!\class_exists(\Fiber::class, false)) {
+            if (\PHP_VERSION_ID < 80000) {
+                throw new \Error(
+                    "revolt/event-loop requires fibers to be available. " .
+                    "You're currently running PHP " . \PHP_VERSION . " without fiber support. " .
+                    "Please upgrade to PHP 8.1 or upgrade to PHP 8.0 and install ext-fiber from https://github.com/amphp/ext-fiber."
+                );
+            }
+
+            if (\PHP_VERSION_ID >= 80000 && \PHP_VERSION_ID < 80100) {
+                throw new \Error(
+                    "revolt/event-loop requires fibers to be available. " .
+                    "You're currently running PHP " . \PHP_VERSION . " without fiber support. " .
+                    "Please upgrade to PHP 8.1 or install ext-fiber from https://github.com/amphp/ext-fiber."
+                );
+            }
+
+            throw new \Error(
+                "revolt/event-loop requires PHP 8.1 or ext-fiber. You are currently running PHP " . \PHP_VERSION . "."
+            );
+        }
     }
 
     /**
