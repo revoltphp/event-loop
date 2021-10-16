@@ -60,7 +60,7 @@ final class Suspension
             $this->driver->queue([$this->fiber, 'throw'], $throwable);
         } else {
             // Suspend event loop fiber to {main}.
-            $this->driver->queue([\Fiber::class, 'suspend'], static fn () => throw $throwable);
+            $this->driver->interrupt(static fn () => throw $throwable);
         }
     }
 
@@ -76,7 +76,7 @@ final class Suspension
             $this->driver->queue([$this->fiber, 'resume'], $value);
         } else {
             // Suspend event loop fiber to {main}.
-            $this->driver->queue([\Fiber::class, 'suspend'], static fn () => $value);
+            $this->driver->interrupt(static fn () => $value);
         }
     }
 

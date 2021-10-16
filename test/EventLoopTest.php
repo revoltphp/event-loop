@@ -24,12 +24,8 @@ class EventLoopTest extends TestCase
 
     public function testOnReadable(): void
     {
-        if (!\class_exists(\Fiber::class, false)) {
-            self::markTestSkipped("Fibers required for this test");
-        }
-
         $ends = \stream_socket_pair(
-            \stripos(PHP_OS, "win") === 0 ? STREAM_PF_INET : STREAM_PF_UNIX,
+            \DIRECTORY_SEPARATOR === "\\" ? STREAM_PF_INET : STREAM_PF_UNIX,
             STREAM_SOCK_STREAM,
             STREAM_IPPROTO_IP
         );
@@ -51,12 +47,8 @@ class EventLoopTest extends TestCase
         self::assertSame(1, $count);
     }
 
-    public function testOnWritable()
+    public function testOnWritable(): void
     {
-        if (!\class_exists(\Fiber::class, false)) {
-            self::markTestSkipped("Fibers required for this test");
-        }
-
         $count = 0;
         $suspension = EventLoop::createSuspension();
 
@@ -95,12 +87,25 @@ class EventLoopTest extends TestCase
         self::assertTrue($invoked);
     }
 
+    public function testFiberReuse(): void
+    {
+        EventLoop::defer(function () use (&$fiber1): void {
+            $fiber1 = \Fiber::getCurrent();
+        });
+
+        EventLoop::defer(function () use (&$fiber2): void {
+            $fiber2 = \Fiber::getCurrent();
+        });
+
+        EventLoop::run();
+
+        self::assertNotNull($fiber1);
+        self::assertNotNull($fiber2);
+        self::assertSame($fiber1, $fiber2);
+    }
+
     public function testRunInFiber(): void
     {
-        if (!\class_exists(\Fiber::class, false)) {
-            self::markTestSkipped("Fibers required for this test");
-        }
-
         launch(fn () => EventLoop::run());
 
         $this->expectException(\Error::class);
@@ -111,10 +116,6 @@ class EventLoopTest extends TestCase
 
     public function testRunAfterSuspension(): void
     {
-        if (!\class_exists(\Fiber::class, false)) {
-            self::markTestSkipped("Fibers required for this test");
-        }
-
         $suspension = EventLoop::createSuspension();
 
         EventLoop::defer(fn () => $suspension->resume('test'));
@@ -131,12 +132,8 @@ class EventLoopTest extends TestCase
         self::assertTrue($invoked);
     }
 
-    public function testSuspensionAfter(): void
+    public function testSuspensionAfterRun(): void
     {
-        if (!\class_exists(\Fiber::class, false)) {
-            self::markTestSkipped("Fibers required for this test");
-        }
-
         $invoked = false;
         EventLoop::defer(function () use (&$invoked): void {
             $invoked = true;
@@ -153,13 +150,10 @@ class EventLoopTest extends TestCase
         self::assertSame($suspension->suspend(), 'test');
     }
 
-    public function testSuspensionWithinFiberWithinRun(): void
+    public function testSuspensionWithinFiber(): void
     {
-        if (!\class_exists(\Fiber::class, false)) {
-            self::markTestSkipped("Fibers required for this test");
-        }
-
         $invoked = false;
+
         launch(function () use (&$invoked): void {
             $suspension = EventLoop::createSuspension();
 
@@ -177,10 +171,6 @@ class EventLoopTest extends TestCase
 
     public function testSuspensionWithinCallback(): void
     {
-        if (!\class_exists(\Fiber::class, false)) {
-            self::markTestSkipped("Fibers required for this test");
-        }
-
         $send = 42;
 
         EventLoop::defer(static function () use (&$received, $send): void {
@@ -189,6 +179,20 @@ class EventLoopTest extends TestCase
             $received = $suspension->suspend();
         });
 
+        EventLoop::run();
+
+        self::assertSame($send, $received);
+    }
+
+    public function testSuspensionWithinQueue(): void
+    {
+        $send = 42;
+
+        EventLoop::queue(static function () use (&$received, $send): void {
+            $suspension = EventLoop::createSuspension();
+            EventLoop::defer(static fn () => $suspension->resume($send));
+            $received = $suspension->suspend();
+        });
 
         EventLoop::run();
 
