@@ -31,10 +31,10 @@ class StreamSelectDriverTest extends DriverTest
 
         try {
             $this->start(function (Driver $loop) use (&$invoked) {
-                $watcher = $loop->onSignal(SIGUSR1, function () use (&$invoked) {
+                $callbackId = $loop->onSignal(SIGUSR1, function () use (&$invoked) {
                     $invoked = true;
                 });
-                $loop->unreference($watcher);
+                $loop->unreference($callbackId);
                 $loop->defer(function () {
                     \posix_kill(\getmypid(), \SIGUSR1);
                 });
@@ -87,7 +87,7 @@ class StreamSelectDriverTest extends DriverTest
         $sockets = \stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
 
         $this->start(function (Driver $loop) use ($sockets) {
-            $socketWatchers = [
+            $socketCallbackIds = [
                 $loop->onReadable($sockets[0], function () {
                     // nothing
                 }),
@@ -96,11 +96,11 @@ class StreamSelectDriverTest extends DriverTest
                 }),
             ];
 
-            $loop->onSignal(\SIGUSR2, function ($signalWatcher) use ($socketWatchers, $loop) {
-                $loop->cancel($signalWatcher);
+            $loop->onSignal(\SIGUSR2, function ($callbackId) use ($socketCallbackIds, $loop) {
+                $loop->cancel($callbackId);
 
-                foreach ($socketWatchers as $watcher) {
-                    $loop->cancel($watcher);
+                foreach ($socketCallbackIds as $socketCallbackId) {
+                    $loop->cancel($socketCallbackId);
                 }
 
                 $this->assertTrue(true);

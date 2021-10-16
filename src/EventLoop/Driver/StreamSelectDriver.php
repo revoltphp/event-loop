@@ -5,12 +5,12 @@
 namespace Revolt\EventLoop\Driver;
 
 use Revolt\EventLoop\Internal\AbstractDriver;
-use Revolt\EventLoop\Internal\SignalWatcher;
-use Revolt\EventLoop\Internal\StreamReadWatcher;
-use Revolt\EventLoop\Internal\StreamWriteWatcher;
+use Revolt\EventLoop\Internal\SignalCallback;
+use Revolt\EventLoop\Internal\StreamReadableCallback;
+use Revolt\EventLoop\Internal\StreamWritableCallback;
 use Revolt\EventLoop\Internal\TimerQueue;
-use Revolt\EventLoop\Internal\TimerWatcher;
-use Revolt\EventLoop\Internal\Watcher;
+use Revolt\EventLoop\Internal\TimerCallback;
+use Revolt\EventLoop\Internal\Callback;
 use Revolt\EventLoop\UnsupportedFeatureException;
 
 final class StreamSelectDriver extends AbstractDriver
@@ -18,19 +18,19 @@ final class StreamSelectDriver extends AbstractDriver
     /** @var resource[]|object[] */
     private array $readStreams = [];
 
-    /** @var StreamReadWatcher[][] */
-    private array $readWatchers = [];
+    /** @var StreamReadableCallback[][] */
+    private array $readCallbacks = [];
 
     /** @var resource[]|object[] */
     private array $writeStreams = [];
 
-    /** @var StreamWriteWatcher[][] */
-    private array $writeWatchers = [];
+    /** @var StreamWritableCallback[][] */
+    private array $writeCallbacks = [];
 
     private TimerQueue $timerQueue;
 
-    /** @var SignalWatcher[][] */
-    private array $signalWatchers = [];
+    /** @var SignalCallback[][] */
+    private array $signalCallbacks = [];
 
     private bool $signalHandling;
 
@@ -112,15 +112,15 @@ final class StreamSelectDriver extends AbstractDriver
 
         $now = $this->now();
 
-        while ($watcher = $this->timerQueue->extract($now)) {
-            if ($watcher->repeat) {
-                $watcher->enabled = false; // Trick base class into adding to enable queue when calling enable()
-                $this->enable($watcher->id);
+        while ($callback = $this->timerQueue->extract($now)) {
+            if ($callback->repeat) {
+                $callback->enabled = false; // Trick base class into adding to enable queue when calling enable()
+                $this->enable($callback->id);
             } else {
-                $this->cancel($watcher->id);
+                $this->cancel($callback->id);
             }
 
-            $this->invokeCallback($watcher);
+            $this->invokeCallback($callback);
         }
 
         if ($this->signalHandling) {
@@ -131,26 +131,26 @@ final class StreamSelectDriver extends AbstractDriver
     /**
      * {@inheritdoc}
      */
-    protected function activate(array $watchers): void
+    protected function activate(array $callbacks): void
     {
-        foreach ($watchers as $watcher) {
-            if ($watcher instanceof StreamReadWatcher) {
-                \assert(\is_resource($watcher->stream));
+        foreach ($callbacks as $callback) {
+            if ($callback instanceof StreamReadableCallback) {
+                \assert(\is_resource($callback->stream));
 
-                $streamId = (int) $watcher->stream;
-                $this->readWatchers[$streamId][$watcher->id] = $watcher;
-                $this->readStreams[$streamId] = $watcher->stream;
-            } elseif ($watcher instanceof StreamWriteWatcher) {
-                \assert(\is_resource($watcher->stream));
+                $streamId = (int) $callback->stream;
+                $this->readCallbacks[$streamId][$callback->id] = $callback;
+                $this->readStreams[$streamId] = $callback->stream;
+            } elseif ($callback instanceof StreamWritableCallback) {
+                \assert(\is_resource($callback->stream));
 
-                $streamId = (int) $watcher->stream;
-                $this->writeWatchers[$streamId][$watcher->id] = $watcher;
-                $this->writeStreams[$streamId] = $watcher->stream;
-            } elseif ($watcher instanceof TimerWatcher) {
-                $this->timerQueue->insert($watcher);
-            } elseif ($watcher instanceof SignalWatcher) {
-                if (!isset($this->signalWatchers[$watcher->signal])) {
-                    if (!@\pcntl_signal($watcher->signal, \Closure::fromCallable([$this, 'handleSignal']))) {
+                $streamId = (int) $callback->stream;
+                $this->writeCallbacks[$streamId][$callback->id] = $callback;
+                $this->writeStreams[$streamId] = $callback->stream;
+            } elseif ($callback instanceof TimerCallback) {
+                $this->timerQueue->insert($callback);
+            } elseif ($callback instanceof SignalCallback) {
+                if (!isset($this->signalCallbacks[$callback->signal])) {
+                    if (!@\pcntl_signal($callback->signal, \Closure::fromCallable([$this, 'handleSignal']))) {
                         $message = "Failed to register signal handler";
                         if ($error = \error_get_last()) {
                             $message .= \sprintf("; Errno: %d; %s", $error["type"], $error["message"]);
@@ -159,10 +159,10 @@ final class StreamSelectDriver extends AbstractDriver
                     }
                 }
 
-                $this->signalWatchers[$watcher->signal][$watcher->id] = $watcher;
+                $this->signalCallbacks[$callback->signal][$callback->id] = $callback;
             } else {
                 // @codeCoverageIgnoreStart
-                throw new \Error("Unknown watcher type");
+                throw new \Error("Unknown callback type");
                 // @codeCoverageIgnoreEnd
             }
         }
@@ -171,34 +171,34 @@ final class StreamSelectDriver extends AbstractDriver
     /**
      * {@inheritdoc}
      */
-    protected function deactivate(Watcher $watcher): void
+    protected function deactivate(Callback $callback): void
     {
-        if ($watcher instanceof StreamReadWatcher) {
-            $streamId = (int) $watcher->stream;
-            unset($this->readWatchers[$streamId][$watcher->id]);
-            if (empty($this->readWatchers[$streamId])) {
-                unset($this->readWatchers[$streamId], $this->readStreams[$streamId]);
+        if ($callback instanceof StreamReadableCallback) {
+            $streamId = (int) $callback->stream;
+            unset($this->readCallbacks[$streamId][$callback->id]);
+            if (empty($this->readCallbacks[$streamId])) {
+                unset($this->readCallbacks[$streamId], $this->readStreams[$streamId]);
             }
-        } elseif ($watcher instanceof StreamWriteWatcher) {
-            $streamId = (int) $watcher->stream;
-            unset($this->writeWatchers[$streamId][$watcher->id]);
-            if (empty($this->writeWatchers[$streamId])) {
-                unset($this->writeWatchers[$streamId], $this->writeStreams[$streamId]);
+        } elseif ($callback instanceof StreamWritableCallback) {
+            $streamId = (int) $callback->stream;
+            unset($this->writeCallbacks[$streamId][$callback->id]);
+            if (empty($this->writeCallbacks[$streamId])) {
+                unset($this->writeCallbacks[$streamId], $this->writeStreams[$streamId]);
             }
-        } elseif ($watcher instanceof TimerWatcher) {
-            $this->timerQueue->remove($watcher);
-        } elseif ($watcher instanceof SignalWatcher) {
-            if (isset($this->signalWatchers[$watcher->signal])) {
-                unset($this->signalWatchers[$watcher->signal][$watcher->id]);
+        } elseif ($callback instanceof TimerCallback) {
+            $this->timerQueue->remove($callback);
+        } elseif ($callback instanceof SignalCallback) {
+            if (isset($this->signalCallbacks[$callback->signal])) {
+                unset($this->signalCallbacks[$callback->signal][$callback->id]);
 
-                if (empty($this->signalWatchers[$watcher->signal])) {
-                    unset($this->signalWatchers[$watcher->signal]);
-                    @\pcntl_signal($watcher->signal, \SIG_DFL);
+                if (empty($this->signalCallbacks[$callback->signal])) {
+                    unset($this->signalCallbacks[$callback->signal]);
+                    @\pcntl_signal($callback->signal, \SIG_DFL);
                 }
             }
         } else {
             // @codeCoverageIgnoreStart
-            throw new \Error("Unknown watcher type");
+            throw new \Error("Unknown callback type");
             // @codeCoverageIgnoreEnd
         }
     }
@@ -247,16 +247,16 @@ final class StreamSelectDriver extends AbstractDriver
 
             foreach ($read as $stream) {
                 $streamId = (int) $stream;
-                if (!isset($this->readWatchers[$streamId])) {
-                    continue; // All read watchers disabled.
+                if (!isset($this->readCallbacks[$streamId])) {
+                    continue; // All read callbacks disabled.
                 }
 
-                foreach ($this->readWatchers[$streamId] as $watcher) {
-                    if (!isset($this->readWatchers[$streamId][$watcher->id])) {
-                        continue; // Watcher disabled by another IO watcher.
+                foreach ($this->readCallbacks[$streamId] as $callback) {
+                    if (!isset($this->readCallbacks[$streamId][$callback->id])) {
+                        continue; // Callback disabled by another IO callback.
                     }
 
-                    $this->invokeCallback($watcher);
+                    $this->invokeCallback($callback);
                 }
             }
 
@@ -270,23 +270,23 @@ final class StreamSelectDriver extends AbstractDriver
 
             foreach ($write as $stream) {
                 $streamId = (int) $stream;
-                if (!isset($this->writeWatchers[$streamId])) {
-                    continue; // All write watchers disabled.
+                if (!isset($this->writeCallbacks[$streamId])) {
+                    continue; // All write callbacks disabled.
                 }
 
-                foreach ($this->writeWatchers[$streamId] as $watcher) {
-                    if (!isset($this->writeWatchers[$streamId][$watcher->id])) {
-                        continue; // Watcher disabled by another IO watcher.
+                foreach ($this->writeCallbacks[$streamId] as $callback) {
+                    if (!isset($this->writeCallbacks[$streamId][$callback->id])) {
+                        continue; // Callback disabled by another IO callback.
                     }
 
-                    $this->invokeCallback($watcher);
+                    $this->invokeCallback($callback);
                 }
             }
 
             return;
         }
 
-        if ($timeout < 0) { // Only signal watchers are enabled, so sleep indefinitely.
+        if ($timeout < 0) { // Only signal callbacks are enabled, so sleep indefinitely.
             \usleep(\PHP_INT_MAX);
             return;
         }
@@ -312,14 +312,14 @@ final class StreamSelectDriver extends AbstractDriver
         return $expiration > 0 ? $expiration : 0.0;
     }
 
-    private function handleSignal(int $signo): void
+    private function handleSignal(int $signal): void
     {
-        foreach ($this->signalWatchers[$signo] as $watcher) {
-            if (!isset($this->signalWatchers[$signo][$watcher->id])) {
+        foreach ($this->signalCallbacks[$signal] as $callback) {
+            if (!isset($this->signalCallbacks[$signal][$callback->id])) {
                 continue;
             }
 
-            $this->invokeCallback($watcher);
+            $this->invokeCallback($callback);
         }
     }
 }

@@ -33,14 +33,14 @@ class EventLoopTest extends TestCase
             STREAM_SOCK_STREAM,
             STREAM_IPPROTO_IP
         );
-        \fwrite($ends[0], "trigger readability watcher");
+        \fwrite($ends[0], "trigger readability callback");
 
         $count = 0;
         $suspension = EventLoop::createSuspension();
 
-        EventLoop::onReadable($ends[1], function ($watcher) use (&$count, $suspension): void {
+        EventLoop::onReadable($ends[1], function ($callbackId) use (&$count, $suspension): void {
             $this->assertTrue(true);
-            EventLoop::cancel($watcher);
+            EventLoop::cancel($callbackId);
             $count++;
 
             $suspension->resume(null);
@@ -60,9 +60,9 @@ class EventLoopTest extends TestCase
         $count = 0;
         $suspension = EventLoop::createSuspension();
 
-        EventLoop::onWritable(STDOUT, function ($watcher) use (&$count, $suspension): void {
+        EventLoop::onWritable(STDOUT, function ($callbackId) use (&$count, $suspension): void {
             $this->assertTrue(true);
-            EventLoop::cancel($watcher);
+            EventLoop::cancel($callbackId);
             $count++;
 
             $suspension->resume(null);
@@ -175,7 +175,7 @@ class EventLoopTest extends TestCase
         self::assertTrue($invoked);
     }
 
-    public function testSuspensionWithinWatcherCallback(): void
+    public function testSuspensionWithinCallback(): void
     {
         if (!\class_exists(\Fiber::class, false)) {
             self::markTestSkipped("Fibers required for this test");

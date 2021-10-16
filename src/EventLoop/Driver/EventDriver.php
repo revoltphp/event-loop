@@ -5,12 +5,12 @@
 namespace Revolt\EventLoop\Driver;
 
 use Revolt\EventLoop\Internal\AbstractDriver;
-use Revolt\EventLoop\Internal\SignalWatcher;
-use Revolt\EventLoop\Internal\StreamReadWatcher;
-use Revolt\EventLoop\Internal\StreamWatcher;
-use Revolt\EventLoop\Internal\StreamWriteWatcher;
-use Revolt\EventLoop\Internal\TimerWatcher;
-use Revolt\EventLoop\Internal\Watcher;
+use Revolt\EventLoop\Internal\SignalCallback;
+use Revolt\EventLoop\Internal\StreamReadableCallback;
+use Revolt\EventLoop\Internal\StreamCallback;
+use Revolt\EventLoop\Internal\StreamWritableCallback;
+use Revolt\EventLoop\Internal\TimerCallback;
+use Revolt\EventLoop\Internal\Callback;
 
 final class EventDriver extends AbstractDriver
 {
@@ -41,37 +41,37 @@ final class EventDriver extends AbstractDriver
             self::$activeSignals = &$this->signals;
         }
 
-        $this->ioCallback = function ($resource, $what, StreamWatcher $watcher): void {
-            \assert(\is_resource($watcher->stream));
+        $this->ioCallback = function ($resource, $what, StreamCallback $callback): void {
+            \assert(\is_resource($callback->stream));
 
-            $this->invokeCallback($watcher);
+            $this->invokeCallback($callback);
         };
 
-        $this->timerCallback = function ($resource, $what, TimerWatcher $watcher): void {
-            if ($watcher->repeat) {
-                $this->events[$watcher->id]->add($watcher->interval);
+        $this->timerCallback = function ($resource, $what, TimerCallback $callback): void {
+            if ($callback->repeat) {
+                $this->events[$callback->id]->add($callback->interval);
             } else {
-                $this->cancel($watcher->id);
+                $this->cancel($callback->id);
             }
 
-            $this->invokeCallback($watcher);
+            $this->invokeCallback($callback);
         };
 
-        $this->signalCallback = function ($signo, $what, SignalWatcher $watcher): void {
-            $this->invokeCallback($watcher);
+        $this->signalCallback = function ($signo, $what, SignalCallback $callback): void {
+            $this->invokeCallback($callback);
         };
     }
 
     /**
      * {@inheritdoc}
      */
-    public function cancel(string $watcherId): void
+    public function cancel(string $callbackId): void
     {
-        parent::cancel($watcherId);
+        parent::cancel($callbackId);
 
-        if (isset($this->events[$watcherId])) {
-            $this->events[$watcherId]->free();
-            unset($this->events[$watcherId]);
+        if (isset($this->events[$callbackId])) {
+            $this->events[$callbackId]->free();
+            unset($this->events[$callbackId]);
         }
     }
 
@@ -168,59 +168,59 @@ final class EventDriver extends AbstractDriver
     /**
      * {@inheritdoc}
      */
-    protected function activate(array $watchers): void
+    protected function activate(array $callbacks): void
     {
         $now = $this->now();
 
-        foreach ($watchers as $watcher) {
-            if (!isset($this->events[$id = $watcher->id])) {
-                if ($watcher instanceof StreamReadWatcher) {
-                    \assert(\is_resource($watcher->stream));
+        foreach ($callbacks as $callback) {
+            if (!isset($this->events[$id = $callback->id])) {
+                if ($callback instanceof StreamReadableCallback) {
+                    \assert(\is_resource($callback->stream));
 
                     $this->events[$id] = new \Event(
                         $this->handle,
-                        $watcher->stream,
+                        $callback->stream,
                         \Event::READ | \Event::PERSIST,
                         $this->ioCallback,
-                        $watcher
+                        $callback
                     );
-                } elseif ($watcher instanceof StreamWriteWatcher) {
-                    \assert(\is_resource($watcher->stream));
+                } elseif ($callback instanceof StreamWritableCallback) {
+                    \assert(\is_resource($callback->stream));
 
                     $this->events[$id] = new \Event(
                         $this->handle,
-                        $watcher->stream,
+                        $callback->stream,
                         \Event::WRITE | \Event::PERSIST,
                         $this->ioCallback,
-                        $watcher
+                        $callback
                     );
-                } elseif ($watcher instanceof TimerWatcher) {
+                } elseif ($callback instanceof TimerCallback) {
                     $this->events[$id] = new \Event(
                         $this->handle,
                         -1,
                         \Event::TIMEOUT,
                         $this->timerCallback,
-                        $watcher
+                        $callback
                     );
-                } elseif ($watcher instanceof SignalWatcher) {
+                } elseif ($callback instanceof SignalCallback) {
                     $this->events[$id] = new \Event(
                         $this->handle,
-                        $watcher->signal,
+                        $callback->signal,
                         \Event::SIGNAL | \Event::PERSIST,
                         $this->signalCallback,
-                        $watcher
+                        $callback
                     );
                 } else {
                     // @codeCoverageIgnoreStart
-                    throw new \Error("Unknown watcher type");
+                    throw new \Error("Unknown callback type");
                     // @codeCoverageIgnoreEnd
                 }
             }
 
-            if ($watcher instanceof TimerWatcher) {
-                $interval = \max(0, $watcher->expiration - $now);
+            if ($callback instanceof TimerCallback) {
+                $interval = \max(0, $callback->expiration - $now);
                 $this->events[$id]->add($interval > 0 ? $interval : 0);
-            } elseif ($watcher instanceof SignalWatcher) {
+            } elseif ($callback instanceof SignalCallback) {
                 $this->signals[$id] = $this->events[$id];
                 /** @psalm-suppress TooFewArguments https://github.com/JetBrains/phpstorm-stubs/pull/763 */
                 $this->events[$id]->add();
@@ -234,12 +234,12 @@ final class EventDriver extends AbstractDriver
     /**
      * {@inheritdoc}
      */
-    protected function deactivate(Watcher $watcher): void
+    protected function deactivate(Callback $callback): void
     {
-        if (isset($this->events[$id = $watcher->id])) {
+        if (isset($this->events[$id = $callback->id])) {
             $this->events[$id]->del();
 
-            if ($watcher instanceof SignalWatcher) {
+            if ($callback instanceof SignalCallback) {
                 unset($this->signals[$id]);
             }
         }

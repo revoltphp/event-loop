@@ -3,15 +3,14 @@
 namespace Revolt\EventLoop\Internal;
 
 /** @internal */
-abstract class StreamWatcher extends Watcher
+final class TimerCallback extends Callback
 {
-    /**
-     * @param resource|object $stream
-     */
     public function __construct(
         string $id,
+        public float $interval,
         callable $callback,
-        public mixed $stream
+        public float $expiration,
+        public bool $repeat = false
     ) {
         parent::__construct($id, $callback);
     }

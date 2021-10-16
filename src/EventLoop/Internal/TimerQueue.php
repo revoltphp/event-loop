@@ -9,36 +9,36 @@ namespace Revolt\EventLoop\Internal;
  */
 final class TimerQueue
 {
-    /** @var TimerWatcher[] */
-    private array $watchers = [];
+    /** @var TimerCallback[] */
+    private array $callbacks = [];
 
     /** @var int[] */
     private array $pointers = [];
 
     /**
-     * Inserts the watcher into the queue.
+     * Inserts the callback into the queue.
      *
      * Time complexity: O(log(n)).
      */
-    public function insert(TimerWatcher $watcher): void
+    public function insert(TimerCallback $callback): void
     {
-        \assert(!isset($this->pointers[$watcher->id]));
+        \assert(!isset($this->pointers[$callback->id]));
 
-        $node = \count($this->watchers);
-        $this->watchers[$node] = $watcher;
-        $this->pointers[$watcher->id] = $node;
+        $node = \count($this->callbacks);
+        $this->callbacks[$node] = $callback;
+        $this->pointers[$callback->id] = $node;
 
         $this->heapifyUp($node);
     }
 
     /**
-     * Removes the given watcher from the queue.
+     * Removes the given callback from the queue.
      *
      * Time complexity: O(log(n)).
      */
-    public function remove(TimerWatcher $watcher): void
+    public function remove(TimerCallback $callback): void
     {
-        $id = $watcher->id;
+        $id = $callback->id;
 
         if (!isset($this->pointers[$id])) {
             return;
@@ -48,28 +48,28 @@ final class TimerQueue
     }
 
     /**
-     * Deletes and returns the watcher on top of the heap if it has expired, otherwise null is returned.
+     * Deletes and returns the callback on top of the heap if it has expired, otherwise null is returned.
      *
      * Time complexity: O(log(n)).
      *
-     * @param float $now Current loop time.
+     * @param float $now Current event loop time.
      *
-     * @return TimerWatcher|null Expired watcher at the top of the heap or null if the watcher has not expired.
+     * @return TimerCallback|null Expired callback at the top of the heap or null if the callback has not expired.
      */
-    public function extract(float $now): ?TimerWatcher
+    public function extract(float $now): ?TimerCallback
     {
-        if (!$this->watchers) {
+        if (!$this->callbacks) {
             return null;
         }
 
-        $watcher = $this->watchers[0];
-        if ($watcher->expiration > $now) {
+        $callback = $this->callbacks[0];
+        if ($callback->expiration > $now) {
             return null;
         }
 
         $this->removeAndRebuild(0);
 
-        return $watcher;
+        return $callback;
     }
 
     /**
@@ -77,11 +77,11 @@ final class TimerQueue
      *
      * Time complexity: O(1).
      *
-     * @return float|null Expiration time of the watcher at the top of the heap or null if the heap is empty.
+     * @return float|null Expiration time of the callback at the top of the heap or null if the heap is empty.
      */
     public function peek(): ?float
     {
-        return isset($this->watchers[0]) ? $this->watchers[0]->expiration : null;
+        return isset($this->callbacks[0]) ? $this->callbacks[0]->expiration : null;
     }
 
     /**
@@ -89,8 +89,8 @@ final class TimerQueue
      */
     private function heapifyUp(int $node): void
     {
-        $entry = $this->watchers[$node];
-        while ($node !== 0 && $entry->expiration < $this->watchers[$parent = ($node - 1) >> 1]->expiration) {
+        $entry = $this->callbacks[$node];
+        while ($node !== 0 && $entry->expiration < $this->callbacks[$parent = ($node - 1) >> 1]->expiration) {
             $this->swap($node, $parent);
             $node = $parent;
         }
@@ -101,14 +101,14 @@ final class TimerQueue
      */
     private function heapifyDown(int $node): void
     {
-        $length = \count($this->watchers);
+        $length = \count($this->callbacks);
         while (($child = ($node << 1) + 1) < $length) {
-            if ($this->watchers[$child]->expiration < $this->watchers[$node]->expiration
-                && ($child + 1 >= $length || $this->watchers[$child]->expiration < $this->watchers[$child + 1]->expiration)
+            if ($this->callbacks[$child]->expiration < $this->callbacks[$node]->expiration
+                && ($child + 1 >= $length || $this->callbacks[$child]->expiration < $this->callbacks[$child + 1]->expiration)
             ) {
                 // Left child is less than parent and right child.
                 $swap = $child;
-            } elseif ($child + 1 < $length && $this->watchers[$child + 1]->expiration < $this->watchers[$node]->expiration) {
+            } elseif ($child + 1 < $length && $this->callbacks[$child + 1]->expiration < $this->callbacks[$node]->expiration) {
                 // Right child is less than parent and left child.
                 $swap = $child + 1;
             } else { // Left and right child are greater than parent.
@@ -122,12 +122,12 @@ final class TimerQueue
 
     private function swap(int $left, int $right): void
     {
-        $temp = $this->watchers[$left];
+        $temp = $this->callbacks[$left];
 
-        $this->watchers[$left] = $this->watchers[$right];
-        $this->pointers[$this->watchers[$right]->id] = $left;
+        $this->callbacks[$left] = $this->callbacks[$right];
+        $this->pointers[$this->callbacks[$right]->id] = $left;
 
-        $this->watchers[$right] = $temp;
+        $this->callbacks[$right] = $temp;
         $this->pointers[$temp->id] = $right;
     }
 
@@ -136,15 +136,15 @@ final class TimerQueue
      */
     private function removeAndRebuild(int $node): void
     {
-        $length = \count($this->watchers) - 1;
-        $id = $this->watchers[$node]->id;
-        $left = $this->watchers[$node] = $this->watchers[$length];
+        $length = \count($this->callbacks) - 1;
+        $id = $this->callbacks[$node]->id;
+        $left = $this->callbacks[$node] = $this->callbacks[$length];
         $this->pointers[$left->id] = $node;
-        unset($this->watchers[$length], $this->pointers[$id]);
+        unset($this->callbacks[$length], $this->pointers[$id]);
 
         if ($node < $length) { // don't need to do anything if we removed the last element
             $parent = ($node - 1) >> 1;
-            if ($parent >= 0 && $this->watchers[$node]->expiration < $this->watchers[$parent]->expiration) {
+            if ($parent >= 0 && $this->callbacks[$node]->expiration < $this->callbacks[$parent]->expiration) {
                 $this->heapifyUp($node);
             } else {
                 $this->heapifyDown($node);

@@ -4,7 +4,7 @@ namespace Revolt\EventLoop\Driver;
 
 use PHPUnit\Framework\TestCase;
 use Revolt\EventLoop\Internal\TimerQueue;
-use Revolt\EventLoop\Internal\TimerWatcher;
+use Revolt\EventLoop\Internal\TimerCallback;
 
 class TimerQueueTest extends TestCase
 {
@@ -43,16 +43,16 @@ class TimerQueueTest extends TestCase
         $indexToRemove = 16;
         $queue = new TimerQueue();
         $id = 'a';
-        $watchers = [];
+        $callbacks = [];
         foreach ($values as $value) {
-            $watcher = new TimerWatcher($id++, $value, static function () {
+            $callback = new TimerCallback($id++, $value, static function () {
             }, $value);
-            $watchers[] = $watcher;
+            $callbacks[] = $callback;
         }
 
-        $toRemove = $watchers[$indexToRemove];
-        foreach ($watchers as $watcher) {
-            $queue->insert($watcher);
+        $toRemove = $callbacks[$indexToRemove];
+        foreach ($callbacks as $callback) {
+            $queue->insert($callback);
         }
         $queue->remove($toRemove);
 

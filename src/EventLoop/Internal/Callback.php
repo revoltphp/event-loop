@@ -5,7 +5,7 @@ namespace Revolt\EventLoop\Internal;
 /**
  * @internal
  */
-abstract class Watcher
+abstract class Callback
 {
     public bool $enabled = true;
 

@@ -7,7 +7,7 @@ namespace Revolt\EventLoop;
  */
 final class InvalidCallbackError extends \Error
 {
-    public static function noVoid(string $watcherId, callable $callable): self
+    public static function noVoid(string $callbackId, callable $callable): self
     {
         $errorDetail = '';
         if (\is_string($callable)) {
@@ -29,27 +29,27 @@ final class InvalidCallbackError extends \Error
             }
         }
 
-        return new self($watcherId, 'Non-null return value received from callback' . $errorDetail);
+        return new self($callbackId, 'Non-null return value received from callback' . $errorDetail);
     }
 
     /** @var string */
-    private string $watcherId;
+    private string $callbackId;
 
     /**
-     * @param string $watcherId The watcher identifier.
+     * @param string $callbackId The callback identifier.
      * @param string $message The exception message.
      */
-    private function __construct(string $watcherId, string $message)
+    private function __construct(string $callbackId, string $message)
     {
-        $this->watcherId = $watcherId;
+        $this->callbackId = $callbackId;
         parent::__construct($message);
     }
 
     /**
-     * @return string The watcher identifier.
+     * @return string The callback identifier.
      */
     public function getWatcherId(): string
     {
-        return $this->watcherId;
+        return $this->callbackId;
     }
 }

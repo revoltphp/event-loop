@@ -5,7 +5,7 @@ namespace Revolt;
 use Revolt\EventLoop\Driver;
 use Revolt\EventLoop\DriverFactory;
 use Revolt\EventLoop\Internal\AbstractDriver;
-use Revolt\EventLoop\Internal\Watcher;
+use Revolt\EventLoop\Internal\Callback;
 use Revolt\EventLoop\InvalidWatcherError;
 use Revolt\EventLoop\Suspension;
 use Revolt\EventLoop\UnsupportedFeatureException;
@@ -35,9 +35,9 @@ final class EventLoop
         try {
             /** @psalm-suppress InternalClass */
             self::$driver = new class () extends AbstractDriver {
-                protected function activate(array $watchers): void
+                protected function activate(array $callbacks): void
                 {
-                    throw new \Error("Can't activate watcher during garbage collection.");
+                    throw new \Error("Can't activate callback during garbage collection.");
                 }
 
                 protected function dispatch(bool $blocking): void
@@ -45,7 +45,7 @@ final class EventLoop
                     throw new \Error("Can't dispatch during garbage collection.");
                 }
 
-                protected function deactivate(Watcher $watcher): void
+                protected function deactivate(Callback $callback): void
                 {
                     // do nothing
                 }
@@ -73,8 +73,8 @@ final class EventLoop
      * The queued callable MUST be executed immediately once the event loop gains control. Order of queueing MUST be
      * preserved when executing the callbacks. Recursive scheduling can thus result in infinite loops, use with care.
      *
-     * Does NOT create a watcher, thus CAN NOT be marked as disabled or unreferenced. Use {@see EventLoop::defer()} if
-     * you need these features.
+     * Does NOT create an event callback, thus CAN NOT be marked as disabled or unreferenced.
+     * Use {@see EventLoop::defer()} if you need these features.
      *
      * @param callable $callback The callback to queue.
      * @param mixed    ...$args The callback arguments.
@@ -87,16 +87,16 @@ final class EventLoop
     /**
      * Defer the execution of a callback.
      *
-     * The deferred callable MUST be executed before any other type of watcher in a tick. Order of enabling MUST be
+     * The deferred callable MUST be executed before any other type of callback in a tick. Order of enabling MUST be
      * preserved when executing the callbacks.
      *
-     * The created watcher MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
-     * right before the next tick. Callbacks of watchers MUST NOT be called in the tick they were enabled.
+     * The created callback MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
+     * right before the next tick. Deferred callbacks MUST NOT be called in the tick they were enabled.
      *
-     * @param callable(string) $callback The callback to defer. The `$watcherId` will be
+     * @param callable(string) $callback The callback to defer. The `$callbackId` will be
      *     invalidated before the callback invocation.
      *
-     * @return string An unique identifier that can be used to cancel, enable or disable the watcher.
+     * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      */
     public static function defer(callable $callback): string
     {
@@ -109,14 +109,14 @@ final class EventLoop
      * The delay is a minimum and approximate, accuracy is not guaranteed. Order of calls MUST be determined by which
      * timers expire first, but timers with the same expiration time MAY be executed in any order.
      *
-     * The created watcher MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
-     * right before the next tick. Callbacks of watchers MUST NOT be called in the tick they were enabled.
+     * The created callback MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
+     * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
      * @param float   $delay The amount of time, in seconds, to delay the execution for.
-     * @param callable(string) $callback The callback to delay. The `$watcherId` will be invalidated before
+     * @param callable(string) $callback The callback to delay. The `$callbackId` will be invalidated before
      *     the callback invocation.
      *
-     * @return string An unique identifier that can be used to cancel, enable or disable the watcher.
+     * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      */
     public static function delay(float $delay, callable $callback): string
     {
@@ -130,13 +130,13 @@ final class EventLoop
      * determined by which timers expire first, but timers with the same expiration time MAY be executed in any order.
      * The first execution is scheduled after the first interval period.
      *
-     * The created watcher MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
-     * right before the next tick. Callbacks of watchers MUST NOT be called in the tick they were enabled.
+     * The created callback MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
+     * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
      * @param float   $interval The time interval, in seconds, to wait between executions.
      * @param callable(string) $callback The callback to repeat.
      *
-     * @return string An unique identifier that can be used to cancel, enable or disable the watcher.
+     * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      */
     public static function repeat(float $interval, callable $callback): string
     {
@@ -147,19 +147,19 @@ final class EventLoop
      * Execute a callback when a stream resource becomes readable or is closed for reading.
      *
      * Warning: Closing resources locally, e.g. with `fclose`, might not invoke the callback. Be sure to `cancel` the
-     * watcher when closing the resource locally. Drivers MAY choose to notify the user if there are watchers on invalid
-     * resources, but are not required to, due to the high performance impact. Watchers on closed resources are
+     * callback when closing the resource locally. Drivers MAY choose to notify the user if there are callbacks on
+     * invalid resources, but are not required to, due to the high performance impact. Callbacks on closed resources are
      * therefore undefined behavior.
      *
-     * Multiple watchers on the same stream MAY be executed in any order.
+     * Multiple callbacks on the same stream MAY be executed in any order.
      *
-     * The created watcher MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
-     * right before the next tick. Callbacks of watchers MUST NOT be called in the tick they were enabled.
+     * The created callback MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
+     * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
      * @param resource|object $stream The stream to monitor.
      * @param callable(string, resource|object) $callback The callback to execute.
      *
-     * @return string An unique identifier that can be used to cancel, enable or disable the watcher.
+     * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      */
     public static function onReadable(mixed $stream, callable $callback): string
     {
@@ -170,19 +170,19 @@ final class EventLoop
      * Execute a callback when a stream resource becomes writable or is closed for writing.
      *
      * Warning: Closing resources locally, e.g. with `fclose`, might not invoke the callback. Be sure to `cancel` the
-     * watcher when closing the resource locally. Drivers MAY choose to notify the user if there are watchers on invalid
-     * resources, but are not required to, due to the high performance impact. Watchers on closed resources are
+     * callback when closing the resource locally. Drivers MAY choose to notify the user if there are callbacks on
+     * invalid resources, but are not required to, due to the high performance impact. Callbacks on closed resources are
      * therefore undefined behavior.
      *
-     * Multiple watchers on the same stream MAY be executed in any order.
+     * Multiple callbacks on the same stream MAY be executed in any order.
      *
-     * The created watcher MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
-     * right before the next tick. Callbacks of watchers MUST NOT be called in the tick they were enabled.
+     * The created callback MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
+     * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
      * @param resource|object $stream The stream to monitor.
      * @param callable(string, resource|object) $callback The callback to execute.
      *
-     * @return string An unique identifier that can be used to cancel, enable or disable the watcher.
+     * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      */
     public static function onWritable(mixed $stream, callable $callback): string
     {
@@ -196,15 +196,15 @@ final class EventLoop
      * Implementations MAY try to detect this, if possible, but are not required to. This is due to technical
      * limitations of the signals being registered globally per process.
      *
-     * Multiple watchers on the same signal MAY be executed in any order.
+     * Multiple callbacks on the same signal MAY be executed in any order.
      *
-     * The created watcher MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
-     * right before the next tick. Callbacks of watchers MUST NOT be called in the tick they were enabled.
+     * The created callback MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
+     * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
      * @param int   $signo The signal number to monitor.
      * @param callable(string, int) $callback The callback to execute.
      *
-     * @return string An unique identifier that can be used to cancel, enable or disable the watcher.
+     * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      *
      * @throws UnsupportedFeatureException If signal handling is not supported.
      */
@@ -214,83 +214,83 @@ final class EventLoop
     }
 
     /**
-     * Enable a watcher to be active starting in the next tick.
+     * Enable a callback to be active starting in the next tick.
      *
-     * Watchers MUST immediately be marked as enabled, but only be activated (i.e. callbacks can be called) right before
-     * the next tick. Callbacks of watchers MUST NOT be called in the tick they were enabled.
+     * Callbacks MUST immediately be marked as enabled, but only be activated (i.e. callbacks can be called) right
+     * before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
-     * @param string $watcherId The watcher identifier.
+     * @param string $callbackId The callback identifier.
      *
-     * @return string The watcher identifier.
+     * @return string The callback identifier.
      *
-     * @throws InvalidWatcherError If the watcher identifier is invalid.
+     * @throws InvalidWatcherError If the callback identifier is invalid.
      */
-    public static function enable(string $watcherId): string
+    public static function enable(string $callbackId): string
     {
-        return self::getDriver()->enable($watcherId);
+        return self::getDriver()->enable($callbackId);
     }
 
     /**
-     * Disable a watcher immediately.
+     * Disable a callback immediately.
      *
-     * A watcher MUST be disabled immediately, e.g. if a defer watcher disables a later defer watcher, the second defer
-     * watcher isn't executed in this tick.
+     * A callback MUST be disabled immediately, e.g. if a deferred callback disables another deferred callback,
+     * the second deferred callback isn't executed in this tick.
      *
-     * Disabling a watcher MUST NOT invalidate the watcher. Calling this function MUST NOT fail, even if passed an
-     * invalid watcher.
+     * Disabling a callback MUST NOT invalidate the callback. Calling this function MUST NOT fail, even if passed an
+     * invalid callback identifier.
      *
-     * @param string $watcherId The watcher identifier.
+     * @param string $callbackId The callback identifier.
      *
-     * @return string The watcher identifier.
+     * @return string The callback identifier.
      */
-    public static function disable(string $watcherId): string
+    public static function disable(string $callbackId): string
     {
-        return self::getDriver()->disable($watcherId);
+        return self::getDriver()->disable($callbackId);
     }
 
     /**
-     * Cancel a watcher.
+     * Cancel a callback.
      *
-     * This will detach the event loop from all resources that are associated to the watcher. After this operation the
-     * watcher is permanently invalid. Calling this function MUST NOT fail, even if passed an invalid watcher.
+     * This will detach the event loop from all resources that are associated to the callback. After this operation the
+     * callback is permanently invalid. Calling this function MUST NOT fail, even if passed an invalid identifier.
      *
-     * @param string $watcherId The watcher identifier.
+     * @param string $callbackId The callback identifier.
      */
-    public static function cancel(string $watcherId): void
+    public static function cancel(string $callbackId): void
     {
-        self::getDriver()->cancel($watcherId);
+        self::getDriver()->cancel($callbackId);
     }
 
     /**
-     * Reference a watcher.
+     * Reference a callback.
      *
-     * This will keep the event loop alive whilst the watcher is still being monitored. Watchers have this state by
+     * This will keep the event loop alive whilst the event is still being monitored. Callbacks have this state by
      * default.
      *
-     * @param string $watcherId The watcher identifier.
+     * @param string $callbackId The callback identifier.
      *
-     * @return string The watcher identifier.
+     * @return string The callback identifier.
      *
-     * @throws InvalidWatcherError If the watcher identifier is invalid.
+     * @throws InvalidWatcherError If the callback identifier is invalid.
      */
-    public static function reference(string $watcherId): string
+    public static function reference(string $callbackId): string
     {
-        return self::getDriver()->reference($watcherId);
+        return self::getDriver()->reference($callbackId);
     }
 
     /**
-     * Unreference a watcher.
+     * Unreference a callback.
      *
-     * The event loop should exit the run method when only unreferenced watchers are still being monitored. Watchers
+     * The event loop should exit the run method when only unreferenced callbacks are still being monitored. Callbacks
      * are all referenced by default.
      *
-     * @param string $watcherId The watcher identifier.
+     * @param string $callbackId The callback identifier.
      *
-     * @return string The watcher identifier.
+     * @return string The callback identifier.
      */
-    public static function unreference(string $watcherId): string
+    public static function unreference(string $callbackId): string
     {
-        return self::getDriver()->unreference($watcherId);
+        return self::getDriver()->unreference($callbackId);
     }
 
     /**
@@ -315,7 +315,7 @@ final class EventLoop
     /**
      * Retrieve an associative array of information about the event loop driver.
      *
-     * The returned array MUST contain the following data describing the driver's currently registered watchers:
+     * The returned array MUST contain the following data describing the driver's currently registered callbacks:
      *
      *     [
      *         "defer"            => ["enabled" => int, "disabled" => int],
@@ -373,15 +373,19 @@ final class EventLoop
     }
 
     /**
-     * Run the event loop. This function may only be called from {main}, that is, not within a fiber.
+     * Run the event loop.
      *
-     * This method will not return until the event loop contains no pending, referenced watchers.
+     * This function may only be called from {main}, that is, not within a fiber.
+     *
+     * Libraries should use the {@link Suspension} API instead of calling this method.
+     *
+     * This method will not return until the event loop does not contain any pending, referenced callbacks anymore.
      */
     public static function run(): void
     {
         if (!\class_exists(\Fiber::class, false)) {
             if (self::getDriver()->isRunning()) {
-                throw new \Error("The loop is already running");
+                throw new \Error("The event loop is already running");
             }
 
             self::getDriver()->run();

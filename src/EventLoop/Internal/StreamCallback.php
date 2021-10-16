@@ -3,12 +3,15 @@
 namespace Revolt\EventLoop\Internal;
 
 /** @internal */
-final class SignalWatcher extends Watcher
+abstract class StreamCallback extends Callback
 {
+    /**
+     * @param resource|object $stream
+     */
     public function __construct(
         string $id,
         callable $callback,
-        public int $signal
+        public mixed $stream
     ) {
         parent::__construct($id, $callback);
     }

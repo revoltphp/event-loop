@@ -3,14 +3,12 @@
 namespace Revolt\EventLoop\Internal;
 
 /** @internal */
-final class TimerWatcher extends Watcher
+final class SignalCallback extends Callback
 {
     public function __construct(
         string $id,
-        public float $interval,
         callable $callback,
-        public float $expiration,
-        public bool $repeat = false
+        public int $signal
     ) {
         parent::__construct($id, $callback);
     }

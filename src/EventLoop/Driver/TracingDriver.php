@@ -10,10 +10,10 @@ final class TracingDriver implements Driver
     private Driver $driver;
 
     /** @var true[] */
-    private array $enabledWatchers = [];
+    private array $enabledCallbacks = [];
 
     /** @var true[] */
-    private array $unreferencedWatchers = [];
+    private array $unreferencedCallbacks = [];
 
     /** @var string[] */
     private array $creationTraces = [];
@@ -49,7 +49,7 @@ final class TracingDriver implements Driver
         });
 
         $this->creationTraces[$id] = $this->formatStacktrace(\debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS));
-        $this->enabledWatchers[$id] = true;
+        $this->enabledCallbacks[$id] = true;
 
         return $id;
     }
@@ -62,7 +62,7 @@ final class TracingDriver implements Driver
         });
 
         $this->creationTraces[$id] = $this->formatStacktrace(\debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS));
-        $this->enabledWatchers[$id] = true;
+        $this->enabledCallbacks[$id] = true;
 
         return $id;
     }
@@ -72,7 +72,7 @@ final class TracingDriver implements Driver
         $id = $this->driver->repeat($interval, $callback);
 
         $this->creationTraces[$id] = $this->formatStacktrace(\debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS));
-        $this->enabledWatchers[$id] = true;
+        $this->enabledCallbacks[$id] = true;
 
         return $id;
     }
@@ -82,7 +82,7 @@ final class TracingDriver implements Driver
         $id = $this->driver->onReadable($stream, $callback);
 
         $this->creationTraces[$id] = $this->formatStacktrace(\debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS));
-        $this->enabledWatchers[$id] = true;
+        $this->enabledCallbacks[$id] = true;
 
         return $id;
     }
@@ -92,7 +92,7 @@ final class TracingDriver implements Driver
         $id = $this->driver->onWritable($stream, $callback);
 
         $this->creationTraces[$id] = $this->formatStacktrace(\debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS));
-        $this->enabledWatchers[$id] = true;
+        $this->enabledCallbacks[$id] = true;
 
         return $id;
     }
@@ -102,66 +102,66 @@ final class TracingDriver implements Driver
         $id = $this->driver->onSignal($signo, $callback);
 
         $this->creationTraces[$id] = $this->formatStacktrace(\debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS));
-        $this->enabledWatchers[$id] = true;
+        $this->enabledCallbacks[$id] = true;
 
         return $id;
     }
 
-    public function enable(string $watcherId): string
+    public function enable(string $callbackId): string
     {
         try {
-            $this->driver->enable($watcherId);
-            $this->enabledWatchers[$watcherId] = true;
+            $this->driver->enable($callbackId);
+            $this->enabledCallbacks[$callbackId] = true;
         } catch (InvalidWatcherError $e) {
             throw new InvalidWatcherError(
-                $watcherId,
-                $e->getMessage() . "\r\n\r\n" . $this->getTraces($watcherId)
+                $callbackId,
+                $e->getMessage() . "\r\n\r\n" . $this->getTraces($callbackId)
             );
         }
 
-        return $watcherId;
+        return $callbackId;
     }
 
-    public function cancel(string $watcherId): void
+    public function cancel(string $callbackId): void
     {
-        $this->driver->cancel($watcherId);
+        $this->driver->cancel($callbackId);
 
-        if (!isset($this->cancelTraces[$watcherId])) {
-            $this->cancelTraces[$watcherId] = $this->formatStacktrace(\debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS));
+        if (!isset($this->cancelTraces[$callbackId])) {
+            $this->cancelTraces[$callbackId] = $this->formatStacktrace(\debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS));
         }
 
-        unset($this->enabledWatchers[$watcherId], $this->unreferencedWatchers[$watcherId]);
+        unset($this->enabledCallbacks[$callbackId], $this->unreferencedCallbacks[$callbackId]);
     }
 
-    public function disable(string $watcherId): string
+    public function disable(string $callbackId): string
     {
-        $this->driver->disable($watcherId);
-        unset($this->enabledWatchers[$watcherId]);
+        $this->driver->disable($callbackId);
+        unset($this->enabledCallbacks[$callbackId]);
 
-        return $watcherId;
+        return $callbackId;
     }
 
-    public function reference(string $watcherId): string
+    public function reference(string $callbackId): string
     {
         try {
-            $this->driver->reference($watcherId);
-            unset($this->unreferencedWatchers[$watcherId]);
+            $this->driver->reference($callbackId);
+            unset($this->unreferencedCallbacks[$callbackId]);
         } catch (InvalidWatcherError $e) {
             throw new InvalidWatcherError(
-                $watcherId,
-                $e->getMessage() . "\r\n\r\n" . $this->getTraces($watcherId)
+                $callbackId,
+                $e->getMessage() . "\r\n\r\n" . $this->getTraces($callbackId)
             );
         }
 
-        return $watcherId;
+        return $callbackId;
     }
 
-    public function unreference(string $watcherId): string
+    public function unreference(string $callbackId): string
     {
-        $this->driver->unreference($watcherId);
-        $this->unreferencedWatchers[$watcherId] = true;
+        $this->driver->unreference($callbackId);
+        $this->unreferencedCallbacks[$callbackId] = true;
 
-        return $watcherId;
+        return $callbackId;
     }
 
     public function setErrorHandler(callable $callback = null): ?callable
@@ -177,15 +177,15 @@ final class TracingDriver implements Driver
 
     public function dump(): string
     {
-        $dump = "Enabled, referenced watchers keeping the loop running: ";
+        $dump = "Enabled, referenced callbacks keeping the loop running: ";
 
-        foreach ($this->enabledWatchers as $watcher => $_) {
-            if (isset($this->unreferencedWatchers[$watcher])) {
+        foreach ($this->enabledCallbacks as $callbackId => $_) {
+            if (isset($this->unreferencedCallbacks[$callbackId])) {
                 continue;
             }
 
-            $dump .= "Watcher ID: " . $watcher . "\r\n";
-            $dump .= $this->getCreationTrace($watcher);
+            $dump .= "Callback identifier: " . $callbackId . "\r\n";
+            $dump .= $this->getCreationTrace($callbackId);
             $dump .= "\r\n\r\n";
         }
 
@@ -207,20 +207,20 @@ final class TracingDriver implements Driver
         $this->driver->queue($callback, ...$args);
     }
 
-    private function getTraces(string $watcherId): string
+    private function getTraces(string $callbackId): string
     {
-        return "Creation Trace:\r\n" . $this->getCreationTrace($watcherId) . "\r\n\r\n" .
-            "Cancellation Trace:\r\n" . $this->getCancelTrace($watcherId);
+        return "Creation Trace:\r\n" . $this->getCreationTrace($callbackId) . "\r\n\r\n" .
+            "Cancellation Trace:\r\n" . $this->getCancelTrace($callbackId);
     }
 
-    private function getCreationTrace(string $watcher): string
+    private function getCreationTrace(string $callbackId): string
     {
-        return $this->creationTraces[$watcher] ?? 'No creation trace, yet.';
+        return $this->creationTraces[$callbackId] ?? 'No creation trace, yet.';
     }
 
-    private function getCancelTrace(string $watcher): string
+    private function getCancelTrace(string $callbackId): string
     {
-        return $this->cancelTraces[$watcher] ?? 'No cancellation trace, yet.';
+        return $this->cancelTraces[$callbackId] ?? 'No cancellation trace, yet.';
     }
 
     /**
