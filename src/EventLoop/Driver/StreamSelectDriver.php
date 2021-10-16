@@ -58,7 +58,7 @@ final class StreamSelectDriver extends AbstractDriver
                 $pattern = '(stream_select\(\): You MUST recompile PHP with a larger value of FD_SETSIZE. It is set to (\d+), but you have descriptors numbered at least as high as (\d+)\.)';
 
                 if (\preg_match($pattern, $message, $match)) {
-                    $helpLink = 'https://github.com/revoltphp/event-loop/tree/main/docs#implementations';
+                    $helpLink = 'https://revolt.run/extensions';
 
                     $message = 'You have reached the limits of stream_select(). It has a FD_SETSIZE of ' . $match[1]
                         . ', but you have file descriptors numbered at least as high as ' . $match[2] . '. '
