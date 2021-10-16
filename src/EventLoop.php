@@ -361,7 +361,7 @@ final class EventLoop
     public static function createSuspension(): Suspension
     {
         /** @psalm-suppress RedundantPropertyInitializationCheck */
-        if (!self::$fiber || self::$fiber->isTerminated()) {
+        if (!isset(self::$fiber) || self::$fiber->isTerminated()) {
             if (!\class_exists(\Fiber::class, false)) {
                 throw new \Error("Fibers required to create loop suspensions");
             }
