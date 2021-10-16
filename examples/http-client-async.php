@@ -13,7 +13,7 @@ if (\ip2long($ip) === false) {
 }
 
 // establish TCP/IP connection (non-blocking)
-// for illustraction purposes only, should use a proper socket abstraction instead!
+// for illustration purposes only, should use a proper socket abstraction instead!
 $stream = \stream_socket_client('tcp://' . $ip . ':80', $errno, $errstr, PHP_INT_MAX, STREAM_CLIENT_CONNECT | STREAM_CLIENT_ASYNC_CONNECT);
 if (!$stream) {
     exit(1);
@@ -22,7 +22,7 @@ if (!$stream) {
 
 // print progress every 10ms
 echo 'Connecting';
-$timer = EventLoop::repeat(10, function () {
+$timer = EventLoop::repeat(0.01, function () {
     echo '.';
 });
 
@@ -48,7 +48,7 @@ EventLoop::onWritable($stream, function ($watcher, $stream) use ($timer) {
             return;
         }
 
-        echo $chunk;
+        echo "Read " . \strlen($chunk) . " bytes..." . PHP_EOL;
     });
 });
 

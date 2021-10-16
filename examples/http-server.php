@@ -12,6 +12,8 @@ if (!$server) {
 }
 \stream_set_blocking($server, false);
 
+echo "Visit http://localhost:8080/ in your browser." . PHP_EOL;
+
 // wait for incoming connections on server socket
 EventLoop::onReadable($server, function ($watcher, $server) {
     $conn = \stream_socket_accept($server);
@@ -27,9 +29,9 @@ EventLoop::onReadable($server, function ($watcher, $server) {
     });
 });
 
-EventLoop::repeat(5000, function () {
+EventLoop::repeat(5, function () {
     $memory = \memory_get_usage() / 1024;
-    $formatted = \number_format($memory, 3).'K';
+    $formatted = \number_format($memory).' KiB';
     echo "Current memory usage: {$formatted}\n";
 });
 

@@ -54,4 +54,8 @@ function fetch(string $url): string
     return $buffer;
 }
 
-echo fetch('http://www.google.com/');
+function extractHeader(string $httpResponse): string {
+    return explode("\r\n\r\n", $httpResponse, 2)[0];
+}
+
+echo extractHeader(fetch('http://www.google.com/'));

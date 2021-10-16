@@ -27,7 +27,7 @@ EventLoop::onReadable($stream, function ($watcher, $stream) {
         return;
     }
 
-    echo $chunk;
+    echo "Read " . \strlen($chunk) . " bytes..." . PHP_EOL;
 });
 
 EventLoop::run();
