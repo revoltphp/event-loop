@@ -22,7 +22,8 @@ abstract class AbstractDriver implements Driver
     /** @var string Next callback identifier. */
     private string $nextId = "a";
 
-    private \Fiber $fiber;
+    private \Fiber $callbackFiber;
+    private \Fiber $queueFiber;
 
     /** @var Callback[] */
     private array $callbacks = [];
@@ -42,11 +43,18 @@ abstract class AbstractDriver implements Driver
     /** @var callable(\Throwable):void|null */
     private $errorHandler;
 
+    /** @var callable|null */
+    private $interrupt;
+
     private bool $running = false;
+
+    private \stdClass $internalSuspensionMarker;
 
     public function __construct()
     {
-        $this->fiber = $this->createFiber();
+        $this->internalSuspensionMarker = new \stdClass();
+        $this->createCallbackFiber();
+        $this->createQueueFiber();
     }
 
     /**
@@ -96,6 +104,11 @@ abstract class AbstractDriver implements Driver
     public function stop(): void
     {
         $this->running = false;
+    }
+
+    public function interrupt(callable $callback): void
+    {
+        $this->interrupt = $callback;
     }
 
     /**
@@ -560,20 +573,26 @@ abstract class AbstractDriver implements Driver
 
     protected function invokeCallback(Callback $callback): void
     {
-        if ($this->fiber->isRunning()) {
-            $this->fiber = $this->createFiber();
+        if ($this->callbackFiber->isRunning()) {
+            $this->createCallbackFiber();
         }
 
         try {
-            $yielded = $this->fiber->resume($callback);
-
-            if ($yielded !== $callback) {
+            $yielded = $this->callbackFiber->resume($callback);
+            if ($yielded !== $this->internalSuspensionMarker) {
                 // Callback suspended.
-                $this->fiber = $this->createFiber();
+                $this->createCallbackFiber();
             }
         } catch (\Throwable $exception) {
-            $this->fiber = $this->createFiber();
+            $this->createCallbackFiber();
             $this->error($exception);
+        }
+
+        if ($this->interrupt) {
+            $interrupt = $this->interrupt;
+            $this->interrupt = null;
+
+            \Fiber::suspend($interrupt);
         }
 
         if ($this->microQueue) {
@@ -656,22 +675,39 @@ abstract class AbstractDriver implements Driver
     private function invokeMicrotasks(): void
     {
         while ($this->microQueue) {
-            foreach ($this->microQueue as $id => [$callable, $args]) {
+            foreach ($this->microQueue as $id => $queueEntry) {
+                if ($this->queueFiber->isRunning()) {
+                    $this->createQueueFiber();
+                }
+
                 try {
                     unset($this->microQueue[$id]);
-                    $callable(...$args);
+
+                    $yielded = $this->queueFiber->resume($queueEntry);
+                    if ($yielded !== $this->internalSuspensionMarker) {
+                        $this->createQueueFiber();
+                    }
                 } catch (\Throwable $exception) {
+                    $this->createQueueFiber();
                     $this->error($exception);
+                }
+
+                if ($this->interrupt) {
+                    $interrupt = $this->interrupt;
+                    $this->interrupt = null;
+
+                    \Fiber::suspend($interrupt);
                 }
             }
         }
     }
 
-    private function createFiber(): \Fiber
+    private function createCallbackFiber(): void
     {
-        $fiber = new \Fiber(static function (): void {
-            $callback = null;
-            while ($callback = \Fiber::suspend($callback)) {
+        $suspensionMarker = $this->internalSuspensionMarker;
+
+        $this->callbackFiber = new \Fiber(static function () use ($suspensionMarker): void {
+            while ($callback = \Fiber::suspend($suspensionMarker)) {
                 $result = match (true) {
                     $callback instanceof StreamCallback => ($callback->callback)($callback->id, $callback->stream),
                     $callback instanceof SignalCallback => ($callback->callback)($callback->id, $callback->signal),
@@ -681,10 +717,26 @@ abstract class AbstractDriver implements Driver
                 if ($result !== null) {
                     throw InvalidCallbackError::nonNullReturn($callback->id, $callback->callback);
                 }
+
+                unset($callback);
             }
         });
 
-        $fiber->start();
-        return $fiber;
+        $this->callbackFiber->start();
+    }
+
+    private function createQueueFiber(): void
+    {
+        $suspensionMarker = $this->internalSuspensionMarker;
+
+        $this->queueFiber = new \Fiber(static function () use ($suspensionMarker): void {
+            while ([$callback, $args] = \Fiber::suspend($suspensionMarker)) {
+                $callback(...$args);
+
+                unset($callback, $args);
+            }
+        });
+
+        $this->queueFiber->start();
     }
 }

@@ -36,6 +36,11 @@ final class TracingDriver implements Driver
         $this->driver->stop();
     }
 
+    public function interrupt(callable $callback): void
+    {
+        $this->driver->interrupt($callback);
+    }
+
     public function isRunning(): bool
     {
         return $this->driver->isRunning();
