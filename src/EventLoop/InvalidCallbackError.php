@@ -49,13 +49,19 @@ final class InvalidCallbackError extends \Error
             return '???';
         }
 
-        try {
-            $reflection = new \ReflectionFunction($callable);
-            if ($reflection->getFileName() && $reflection->getStartLine()) {
-                return "defined in " . $reflection->getFileName() . ':' . $reflection->getStartLine();
+        if ($callable instanceof \Closure) {
+            try {
+                $reflection = new \ReflectionFunction($callable);
+                if ($reflection->getFileName() && $reflection->getStartLine()) {
+                    return "defined in " . $reflection->getFileName() . ':' . $reflection->getStartLine();
+                }
+            } catch (\ReflectionException) {
+                // ignore
             }
-        } catch (\ReflectionException) {
-            // ignore
+        }
+
+        if (\is_object($callable) && \method_exists($callable, '__invoke')) {
+            return \get_class($callable) . '::__invoke';
         }
 
         return '???';
