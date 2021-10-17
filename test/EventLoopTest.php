@@ -4,7 +4,6 @@ namespace Revolt\EventLoop;
 
 use PHPUnit\Framework\TestCase;
 use Revolt\EventLoop;
-use function Revolt\launch;
 
 class EventLoopTest extends TestCase
 {
@@ -106,7 +105,7 @@ class EventLoopTest extends TestCase
 
     public function testRunInFiber(): void
     {
-        launch(fn () => EventLoop::run());
+        EventLoop::queue(fn () => EventLoop::run());
 
         $this->expectException(\Error::class);
         $this->expectExceptionMessage("within a fiber");
@@ -154,7 +153,7 @@ class EventLoopTest extends TestCase
     {
         $invoked = false;
 
-        launch(function () use (&$invoked): void {
+        EventLoop::queue(function () use (&$invoked): void {
             $suspension = EventLoop::createSuspension();
 
             EventLoop::defer(fn () => $suspension->resume('test'));
