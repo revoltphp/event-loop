@@ -42,8 +42,7 @@
             "Revolt\\": "src"
         },
         "files": [
-            "src/functions.php",
-            "src/EventLoop/Internal/functions.php"
+            "src/functions.php"
         ]
     },
     "autoload-dev": {
