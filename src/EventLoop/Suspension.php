@@ -2,15 +2,13 @@
 
 namespace Revolt\EventLoop;
 
-use Revolt\EventLoop;
-
 /**
  * Should be used to run and suspend the event loop instead of directly interacting with fibers.
  *
  * **Example**
  *
  * ```php
- * $suspension = Scheduler::createSuspension();
+ * $suspension = EventLoop::createSuspension();
  *
  * $promise->then(fn ($value) => $suspension->resume($value), fn ($throwable) => $suspension->throw($throwable));
  *
@@ -20,32 +18,26 @@ use Revolt\EventLoop;
 final class Suspension
 {
     private ?\Fiber $fiber;
-    private \Fiber $scheduler;
-    private Driver $driver;
+
     private bool $pending = false;
 
+    /** @var callable */
+    private $interrupt;
+
     /**
-     * Suspension constructor.
-     *
      * @param Driver $driver
      * @param \Fiber $scheduler
+     * @param callable $interrupt
      *
      * @internal
      */
-    public function __construct(Driver $driver, \Fiber $scheduler)
-    {
-        $this->driver = $driver;
+    public function __construct(
+        private Driver $driver,
+        private \Fiber $scheduler,
+        callable $interrupt
+    ) {
+        $this->interrupt = $interrupt;
         $this->fiber = \Fiber::getCurrent();
-
-        if ($this->fiber === $scheduler) {
-            throw new \Error(\sprintf(
-                'Cannot call %s() within a scheduler microtask (%s::queue() callback)',
-                __METHOD__,
-                EventLoop::class,
-            ));
-        }
-
-        $this->scheduler = $scheduler;
     }
 
     public function throw(\Throwable $throwable): void
@@ -60,7 +52,7 @@ final class Suspension
             $this->driver->queue([$this->fiber, 'throw'], $throwable);
         } else {
             // Suspend event loop fiber to {main}.
-            $this->driver->interrupt(static fn () => throw $throwable);
+            ($this->interrupt)(static fn () => throw $throwable);
         }
     }
 
@@ -76,7 +68,7 @@ final class Suspension
             $this->driver->queue([$this->fiber, 'resume'], $value);
         } else {
             // Suspend event loop fiber to {main}.
-            $this->driver->interrupt(static fn () => $value);
+            ($this->interrupt)(static fn () => $value);
         }
     }
 

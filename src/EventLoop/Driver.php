@@ -30,16 +30,15 @@ interface Driver
     public function stop(): void;
 
     /**
-     * Interrupts the event loop and continues with {main}.
+     * Create an object used to suspend and resume execution, either within a fiber or from {main}.
      *
-     * The driver MUST check for a set interrupt after invoking an event callback or microtask. If an interrupt exists,
-     * it must be reset, and the driver must suspend with the given callback, i.e. call \Fiber::suspend($callback);
+     * @param \Fiber $scheduler Fiber containing the running event loop.
      *
-     * @param callable $callback Callback to run on {main} before continuing.
+     * @return Suspension
      *
      * @internal This API is only supposed to be called by the Suspension API.
      */
-    public function interrupt(callable $callback): void;
+    public function createSuspension(\Fiber $scheduler): Suspension;
 
     /**
      * @return bool True if the event loop is running, false if it is stopped.

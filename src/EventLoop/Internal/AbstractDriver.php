@@ -5,6 +5,7 @@ namespace Revolt\EventLoop\Internal;
 use Revolt\EventLoop;
 use Revolt\EventLoop\Driver;
 use Revolt\EventLoop\InvalidCallbackError;
+use Revolt\EventLoop\Suspension;
 use Revolt\EventLoop\UnsupportedFeatureException;
 
 /**
@@ -46,6 +47,8 @@ abstract class AbstractDriver implements Driver
     /** @var callable|null */
     private $interrupt;
 
+    private \Closure $interruptCallback;
+
     private bool $running = false;
 
     private \stdClass $internalSuspensionMarker;
@@ -55,6 +58,7 @@ abstract class AbstractDriver implements Driver
         $this->internalSuspensionMarker = new \stdClass();
         $this->createCallbackFiber();
         $this->createQueueFiber();
+        $this->interruptCallback = \Closure::fromCallable([$this, 'interrupt']);
     }
 
     /**
@@ -104,11 +108,6 @@ abstract class AbstractDriver implements Driver
     public function stop(): void
     {
         $this->running = false;
-    }
-
-    public function interrupt(callable $callback): void
-    {
-        $this->interrupt = $callback;
     }
 
     /**
@@ -446,6 +445,11 @@ abstract class AbstractDriver implements Driver
         return $callbackId;
     }
 
+    public function createSuspension(\Fiber $scheduler): Suspension
+    {
+        return new Suspension($this, $scheduler, $this->interruptCallback);
+    }
+
     /**
      * Set a callback to be executed when an error occurs.
      *
@@ -700,6 +704,11 @@ abstract class AbstractDriver implements Driver
                 }
             }
         }
+    }
+
+    private function interrupt(callable $callback): void
+    {
+        $this->interrupt = $callback;
     }
 
     private function createCallbackFiber(): void

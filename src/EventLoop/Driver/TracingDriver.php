@@ -4,6 +4,7 @@ namespace Revolt\EventLoop\Driver;
 
 use Revolt\EventLoop\Driver;
 use Revolt\EventLoop\InvalidCallbackError;
+use Revolt\EventLoop\Suspension;
 
 final class TracingDriver implements Driver
 {
@@ -36,9 +37,9 @@ final class TracingDriver implements Driver
         $this->driver->stop();
     }
 
-    public function interrupt(callable $callback): void
+    public function createSuspension(\Fiber $scheduler): Suspension
     {
-        $this->driver->interrupt($callback);
+        return $this->driver->createSuspension($scheduler);
     }
 
     public function isRunning(): bool
