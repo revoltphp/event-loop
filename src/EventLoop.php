@@ -367,7 +367,7 @@ final class EventLoop
             self::$fiber = self::createFiber();
         }
 
-        return new Suspension(self::getDriver(), self::$fiber);
+        return self::getDriver()->createSuspension(self::$fiber);
     }
 
     /**
