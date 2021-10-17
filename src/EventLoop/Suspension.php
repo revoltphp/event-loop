@@ -18,9 +18,9 @@ namespace Revolt\EventLoop;
 final class Suspension
 {
     private ?\Fiber $fiber;
-
+    private \Fiber $scheduler;
+    private Driver $driver;
     private bool $pending = false;
-
     /** @var callable */
     private $interrupt;
 
@@ -31,13 +31,15 @@ final class Suspension
      *
      * @internal
      */
-    public function __construct(
-        private Driver $driver,
-        private \Fiber $scheduler,
-        callable $interrupt
-    ) {
+    public function __construct(Driver $driver, \Fiber $scheduler, callable $interrupt)
+    {
+        $this->driver = $driver;
+        $this->scheduler = $scheduler;
         $this->interrupt = $interrupt;
         $this->fiber = \Fiber::getCurrent();
+
+        // User callbacks are always executed outside the event loop fiber, so this should always be false.
+        \assert($this->fiber !== $this->scheduler);
     }
 
     public function throw(\Throwable $throwable): void
