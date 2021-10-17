@@ -58,6 +58,7 @@ abstract class AbstractDriver implements Driver
         $this->internalSuspensionMarker = new \stdClass();
         $this->createCallbackFiber();
         $this->createQueueFiber();
+        /** @psalm-suppress InvalidArgument */
         $this->interruptCallback = \Closure::fromCallable([$this, 'interrupt']);
     }
 
