@@ -40,7 +40,7 @@ final class DriverFactory
             return new StreamSelectDriver();
         })();
 
-        if (\getenv("REVOLT_DEBUG_TRACE_WATCHERS")) {
+        if (\getenv("REVOLT_DRIVER_DEBUG_TRACE")) {
             return new TracingDriver($driver);
         }
 
@@ -52,7 +52,7 @@ final class DriverFactory
      */
     private function createDriverFromEnv(): ?Driver
     {
-        $driver = \getenv("REVOLT_LOOP_DRIVER");
+        $driver = \getenv("REVOLT_DRIVER");
 
         if (!$driver) {
             return null;
