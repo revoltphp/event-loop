@@ -35,8 +35,6 @@ interface Driver
      * @param \Fiber $scheduler Fiber containing the running event loop.
      *
      * @return Suspension
-     *
-     * @internal This API is only supposed to be called by the Suspension API.
      */
     public function createSuspension(\Fiber $scheduler): Suspension;
 
