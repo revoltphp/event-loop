@@ -619,16 +619,15 @@ abstract class AbstractDriver implements Driver
             throw $exception;
         }
 
-        $fiber = new \Fiber(function (\Throwable $exception): void
-        {
+        $fiber = new \Fiber(function (callable $errorHandler, \Throwable $exception): void {
             try {
-                ($this->errorHandler)($exception);
+                $errorHandler($exception);
             } catch (\Throwable $exception) {
                 $this->interrupt(static fn () => throw $exception);
             }
         });
 
-        $fiber->start($exception);
+        $fiber->start($this->errorHandler, $exception);
     }
 
     /**
@@ -716,11 +715,13 @@ abstract class AbstractDriver implements Driver
 
     private function invokeInterrupt(): void
     {
+        \assert($this->interrupt !== null);
+
         $interrupt = $this->interrupt;
         $this->interrupt = null;
 
         if (!$this->inFiber) {
-            ($interrupt)();
+            $interrupt();
             throw new \RuntimeException('Interrupt must throw if not executing in a fiber');
         }
 
