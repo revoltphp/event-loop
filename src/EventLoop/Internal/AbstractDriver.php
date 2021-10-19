@@ -44,14 +44,14 @@ abstract class AbstractDriver implements Driver
     /** @var callable(\Throwable):void|null */
     private $errorHandler;
 
-    private ?\Throwable $throwable = null;
-
     /** @var callable|null */
     private $interrupt;
 
     private \Closure $interruptCallback;
 
     private bool $running = false;
+
+    private bool $inFiber = false;
 
     private \stdClass $internalSuspensionMarker;
 
@@ -86,6 +86,7 @@ abstract class AbstractDriver implements Driver
         }
 
         $this->running = true;
+        $this->inFiber = \Fiber::getCurrent() !== null;
 
         try {
             while ($this->running) {
@@ -111,6 +112,7 @@ abstract class AbstractDriver implements Driver
     public function stop(): void
     {
         $this->running = false;
+        $this->inFiber = false;
     }
 
     /**
@@ -595,10 +597,6 @@ abstract class AbstractDriver implements Driver
             $this->error($exception);
         }
 
-        if ($this->throwable) {
-            $this->rethrow();
-        }
-
         if ($this->interrupt) {
             $this->invokeInterrupt();
         }
@@ -626,7 +624,7 @@ abstract class AbstractDriver implements Driver
             try {
                 ($this->errorHandler)($exception);
             } catch (\Throwable $exception) {
-                $this->throwable = $exception;
+                $this->interrupt(static fn () => throw $exception);
             }
         });
 
@@ -709,10 +707,6 @@ abstract class AbstractDriver implements Driver
                     $this->error($exception);
                 }
 
-                if ($this->throwable) {
-                    $this->rethrow();
-                }
-
                 if ($this->interrupt) {
                     $this->invokeInterrupt();
                 }
@@ -725,15 +719,12 @@ abstract class AbstractDriver implements Driver
         $interrupt = $this->interrupt;
         $this->interrupt = null;
 
+        if (!$this->inFiber) {
+            ($interrupt)();
+            throw new \RuntimeException('Interrupt must throw if not executing in a fiber');
+        }
+
         \Fiber::suspend($interrupt);
-    }
-
-    private function rethrow(): void
-    {
-        $throwable = $this->throwable;
-        $this->throwable = null;
-
-        throw $throwable;
     }
 
     private function interrupt(callable $callback): void
