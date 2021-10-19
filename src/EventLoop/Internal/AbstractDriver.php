@@ -44,6 +44,8 @@ abstract class AbstractDriver implements Driver
     /** @var callable(\Throwable):void|null */
     private $errorHandler;
 
+    private ?\Throwable $throwable = null;
+
     /** @var callable|null */
     private $interrupt;
 
@@ -593,11 +595,12 @@ abstract class AbstractDriver implements Driver
             $this->error($exception);
         }
 
-        if ($this->interrupt) {
-            $interrupt = $this->interrupt;
-            $this->interrupt = null;
+        if ($this->throwable) {
+            $this->rethrow();
+        }
 
-            \Fiber::suspend($interrupt);
+        if ($this->interrupt) {
+            $this->invokeInterrupt();
         }
 
         if ($this->microQueue) {
@@ -618,7 +621,16 @@ abstract class AbstractDriver implements Driver
             throw $exception;
         }
 
-        ($this->errorHandler)($exception);
+        $fiber = new \Fiber(function (\Throwable $exception): void
+        {
+            try {
+                ($this->errorHandler)($exception);
+            } catch (\Throwable $exception) {
+                $this->throwable = $exception;
+            }
+        });
+
+        $fiber->start($exception);
     }
 
     /**
@@ -697,14 +709,31 @@ abstract class AbstractDriver implements Driver
                     $this->error($exception);
                 }
 
-                if ($this->interrupt) {
-                    $interrupt = $this->interrupt;
-                    $this->interrupt = null;
+                if ($this->throwable) {
+                    $this->rethrow();
+                }
 
-                    \Fiber::suspend($interrupt);
+                if ($this->interrupt) {
+                    $this->invokeInterrupt();
                 }
             }
         }
+    }
+
+    private function invokeInterrupt(): void
+    {
+        $interrupt = $this->interrupt;
+        $this->interrupt = null;
+
+        \Fiber::suspend($interrupt);
+    }
+
+    private function rethrow(): void
+    {
+        $throwable = $this->throwable;
+        $this->throwable = null;
+
+        throw $throwable;
     }
 
     private function interrupt(callable $callback): void
