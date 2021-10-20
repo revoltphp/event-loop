@@ -89,6 +89,10 @@ abstract class AbstractDriver implements Driver
 
         try {
             while ($this->running) {
+                if ($this->interrupt) {
+                    $this->invokeInterrupt();
+                }
+
                 $this->invokeMicrotasks();
 
                 if ($this->isEmpty()) {
@@ -615,7 +619,8 @@ abstract class AbstractDriver implements Driver
     protected function error(\Throwable $exception): void
     {
         if ($this->errorHandler === null) {
-            throw $exception;
+            $this->interrupt = static fn () => throw $exception;
+            return;
         }
 
         $fiber = new \Fiber(function (callable $errorHandler, \Throwable $exception): void {
