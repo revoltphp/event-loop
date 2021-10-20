@@ -60,8 +60,7 @@ abstract class AbstractDriver implements Driver
         $this->internalSuspensionMarker = new \stdClass();
         $this->createCallbackFiber();
         $this->createQueueFiber();
-        /** @psalm-suppress InvalidArgument */
-        $this->interruptCallback = \Closure::fromCallable([$this, 'interrupt']);
+        $this->interruptCallback = fn (callable $interrupt) => $this->interrupt = $interrupt;
     }
 
     /**
@@ -623,7 +622,7 @@ abstract class AbstractDriver implements Driver
             try {
                 $errorHandler($exception);
             } catch (\Throwable $exception) {
-                $this->interrupt(static fn () => throw $exception);
+                $this->interrupt = static fn () => throw $exception;
             }
         });
 
@@ -726,11 +725,6 @@ abstract class AbstractDriver implements Driver
         }
 
         \Fiber::suspend($interrupt);
-    }
-
-    private function interrupt(callable $callback): void
-    {
-        $this->interrupt = $callback;
     }
 
     private function createCallbackFiber(): void
