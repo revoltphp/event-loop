@@ -1,47 +1,40 @@
-# Revolt <a href="blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" valign="middle"></a>
+# Revolt &nbsp;&nbsp;<a href="blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" valign="middle"></a>
 
 Revolt is a rock-solid event loop for concurrent PHP applications.
+The usual PHP application spends most of its time waiting for I/O.
+While PHP is single threaded, [cooperative multitasking](https://en.wikipedia.org/wiki/Cooperative_multitasking) can be used to allow for concurrency by using the waiting time to do different things.
 
-## Motivation
-
-Traditionally, PHP has a synchronous execution flow, doing one thing at a time.
-If you query a database, you send the query and wait for the response from the database server in a blocking manner.
+PHP's traditional synchronous execution flow is easy to understand. Doing one thing at a time.
+If you query a database, you send the query and wait for a response from the database server.
 Once you have the response, you can start doing the next thing.
 
-Instead of sitting there and doing nothing while waiting, we could already send the next database query, or do an HTTP call to an API.
-Making use of the time we usually spend on waiting for I/O can speed up the total execution time.
+Amp, ReactPHP, and other libraries have offered cooperative multitasking in PHP for a long time.
+However, their event-driven nature was incompatible to many existing interfaces and required a different thinking model.
+PHP 8.1 ships with fibers built-in, which offers cooperative multi-threading.
+Calls can be synchronous without promises or callbacks, while still allowing for non-blocking I/O.
 
-A single scheduler – also called event loop – is required to allow for [cooperative multitasking](https://en.wikipedia.org/wiki/Cooperative_multitasking), which this package provides.
+Every application making use of cooperative multitasking needs a single scheduler (also called event loop), which this package provides.
+Revolt isn't a full-blown framework for writing concurrent PHP applications, but only provides what's necessary as a common base.
+Different (strongly) opinionated libraries can be built on top of it.
 
 ## Installation
 
-This package can be installed as a [Composer](https://getcomposer.org/) dependency.
+It may surprise people to learn that the PHP standard library already has everything we need to write event-driven and non-blocking applications.
+This package can be installed as a [Composer](https://getcomposer.org/) dependency on PHP 8 and later.
+PHP 8.1 ships with fibers built-in, but users on PHP 8.0 can install [`ext-fiber`](https://github.com/amphp/ext-fiber) with almost identical behavior.
 
 ```bash
 composer require revolt/event-loop
 ```
 
-This installs the basic building block for building concurrent applications in PHP.
+<small>
+    Applications with many concurrent file descriptors require one of the <a href="https://revolt.run/extensions">extensions</a>.
+</small>
 
-## Documentation
-
-Documentation can be found on [`revolt.run`](https://revolt.run/).
-
-## Requirements
-
-This package requires at least PHP 8.0. To take advantage of [Fibers](https://wiki.php.net/rfc/fibers), either [`ext-fiber`](https://github.com/amphp/ext-fiber) or PHP 8.1+ is required.
-
-##### Optional Extensions
-
-Extensions are only needed if your application necessitates a high numbers of concurrent socket connections, usually this limit is configured up to 1024 file descriptors.
-
-- [`ev`](https://pecl.php.net/package/ev)
-- [`event`](https://pecl.php.net/package/event)
-- [`uv`](https://github.com/amphp/ext-uv)
-
-## Examples
-
-Examples can be found in the [`./examples`](./examples) directory of this repository.
+→&nbsp;&nbsp;[View documentation](https://revolt.run/)
+<br>
+→&nbsp;&nbsp;[View examples](./examples)
+<br>
 
 ## Versioning
 
@@ -49,7 +42,6 @@ Examples can be found in the [`./examples`](./examples) directory of this reposi
 
 ## License
 
-The MIT License (MIT). Please see [`LICENSE`](./LICENSE) for more information.
+The MIT License (MIT). Please see [`LICENSE`](./LICENSE) file for more information.
 
-Revolt is the result of combining years of experience of amphp's and ReactPHP's
-event loop implementations.
+Revolt is the result of combining years of experience of Amp's and ReactPHP's event loop implementations.
