@@ -27,9 +27,7 @@ PHP 8.1 ships with fibers built-in, but users on PHP 8.0 can install [`ext-fiber
 composer require revolt/event-loop
 ```
 
-<small>
-    Applications with many concurrent file descriptors require one of the <a href="https://revolt.run/extensions">extensions</a>.
-</small>
+Applications with many concurrent file descriptors require one of the [extensions](https://revolt.run/extensions).
 
 →&nbsp;&nbsp;[View documentation](https://revolt.run/)
 <br>
