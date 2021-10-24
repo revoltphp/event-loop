@@ -57,7 +57,7 @@ final class EventLoop
 
                 protected function now(): float
                 {
-                    return now();
+                    return (float) \hrtime(true) / 1_000_000_000;
                 }
             };
 

@@ -6,7 +6,6 @@ use PHPUnit\Framework\TestCase;
 use Revolt\EventLoop\Driver;
 use Revolt\EventLoop\InvalidCallbackError;
 use Revolt\EventLoop\UnsupportedFeatureException;
-use function Revolt\now;
 
 if (!\defined("SIGUSR1")) {
     \define("SIGUSR1", 30);
@@ -48,10 +47,10 @@ abstract class DriverTest extends TestCase
 
         $this->start(function (Driver $loop) use (&$start, &$invoked): void {
             $loop->defer(function () use ($loop, &$start, &$invoked) {
-                $start = now();
+                $start = \microtime(true);
 
                 $loop->delay(1, function () use (&$invoked) {
-                    $invoked = now();
+                    $invoked = \microtime(true);
                 });
 
                 \usleep(500000);
@@ -71,12 +70,12 @@ abstract class DriverTest extends TestCase
         $invoked = 0;
 
         $this->start(function (Driver $loop) use (&$start, &$invoked): void {
-            $start = now();
+            $start = \microtime(true);
 
             \usleep(500000);
 
             $loop->delay(1, function () use (&$invoked) {
-                $invoked = now();
+                $invoked = \microtime(true);
             });
         });
 
