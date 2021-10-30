@@ -146,7 +146,7 @@ final class EvDriver extends AbstractDriver
     /**
      * {@inheritdoc}
      */
-    public function getHandle(): \EvLoop
+    public function getHandle(): mixed
     {
         return $this->handle;
     }
