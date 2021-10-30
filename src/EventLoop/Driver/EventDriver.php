@@ -147,7 +147,7 @@ final class EventDriver extends AbstractDriver
     /**
      * {@inheritdoc}
      */
-    public function getHandle(): \EventBase
+    public function getHandle(): mixed
     {
         return $this->handle;
     }
