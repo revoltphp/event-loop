@@ -96,7 +96,7 @@ abstract class AbstractDriver implements Driver
                 $this->tick();
             }
         } finally {
-            $this->stop();
+            $this->running = false;
         }
     }
 
