@@ -25,6 +25,7 @@ abstract class AbstractDriver implements Driver
 
     private \Fiber $callbackFiber;
     private \Fiber $queueFiber;
+    private \Closure $errorCallback;
 
     /** @var Callback[] */
     private array $callbacks = [];
@@ -60,7 +61,9 @@ abstract class AbstractDriver implements Driver
         $this->internalSuspensionMarker = new \stdClass();
         $this->createCallbackFiber();
         $this->createQueueFiber();
-        $this->interruptCallback = fn (callable $interrupt) => $this->interrupt = $interrupt;
+        $this->createErrorCallback();
+        /** @psalm-suppress InvalidArgument */
+        $this->interruptCallback = \Closure::fromCallable([$this, 'setInterrupt']);
     }
 
     /**
@@ -618,19 +621,14 @@ abstract class AbstractDriver implements Driver
      */
     protected function error(\Throwable $exception): void
     {
+        \assert($this->interrupt === null);
+
         if ($this->errorHandler === null) {
             $this->interrupt = static fn () => throw $exception;
             return;
         }
 
-        $fiber = new \Fiber(function (callable $errorHandler, \Throwable $exception): void {
-            try {
-                $errorHandler($exception);
-            } catch (\Throwable $exception) {
-                $this->interrupt = static fn () => throw $exception;
-            }
-        });
-
+        $fiber = new \Fiber($this->errorCallback);
         $fiber->start($this->errorHandler, $exception);
     }
 
@@ -717,6 +715,12 @@ abstract class AbstractDriver implements Driver
         }
     }
 
+    private function setInterrupt(callable $interrupt): void
+    {
+        \assert($this->interrupt === null);
+        $this->interrupt = $interrupt;
+    }
+
     private function invokeInterrupt(): void
     {
         \assert($this->interrupt !== null);
@@ -768,5 +772,16 @@ abstract class AbstractDriver implements Driver
         });
 
         $this->queueFiber->start();
+    }
+
+    private function createErrorCallback(): void
+    {
+        $this->errorCallback = function (callable $errorHandler, \Throwable $exception): void {
+            try {
+                $errorHandler($exception);
+            } catch (\Throwable $exception) {
+                $this->interrupt = static fn () => throw $exception;
+            }
+        };
     }
 }
