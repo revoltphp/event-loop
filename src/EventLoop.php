@@ -395,7 +395,7 @@ final class EventLoop
 
         if ($lambda) {
             $lambda();
-            throw new \RuntimeException('Interrupt from event loop must throw an exception');
+            throw new \Error('Interrupt from event loop must throw an exception');
         }
     }
 

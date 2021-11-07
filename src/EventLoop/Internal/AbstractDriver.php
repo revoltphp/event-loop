@@ -730,7 +730,7 @@ abstract class AbstractDriver implements Driver
 
         if (!$this->inFiber) {
             $interrupt();
-            throw new \RuntimeException('Interrupt must throw if not executing in a fiber');
+            throw new \Error('Interrupt must throw if not executing in a fiber');
         }
 
         \Fiber::suspend($interrupt);
