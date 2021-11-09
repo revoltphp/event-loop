@@ -30,7 +30,7 @@ function fetch(string $url): string
     \stream_set_blocking($stream, false);
 
     // wait for connection success/error
-    $watcher = EventLoop::onWritable($stream, fn () => $suspension->resume(null));
+    $watcher = EventLoop::onWritable($stream, fn () => $suspension->resume());
     $suspension->suspend();
     EventLoop::cancel($watcher);
 
@@ -40,7 +40,7 @@ function fetch(string $url): string
     $buffer = '';
 
     // wait for HTTP response
-    $watcher = EventLoop::onReadable($stream, fn () => $suspension->resume(null));
+    $watcher = EventLoop::onReadable($stream, fn () => $suspension->resume());
 
     do {
         $suspension->suspend();

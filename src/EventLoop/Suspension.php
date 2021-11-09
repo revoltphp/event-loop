@@ -59,7 +59,7 @@ final class Suspension
         }
     }
 
-    public function resume(mixed $value): void
+    public function resume(mixed $value = null): void
     {
         if (!$this->pending) {
             throw $this->error ?? new \Error('Must call suspend() before calling resume()');

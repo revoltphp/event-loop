@@ -14,7 +14,7 @@ EventLoop::onSignal(\SIGINT, function (string $watcherId) use ($suspension) {
 
     print "Caught SIGINT, exiting..." . PHP_EOL;
 
-    $suspension->resume(null);
+    $suspension->resume();
 
     return new \stdClass();
 });

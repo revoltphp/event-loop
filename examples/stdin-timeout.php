@@ -21,10 +21,10 @@ $readWatcher = EventLoop::onReadable(STDIN, function ($watcherId, $stream) use (
 
     print "Read " . \strlen($chunk) . " bytes" . PHP_EOL;
 
-    $suspension->resume(null);
+    $suspension->resume();
 });
 
-$timeoutWatcher = EventLoop::delay(5000, fn () => $suspension->resume(null));
+$timeoutWatcher = EventLoop::delay(5000, fn () => $suspension->resume());
 
 $suspension->suspend();
 
