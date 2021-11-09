@@ -21,6 +21,7 @@ final class Suspension
     private \Fiber $scheduler;
     private Driver $driver;
     private bool $pending = false;
+    private ?\FiberError $error = null;
     /** @var callable */
     private $interrupt;
 
@@ -45,7 +46,7 @@ final class Suspension
     public function throw(\Throwable $throwable): void
     {
         if (!$this->pending) {
-            throw new \Error('Must call throw() before calling resume()');
+            throw $this->error ?? new \Error('Must call suspend() before calling throw()');
         }
 
         $this->pending = false;
@@ -61,7 +62,7 @@ final class Suspension
     public function resume(mixed $value): void
     {
         if (!$this->pending) {
-            throw new \Error('Must call suspend() before calling resume()');
+            throw $this->error ?? new \Error('Must call suspend() before calling resume()');
         }
 
         $this->pending = false;
@@ -88,7 +89,13 @@ final class Suspension
 
         // Awaiting from within a fiber.
         if ($this->fiber) {
-            return \Fiber::suspend();
+            try {
+                return \Fiber::suspend();
+            } catch (\FiberError $exception) {
+                $this->pending = false;
+                $this->error = $exception;
+                throw $exception;
+            }
         }
 
         // Awaiting from {main}.

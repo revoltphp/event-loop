@@ -25,6 +25,7 @@ abstract class AbstractDriver implements Driver
 
     private \Fiber $callbackFiber;
     private \Fiber $queueFiber;
+    private \Closure $errorCallback;
 
     /** @var Callback[] */
     private array $callbacks = [];
@@ -51,6 +52,8 @@ abstract class AbstractDriver implements Driver
 
     private bool $running = false;
 
+    private bool $inFiber = false;
+
     private \stdClass $internalSuspensionMarker;
 
     public function __construct()
@@ -58,8 +61,9 @@ abstract class AbstractDriver implements Driver
         $this->internalSuspensionMarker = new \stdClass();
         $this->createCallbackFiber();
         $this->createQueueFiber();
+        $this->createErrorCallback();
         /** @psalm-suppress InvalidArgument */
-        $this->interruptCallback = \Closure::fromCallable([$this, 'interrupt']);
+        $this->interruptCallback = \Closure::fromCallable([$this, 'setInterrupt']);
     }
 
     /**
@@ -84,9 +88,14 @@ abstract class AbstractDriver implements Driver
         }
 
         $this->running = true;
+        $this->inFiber = \Fiber::getCurrent() !== null;
 
         try {
             while ($this->running) {
+                if ($this->interrupt) {
+                    $this->invokeInterrupt();
+                }
+
                 $this->invokeMicrotasks();
 
                 if ($this->isEmpty()) {
@@ -97,6 +106,7 @@ abstract class AbstractDriver implements Driver
             }
         } finally {
             $this->running = false;
+            $this->inFiber = false;
         }
     }
 
@@ -594,10 +604,7 @@ abstract class AbstractDriver implements Driver
         }
 
         if ($this->interrupt) {
-            $interrupt = $this->interrupt;
-            $this->interrupt = null;
-
-            \Fiber::suspend($interrupt);
+            $this->invokeInterrupt();
         }
 
         if ($this->microQueue) {
@@ -615,10 +622,12 @@ abstract class AbstractDriver implements Driver
     protected function error(\Throwable $exception): void
     {
         if ($this->errorHandler === null) {
-            throw $exception;
+            $this->setInterrupt(static fn () => throw $exception);
+            return;
         }
 
-        ($this->errorHandler)($exception);
+        $fiber = new \Fiber($this->errorCallback);
+        $fiber->start($this->errorHandler, $exception);
     }
 
     /**
@@ -698,18 +707,31 @@ abstract class AbstractDriver implements Driver
                 }
 
                 if ($this->interrupt) {
-                    $interrupt = $this->interrupt;
-                    $this->interrupt = null;
-
-                    \Fiber::suspend($interrupt);
+                    $this->invokeInterrupt();
                 }
             }
         }
     }
 
-    private function interrupt(callable $callback): void
+    private function setInterrupt(callable $interrupt): void
     {
-        $this->interrupt = $callback;
+        \assert($this->interrupt === null);
+        $this->interrupt = $interrupt;
+    }
+
+    private function invokeInterrupt(): void
+    {
+        \assert($this->interrupt !== null);
+
+        $interrupt = $this->interrupt;
+        $this->interrupt = null;
+
+        if (!$this->inFiber) {
+            $interrupt();
+            throw new \Error('Interrupt must throw if not executing in a fiber');
+        }
+
+        \Fiber::suspend($interrupt);
     }
 
     private function createCallbackFiber(): void
@@ -748,5 +770,16 @@ abstract class AbstractDriver implements Driver
         });
 
         $this->queueFiber->start();
+    }
+
+    private function createErrorCallback(): void
+    {
+        $this->errorCallback = function (callable $errorHandler, \Throwable $exception): void {
+            try {
+                $errorHandler($exception);
+            } catch (\Throwable $exception) {
+                $this->interrupt = static fn () => throw $exception;
+            }
+        };
     }
 }

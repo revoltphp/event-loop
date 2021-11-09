@@ -391,10 +391,11 @@ final class EventLoop
             self::$fiber = self::createFiber();
         }
 
-        if (self::$fiber->isStarted()) {
-            self::$fiber->resume();
-        } else {
-            self::$fiber->start();
+        $lambda = self::$fiber->isStarted() ? self::$fiber->resume() : self::$fiber->start();
+
+        if ($lambda) {
+            $lambda();
+            throw new \Error('Interrupt from event loop must throw an exception');
         }
     }
 
