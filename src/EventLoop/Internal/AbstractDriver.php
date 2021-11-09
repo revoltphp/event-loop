@@ -106,6 +106,7 @@ abstract class AbstractDriver implements Driver
             }
         } finally {
             $this->running = false;
+            $this->inFiber = false;
         }
     }
 
@@ -118,7 +119,6 @@ abstract class AbstractDriver implements Driver
     public function stop(): void
     {
         $this->running = false;
-        $this->inFiber = false;
     }
 
     /**
