@@ -21,7 +21,7 @@ final class Suspension
     private \Fiber $scheduler;
     private Driver $driver;
     private bool $pending = false;
-    private ?\Error $error = null;
+    private ?\FiberError $error = null;
     /** @var callable */
     private $interrupt;
 

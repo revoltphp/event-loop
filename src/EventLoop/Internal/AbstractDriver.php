@@ -621,10 +621,8 @@ abstract class AbstractDriver implements Driver
      */
     protected function error(\Throwable $exception): void
     {
-        \assert($this->interrupt === null);
-
         if ($this->errorHandler === null) {
-            $this->interrupt = static fn () => throw $exception;
+            $this->setInterrupt(static fn () => throw $exception);
             return;
         }
 
