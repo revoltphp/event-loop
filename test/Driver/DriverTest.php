@@ -86,6 +86,54 @@ abstract class DriverTest extends TestCase
         self::assertLessThan(1.6, $invoked - $start);
     }
 
+    public function testLocallyClosedResourceWithoutOtherValidResources(): void
+    {
+        $this->expectException(InvalidCallbackError::class);
+        $this->expectExceptionCode(InvalidCallbackError::E_INVALID_STREAM);
+
+        $this->start(function (Driver $loop): void {
+            [$read] = \stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
+
+            $loop->onReadable($read, fn () => self::fail('Should never be invoked'));
+            $loop->defer(function () use ($read): void {
+                \fclose($read);
+            });
+        });
+    }
+
+    public function testLocallyClosedResourceWithOtherValidResources(): void
+    {
+        $this->expectException(InvalidCallbackError::class);
+        $this->expectExceptionCode(InvalidCallbackError::E_INVALID_STREAM);
+
+        $this->start(function (Driver $loop): void {
+            [$a, $b] = \stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
+
+            $loop->onReadable($a, fn () => self::fail('Should never be invoked'));
+            $loop->onReadable($b, fn () => null); // TODO Investigate why self::assertTrue(true) fails here for ext-ev with 'Unexpected error while running the event loop (ext-ev): EvLoop::run(): Libev error(0): Success'
+            $loop->defer(function () use ($a): void {
+                \fclose($a); // close only one resource, keep the other watcher active
+            });
+        });
+    }
+
+    public function testLocallyClosedResourceOnReactivate(): void
+    {
+        $this->expectException(InvalidCallbackError::class);
+        $this->expectExceptionCode(InvalidCallbackError::E_INVALID_STREAM);
+
+        $this->start(function (Driver $loop): void {
+            [$read] = \stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
+
+            $id = $loop->disable($loop->onReadable($read, fn () => self::fail('Should never be invoked')));
+            $loop->defer(function () use ($read, $loop, $id): void {
+                \fclose($read);
+
+                $loop->enable($id);
+            });
+        });
+    }
+
     public function testLoopTerminatesWithOnlyUnreferencedCallbacks(): void
     {
         $this->start(function (Driver $loop) use (&$end): void {

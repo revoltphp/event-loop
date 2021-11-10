@@ -11,6 +11,7 @@ use Revolt\EventLoop\Internal\StreamCallback;
 use Revolt\EventLoop\Internal\StreamReadableCallback;
 use Revolt\EventLoop\Internal\StreamWritableCallback;
 use Revolt\EventLoop\Internal\TimerCallback;
+use Revolt\EventLoop\InvalidCallbackError;
 
 final class EvDriver extends AbstractDriver
 {
@@ -35,6 +36,9 @@ final class EvDriver extends AbstractDriver
 
     /** @var \EvSignal[] */
     private array $signals = [];
+
+    private bool $dispatchAgain = false;
+    private \Closure $dispatchErrorHandler;
 
     public function __construct()
     {
@@ -74,6 +78,22 @@ final class EvDriver extends AbstractDriver
             $callback = $event->data;
 
             $this->invokeCallback($callback);
+        };
+
+        $this->dispatchErrorHandler = function ($errno, $message) {
+            if ($message === 'EvLoop::run(): Libev error(9): Bad file descriptor') {
+                // Retry on bad file descriptors, these watchers are automatically stopped by libev.
+                // See https://bitbucket.org/osmanov/pecl-ev/src/0e93974f1c4dbe9e48e30301309220cab2b9c187/php8/watcher.c?at=master#watcher.c-39
+                // See EV_ERROR in https://linux.die.net/man/3/ev
+                $this->dispatchAgain = true;
+
+                // TODO Provide actual data
+                $this->queue(fn () => throw InvalidCallbackError::invalidStream('', 0, fn () => null));
+
+                return;
+            }
+
+            throw new \Exception('Unexpected error while running the event loop (ext-ev): ' . $message, $errno);
         };
     }
 
@@ -161,7 +181,21 @@ final class EvDriver extends AbstractDriver
      */
     protected function dispatch(bool $blocking): void
     {
-        $this->handle->run($blocking ? \Ev::RUN_ONCE : \Ev::RUN_ONCE | \Ev::RUN_NOWAIT);
+        do {
+            if ($this->dispatchAgain) {
+                $this->dispatchAgain = false;
+                $this->invokeMicrotasks();
+            }
+
+            \set_error_handler($this->dispatchErrorHandler);
+
+            try {
+                // TODO This needs special consideration, because the error handler is now also active for all callbacks
+                $this->handle->run($blocking ? \Ev::RUN_ONCE : \Ev::RUN_ONCE | \Ev::RUN_NOWAIT);
+            } finally {
+                \restore_error_handler();
+            }
+        } while ($this->dispatchAgain);
     }
 
     /**
@@ -173,20 +207,33 @@ final class EvDriver extends AbstractDriver
         $now = $this->now();
 
         foreach ($callbacks as $callback) {
-            if (!isset($this->events[$id = $callback->id])) {
+            $id = $callback->id;
+
+            if (!isset($this->events[$id])) {
                 if ($callback instanceof StreamReadableCallback) {
-                    \assert(\is_resource($callback->stream));
-
-                    $this->events[$id] = $this->handle->io($callback->stream, \Ev::READ, $this->ioCallback, $callback);
+                    if (!\is_resource($callback->stream)) {
+                        $this->deactivate($callback);
+                        $this->queue(fn () => throw InvalidCallbackError::invalidStream($callback->id, (int) $callback->stream, $callback->callback));
+                    } else {
+                        $this->events[$id] = $this->handle->io(
+                            $callback->stream,
+                            \Ev::READ,
+                            $this->ioCallback,
+                            $callback
+                        );
+                    }
                 } elseif ($callback instanceof StreamWritableCallback) {
-                    \assert(\is_resource($callback->stream));
-
-                    $this->events[$id] = $this->handle->io(
-                        $callback->stream,
-                        \Ev::WRITE,
-                        $this->ioCallback,
-                        $callback
-                    );
+                    if (!\is_resource($callback->stream)) {
+                        $this->deactivate($callback);
+                        $this->queue(fn () => throw InvalidCallbackError::invalidStream($callback->id, (int) $callback->stream, $callback->callback));
+                    } else {
+                        $this->events[$id] = $this->handle->io(
+                            $callback->stream,
+                            \Ev::WRITE,
+                            $this->ioCallback,
+                            $callback
+                        );
+                    }
                 } elseif ($callback instanceof TimerCallback) {
                     $interval = $callback->interval;
                     $this->events[$id] = $this->handle->timer(
@@ -203,6 +250,7 @@ final class EvDriver extends AbstractDriver
                     // @codeCoverageIgnoreEnd
                 }
             } else {
+                // TODO: Check for closed resource?
                 $this->events[$id]->start();
             }
 
