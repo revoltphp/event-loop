@@ -38,7 +38,7 @@ class EventLoopTest extends TestCase
             EventLoop::cancel($callbackId);
             $count++;
 
-            $suspension->resume(null);
+            $suspension->resume();
         });
 
         $suspension->suspend();
@@ -56,7 +56,7 @@ class EventLoopTest extends TestCase
             EventLoop::cancel($callbackId);
             $count++;
 
-            $suspension->resume(null);
+            $suspension->resume();
         });
 
         $suspension->suspend();

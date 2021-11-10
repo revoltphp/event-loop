@@ -15,7 +15,7 @@ EventLoop::delay(5, function () use ($suspension, $repeatWatcher) {
     print "++ Executing watcher created by Loop::delay()" . PHP_EOL;
 
     EventLoop::cancel($repeatWatcher);
-    $suspension->resume(null);
+    $suspension->resume();
 
     print "++ Executed after script ended" . PHP_EOL;
 });

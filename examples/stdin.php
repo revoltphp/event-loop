@@ -21,7 +21,7 @@ EventLoop::onReadable(STDIN, function ($watcherId, $stream) use ($suspension) {
 
     print "Read " . \strlen($chunk) . " bytes" . PHP_EOL;
 
-    $suspension->resume(null);
+    $suspension->resume();
 });
 
 $suspension->suspend();
