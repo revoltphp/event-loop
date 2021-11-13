@@ -9,6 +9,7 @@ use Revolt\EventLoop\Internal\StreamCallback;
 use Revolt\EventLoop\Internal\StreamReadableCallback;
 use Revolt\EventLoop\Internal\StreamWritableCallback;
 use Revolt\EventLoop\Internal\TimerCallback;
+use Revolt\EventLoop\InvalidCallbackError;
 
 final class UvDriver extends AbstractDriver
 {
@@ -28,6 +29,9 @@ final class UvDriver extends AbstractDriver
     private \Closure $ioCallback;
     private \Closure $timerCallback;
     private \Closure $signalCallback;
+
+    /** @var StreamCallback[] */
+    private array $activeStreamCallbacks = [];
 
     public function __construct()
     {
@@ -139,6 +143,16 @@ final class UvDriver extends AbstractDriver
      */
     protected function dispatch(bool $blocking): void
     {
+        // This loop might be a performance problem, but let's ensure consistency over performance for now
+        foreach ($this->activeStreamCallbacks as $callback) {
+            if (!\is_resource($callback->stream)) {
+                $this->deactivate($callback);
+                $this->queue(fn () => throw InvalidCallbackError::invalidStream($callback->id, (int) $callback->stream, $callback->callback));
+            }
+        }
+
+        $this->invokeMicrotasks();
+
         /** @psalm-suppress TooManyArguments */
         \uv_run($this->handle, $blocking ? \UV::RUN_ONCE : \UV::RUN_NOWAIT);
     }
@@ -154,30 +168,39 @@ final class UvDriver extends AbstractDriver
             $id = $callback->id;
 
             if ($callback instanceof StreamCallback) {
-                \assert(\is_resource($callback->stream));
-
                 $streamId = (int) $callback->stream;
 
-                if (isset($this->streams[$streamId])) {
-                    $event = $this->streams[$streamId];
-                } elseif (isset($this->events[$id])) {
-                    $event = $this->streams[$streamId] = $this->events[$id];
+                if (!\is_resource($callback->stream)) {
+                    $this->deactivate($callback);
+                    $this->queue(fn () => throw InvalidCallbackError::invalidStream(
+                        $id,
+                        $streamId,
+                        $callback->callback
+                    ));
                 } else {
-                    /** @psalm-suppress TooManyArguments */
-                    $event = $this->streams[$streamId] = \uv_poll_init_socket($this->handle, $callback->stream);
+                    $this->activeStreamCallbacks[$id] = $callback;
+
+                    if (isset($this->streams[$streamId])) {
+                        $event = $this->streams[$streamId];
+                    } elseif (isset($this->events[$id])) {
+                        $event = $this->streams[$streamId] = $this->events[$id];
+                    } else {
+                        /** @psalm-suppress TooManyArguments */
+                        $event = $this->streams[$streamId] = \uv_poll_init_socket($this->handle, $callback->stream);
+                    }
+
+                    $eventId = (int) $event;
+                    $this->events[$id] = $event;
+                    $this->callbacks[$eventId][$id] = $callback;
+
+                    $flags = 0;
+                    foreach ($this->callbacks[$eventId] as $w) {
+                        \assert($w instanceof StreamCallback);
+
+                        $flags |= $w->enabled ? ($this->getStreamCallbackFlags($w)) : 0;
+                    }
+                    \uv_poll_start($event, $flags, $this->ioCallback);
                 }
-
-                $eventId = (int) $event;
-                $this->events[$id] = $event;
-                $this->callbacks[$eventId][$id] = $callback;
-
-                $flags = 0;
-                foreach ($this->callbacks[$eventId] as $w) {
-                    \assert($w instanceof StreamCallback);
-
-                    $flags |= $w->enabled ? ($this->getStreamCallbackFlags($w)) : 0;
-                }
-                \uv_poll_start($event, $flags, $this->ioCallback);
             } elseif ($callback instanceof TimerCallback) {
                 if (isset($this->events[$id])) {
                     $event = $this->events[$id];
@@ -219,6 +242,8 @@ final class UvDriver extends AbstractDriver
     protected function deactivate(Callback $callback): void
     {
         $id = $callback->id;
+
+        unset($this->activeStreamCallbacks[$id]);
 
         if (!isset($this->events[$id])) {
             return;

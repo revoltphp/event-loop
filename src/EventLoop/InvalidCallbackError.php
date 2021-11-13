@@ -6,6 +6,7 @@ final class InvalidCallbackError extends \Error
 {
     public const E_NONNULL_RETURN = 1;
     public const E_INVALID_IDENTIFIER = 2;
+    public const E_INVALID_STREAM = 3;
 
     /**
      * MUST be thrown if any callback returns a non-null value.
@@ -29,6 +30,20 @@ final class InvalidCallbackError extends \Error
     public static function invalidIdentifier(string $callbackId): self
     {
         return new self($callbackId, self::E_INVALID_IDENTIFIER, 'Invalid callback identifier ' . $callbackId);
+    }
+
+    /**
+     * MUST be thrown if a closed stream resource is detected for an active stream callback.
+     */
+    public static function invalidStream(string $callbackId, int $streamId, callable $callable): self
+    {
+        $description = self::getCallableDescription($callable);
+
+        return new self(
+            $callbackId,
+            self::E_INVALID_STREAM,
+            'Detected closed stream resource for callback ' . $description . '; Please ensure to cancel related stream callbacks before closing stream resources.'
+        );
     }
 
     private static function getCallableDescription(callable $callable): string

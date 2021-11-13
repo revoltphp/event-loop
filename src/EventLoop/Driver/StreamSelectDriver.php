@@ -11,6 +11,7 @@ use Revolt\EventLoop\Internal\StreamReadableCallback;
 use Revolt\EventLoop\Internal\StreamWritableCallback;
 use Revolt\EventLoop\Internal\TimerCallback;
 use Revolt\EventLoop\Internal\TimerQueue;
+use Revolt\EventLoop\InvalidCallbackError;
 use Revolt\EventLoop\UnsupportedFeatureException;
 
 final class StreamSelectDriver extends AbstractDriver
@@ -135,17 +136,31 @@ final class StreamSelectDriver extends AbstractDriver
     {
         foreach ($callbacks as $callback) {
             if ($callback instanceof StreamReadableCallback) {
-                \assert(\is_resource($callback->stream));
-
-                $streamId = (int) $callback->stream;
-                $this->readCallbacks[$streamId][$callback->id] = $callback;
-                $this->readStreams[$streamId] = $callback->stream;
+                if (!\is_resource($callback->stream)) {
+                    $this->deactivate($callback);
+                    $this->queue(fn () => throw InvalidCallbackError::invalidStream(
+                        $callback->id,
+                        (int) $callback->stream,
+                        $callback->callback
+                    ));
+                } else {
+                    $streamId = (int) $callback->stream;
+                    $this->readCallbacks[$streamId][$callback->id] = $callback;
+                    $this->readStreams[$streamId] = $callback->stream;
+                }
             } elseif ($callback instanceof StreamWritableCallback) {
-                \assert(\is_resource($callback->stream));
-
-                $streamId = (int) $callback->stream;
-                $this->writeCallbacks[$streamId][$callback->id] = $callback;
-                $this->writeStreams[$streamId] = $callback->stream;
+                if (!\is_resource($callback->stream)) {
+                    $this->deactivate($callback);
+                    $this->queue(fn () => throw InvalidCallbackError::invalidStream(
+                        $callback->id,
+                        (int) $callback->stream,
+                        $callback->callback
+                    ));
+                } else {
+                    $streamId = (int) $callback->stream;
+                    $this->writeCallbacks[$streamId][$callback->id] = $callback;
+                    $this->writeStreams[$streamId] = $callback->stream;
+                }
             } elseif ($callback instanceof TimerCallback) {
                 $this->timerQueue->insert($callback);
             } elseif ($callback instanceof SignalCallback) {
@@ -226,13 +241,48 @@ final class StreamSelectDriver extends AbstractDriver
                 $except = $write;
             }
 
+            $closedStreams = false;
+
             \set_error_handler($this->streamSelectErrorHandler);
 
             try {
                 /** @psalm-suppress InvalidArgument */
                 $result = \stream_select($read, $write, $except, $seconds, $microseconds);
+            } catch (\Error $e) {
+                // PHP throws a different error depending on whether there is still at least one valid stream or not
+                if ($e instanceof \ValueError && $e->getPrevious() instanceof \TypeError && $e->getPrevious()->getMessage() === 'stream_select(): supplied resource is not a valid stream resource') {
+                    $closedStreams = true;
+                } else if ($e instanceof \TypeError && $e->getMessage() === 'stream_select(): supplied resource is not a valid stream resource') {
+                    $closedStreams = true;
+                } else {
+                    throw new \Exception('Unexpected error while running the event loop (stream_select): ' . $e->getMessage(), 0, $e);
+                }
             } finally {
                 \restore_error_handler();
+            }
+
+            if ($closedStreams) {
+                foreach ($this->readStreams as $stream) {
+                    if (!\is_resource($stream)) {
+                        foreach ($this->readCallbacks[(int) $stream] as $callback) {
+                            $this->deactivate($callback);
+                            $this->queue(fn () => throw InvalidCallbackError::invalidStream($callback->id, (int) $stream, $callback->callback));
+                        }
+                    }
+                }
+
+                foreach ($this->writeStreams as $stream) {
+                    if (!\is_resource($stream)) {
+                        foreach ($this->writeCallbacks[(int) $stream] as $callback) {
+                            $this->deactivate($callback);
+                            $this->queue(fn () => throw InvalidCallbackError::invalidStream($callback->id, (int) $stream, $callback->callback));
+                        }
+                    }
+                }
+
+                $this->invokeMicrotasks();
+                $this->selectStreams($this->readStreams, $this->writeStreams, $timeout);
+                return;
             }
 
             if ($this->streamSelectIgnoreResult || $result === 0) {

@@ -667,6 +667,9 @@ abstract class AbstractDriver implements Driver
         $this->activate($this->enableQueue);
         $this->enableQueue = [];
 
+        // Activation might push errors into the queue
+        $this->invokeMicrotasks();
+
         foreach ($this->deferQueue as $callback) {
             if (!isset($this->deferQueue[$callback->id])) {
                 continue; // Callback disabled by another deferred callback.
@@ -686,7 +689,7 @@ abstract class AbstractDriver implements Driver
         );
     }
 
-    private function invokeMicrotasks(): void
+    final protected function invokeMicrotasks(): void
     {
         while ($this->microQueue) {
             foreach ($this->microQueue as $id => $queueEntry) {

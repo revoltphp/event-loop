@@ -11,6 +11,7 @@ use Revolt\EventLoop\Internal\StreamCallback;
 use Revolt\EventLoop\Internal\StreamReadableCallback;
 use Revolt\EventLoop\Internal\StreamWritableCallback;
 use Revolt\EventLoop\Internal\TimerCallback;
+use Revolt\EventLoop\InvalidCallbackError;
 
 final class EventDriver extends AbstractDriver
 {
@@ -29,6 +30,13 @@ final class EventDriver extends AbstractDriver
     private \Closure $timerCallback;
     private \Closure $signalCallback;
     private array $signals = [];
+
+    private \Closure $dispatchErrorHandler;
+
+    /** @var StreamReadableCallback[] */
+    private array $activeReadCallbacks = [];
+    /** @var StreamWritableCallback[] */
+    private array $activeWriteCallbacks = [];
 
     public function __construct()
     {
@@ -60,19 +68,10 @@ final class EventDriver extends AbstractDriver
         $this->signalCallback = function ($signo, $what, SignalCallback $callback): void {
             $this->invokeCallback($callback);
         };
-    }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function cancel(string $callbackId): void
-    {
-        parent::cancel($callbackId);
-
-        if (isset($this->events[$callbackId])) {
-            $this->events[$callbackId]->free();
-            unset($this->events[$callbackId]);
-        }
+        $this->dispatchErrorHandler = static function ($errno, $message) {
+            throw new \Exception('Unexpected error while running the event loop (ext-event): ' . $message, $errno);
+        };
     }
 
     /**
@@ -97,6 +96,27 @@ final class EventDriver extends AbstractDriver
             $this->handle->free();
             unset($this->handle);
         }
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function cancel(string $callbackId): void
+    {
+        parent::cancel($callbackId);
+
+        if (isset($this->events[$callbackId])) {
+            $this->events[$callbackId]->free();
+            unset($this->events[$callbackId]);
+        }
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getHandle(): \EventBase
+    {
+        return $this->handle;
     }
 
     /**
@@ -147,53 +167,52 @@ final class EventDriver extends AbstractDriver
     /**
      * {@inheritdoc}
      */
-    public function getHandle(): \EventBase
-    {
-        return $this->handle;
-    }
-
-    protected function now(): float
-    {
-        return (float) \hrtime(true) / 1_000_000_000;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    protected function dispatch(bool $blocking): void
-    {
-        $this->handle->loop($blocking ? \EventBase::LOOP_ONCE : \EventBase::LOOP_ONCE | \EventBase::LOOP_NONBLOCK);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
     protected function activate(array $callbacks): void
     {
         $now = $this->now();
 
         foreach ($callbacks as $callback) {
-            if (!isset($this->events[$id = $callback->id])) {
+            $id = $callback->id;
+
+            if (!isset($this->events[$id])) {
                 if ($callback instanceof StreamReadableCallback) {
-                    \assert(\is_resource($callback->stream));
+                    if (!\is_resource($callback->stream)) {
+                        $this->deactivate($callback);
+                        $this->queue(fn () => throw InvalidCallbackError::invalidStream(
+                            $id,
+                            (int) $callback->stream,
+                            $callback->callback
+                        ));
+                    } else {
+                        $this->events[$id] = new \Event(
+                            $this->handle,
+                            $callback->stream,
+                            \Event::READ | \Event::PERSIST,
+                            $this->ioCallback,
+                            $callback
+                        );
 
-                    $this->events[$id] = new \Event(
-                        $this->handle,
-                        $callback->stream,
-                        \Event::READ | \Event::PERSIST,
-                        $this->ioCallback,
-                        $callback
-                    );
+                        $this->activeReadCallbacks[$id] = $callback;
+                    }
                 } elseif ($callback instanceof StreamWritableCallback) {
-                    \assert(\is_resource($callback->stream));
+                    if (!\is_resource($callback->stream)) {
+                        $this->deactivate($callback);
+                        $this->queue(fn () => throw InvalidCallbackError::invalidStream(
+                            $id,
+                            (int) $callback->stream,
+                            $callback->callback
+                        ));
+                    } else {
+                        $this->events[$id] = new \Event(
+                            $this->handle,
+                            $callback->stream,
+                            \Event::WRITE | \Event::PERSIST,
+                            $this->ioCallback,
+                            $callback
+                        );
 
-                    $this->events[$id] = new \Event(
-                        $this->handle,
-                        $callback->stream,
-                        \Event::WRITE | \Event::PERSIST,
-                        $this->ioCallback,
-                        $callback
-                    );
+                        $this->activeWriteCallbacks[$id] = $callback;
+                    }
                 } elseif ($callback instanceof TimerCallback) {
                     $this->events[$id] = new \Event(
                         $this->handle,
@@ -224,7 +243,7 @@ final class EventDriver extends AbstractDriver
                 $this->signals[$id] = $this->events[$id];
                 /** @psalm-suppress TooFewArguments https://github.com/JetBrains/phpstorm-stubs/pull/763 */
                 $this->events[$id]->add();
-            } else {
+            } elseif (isset($this->events[$id])) { // not set if stream is closed
                 /** @psalm-suppress TooFewArguments https://github.com/JetBrains/phpstorm-stubs/pull/763 */
                 $this->events[$id]->add();
             }
@@ -236,12 +255,55 @@ final class EventDriver extends AbstractDriver
      */
     protected function deactivate(Callback $callback): void
     {
-        if (isset($this->events[$id = $callback->id])) {
+        $id = $callback->id;
+
+        if (isset($this->events[$id])) {
             $this->events[$id]->del();
 
             if ($callback instanceof SignalCallback) {
                 unset($this->signals[$id]);
             }
+
+            // TODO unset($this->events[$id])?
         }
+
+        unset($this->activeReadCallbacks[$id], $this->activeWriteCallbacks[$id]);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function dispatch(bool $blocking): void
+    {
+        // These loops might be a performance problem, but let's ensure consistency over performance for now
+        foreach ($this->activeReadCallbacks as $callback) {
+            if (!\is_resource($callback->stream)) {
+                $this->deactivate($callback);
+                $this->queue(fn () => throw InvalidCallbackError::invalidStream($callback->id, (int) $callback->stream, $callback->callback));
+            }
+        }
+
+        foreach ($this->activeWriteCallbacks as $callback) {
+            if (!\is_resource($callback->stream)) {
+                $this->deactivate($callback);
+                $this->queue(fn () => throw InvalidCallbackError::invalidStream($callback->id, (int) $callback->stream, $callback->callback));
+            }
+        }
+
+        $this->invokeMicrotasks();
+
+        \set_error_handler($this->dispatchErrorHandler);
+
+        try {
+            // TODO This needs special consideration, because the error handler is now also active for all callbacks
+            $this->handle->loop($blocking ? \EventBase::LOOP_ONCE : \EventBase::LOOP_ONCE | \EventBase::LOOP_NONBLOCK);
+        } finally {
+            \restore_error_handler();
+        }
+    }
+
+    protected function now(): float
+    {
+        return (float) \hrtime(true) / 1_000_000_000;
     }
 }
