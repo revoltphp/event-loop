@@ -458,7 +458,7 @@ abstract class AbstractDriver implements Driver
 
     public function createSuspension(\Fiber $scheduler): Suspension
     {
-        return new Suspension($this, $scheduler, $this->interruptCallback);
+        return new DriverSuspension($this, $scheduler, $this->interruptCallback);
     }
 
     /**
