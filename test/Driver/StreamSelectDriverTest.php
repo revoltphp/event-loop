@@ -30,7 +30,7 @@ class StreamSelectDriverTest extends DriverTest
         \pcntl_async_signals(true);
 
         try {
-            $this->start(function (Driver $loop) use (&$invoked) {
+            $this->start(function (Driver $loop) use (&$invoked, &$callbackId) {
                 $callbackId = $loop->onSignal(SIGUSR1, function () use (&$invoked) {
                     $invoked = true;
                 });
@@ -44,6 +44,8 @@ class StreamSelectDriverTest extends DriverTest
         }
 
         self::assertTrue($invoked);
+
+        $this->loop->cancel($callbackId);
     }
 
     public function testTooLargeFileDescriptorSet(): void
@@ -86,7 +88,7 @@ class StreamSelectDriverTest extends DriverTest
 
         $sockets = \stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
 
-        $this->start(function (Driver $loop) use ($sockets) {
+        $this->start(function (Driver $loop) use ($sockets, &$signalCallbackId) {
             $socketCallbackIds = [
                 $loop->onReadable($sockets[0], function () {
                     // nothing
@@ -96,7 +98,7 @@ class StreamSelectDriverTest extends DriverTest
                 }),
             ];
 
-            $loop->onSignal(\SIGUSR2, function ($callbackId) use ($socketCallbackIds, $loop) {
+            $signalCallbackId = $loop->onSignal(\SIGUSR2, function ($callbackId) use ($socketCallbackIds, $loop) {
                 $loop->cancel($callbackId);
 
                 foreach ($socketCallbackIds as $socketCallbackId) {
@@ -110,5 +112,7 @@ class StreamSelectDriverTest extends DriverTest
                 \proc_open('sh -c "sleep 1; kill -USR2 ' . \getmypid() . '"', [], $pipes);
             });
         });
+
+        $this->loop->cancel($signalCallbackId);
     }
 }

@@ -18,7 +18,6 @@ use Revolt\EventLoop\UnsupportedFeatureException;
 final class EventLoop
 {
     private static Driver $driver;
-    private static ?\Fiber $fiber = null;
 
     /**
      * Sets the driver to be used as the event loop.
@@ -29,8 +28,6 @@ final class EventLoop
         if (isset(self::$driver) && self::$driver->isRunning()) {
             throw new \Error("Can't swap the event loop driver while the driver is running");
         }
-
-        self::$fiber = null;
 
         try {
             /** @psalm-suppress InternalClass */
@@ -347,7 +344,6 @@ final class EventLoop
     {
         /** @psalm-suppress RedundantPropertyInitializationCheck, RedundantCondition */
         if (!isset(self::$driver)) {
-            self::checkFiberSupport();
             self::setDriver((new DriverFactory())->create());
         }
 
@@ -361,13 +357,7 @@ final class EventLoop
      */
     public static function createSuspension(): Suspension
     {
-        /** @psalm-suppress RedundantPropertyInitializationCheck */
-        if (!isset(self::$fiber) || self::$fiber->isTerminated()) {
-            self::checkFiberSupport();
-            self::$fiber = self::createFiber();
-        }
-
-        return self::getDriver()->createSuspension(self::$fiber);
+        return self::getDriver()->createSuspension();
     }
 
     /**
@@ -381,57 +371,7 @@ final class EventLoop
      */
     public static function run(): void
     {
-        self::checkFiberSupport();
-
-        if (\Fiber::getCurrent()) {
-            throw new \Error(\sprintf("Can't call %s() within a fiber (i.e., outside of {main})", __METHOD__));
-        }
-
-        if (!self::$fiber || self::$fiber->isTerminated()) {
-            self::$fiber = self::createFiber();
-        }
-
-        $lambda = self::$fiber->isStarted() ? self::$fiber->resume() : self::$fiber->start();
-
-        if ($lambda) {
-            $lambda();
-            throw new \Error('Interrupt from event loop must throw an exception');
-        }
-    }
-
-    /**
-     * Creates a fiber to run the active driver instance using {@see Driver::run()}.
-     *
-     * @return \Fiber Fiber used to run the event loop.
-     */
-    private static function createFiber(): \Fiber
-    {
-        return new \Fiber([self::getDriver(), 'run']);
-    }
-
-    private static function checkFiberSupport(): void
-    {
-        if (!\class_exists(\Fiber::class, false)) {
-            if (\PHP_VERSION_ID < 80000) {
-                throw new \Error(
-                    "revolt/event-loop requires fibers to be available. " .
-                    "You're currently running PHP " . \PHP_VERSION . " without fiber support. " .
-                    "Please upgrade to PHP 8.1 or upgrade to PHP 8.0 and install ext-fiber from https://github.com/amphp/ext-fiber."
-                );
-            }
-
-            if (\PHP_VERSION_ID >= 80000 && \PHP_VERSION_ID < 80100) {
-                throw new \Error(
-                    "revolt/event-loop requires fibers to be available. " .
-                    "You're currently running PHP " . \PHP_VERSION . " without fiber support. " .
-                    "Please upgrade to PHP 8.1 or install ext-fiber from https://github.com/amphp/ext-fiber."
-                );
-            }
-
-            throw new \Error(
-                "revolt/event-loop requires PHP 8.1 or ext-fiber. You are currently running PHP " . \PHP_VERSION . "."
-            );
-        }
+        self::getDriver()->run();
     }
 
     /**

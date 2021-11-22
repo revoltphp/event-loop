@@ -37,9 +37,9 @@ final class TracingDriver implements Driver
         $this->driver->stop();
     }
 
-    public function createSuspension(\Fiber $scheduler): Suspension
+    public function createSuspension(): Suspension
     {
-        return $this->driver->createSuspension($scheduler);
+        return $this->driver->createSuspension();
     }
 
     public function isRunning(): bool

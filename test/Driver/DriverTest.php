@@ -195,18 +195,23 @@ abstract class DriverTest extends TestCase
     public function testOnSignalCallbackKeepAliveRunResult(): void
     {
         $this->checkForSignalCapability();
+
         $invoked = false;
-        $this->start(function (Driver $loop) use (&$invoked): void {
+
+        $this->start(function (Driver $loop) use (&$callbackId, &$invoked): void {
             $callbackId = $loop->onSignal(SIGUSR1, static function () {
                 // empty
             });
-            $callbackId = $loop->delay(0.1, function () use (&$invoked, $loop, $callbackId): void {
+
+            $loop->unreference($loop->delay(0.01, function () use (&$invoked, $loop, $callbackId): void {
                 $invoked = true;
                 $loop->unreference($callbackId);
-            });
-            $loop->unreference($callbackId);
+            }));
         });
+
         self::assertTrue($invoked);
+
+        $this->loop->cancel($callbackId);
     }
 
     public function testUnreferencedDeferredCallbackStillExecutes(): void
@@ -734,22 +739,28 @@ abstract class DriverTest extends TestCase
             };
 
             $loop->defer($f(1));
-            $loop->onSignal(SIGUSR1, $f(2));
+            $sig0 = $loop->onSignal(SIGUSR1, $f(2));
             $sig1 = $loop->onSignal(SIGUSR1, $f(2));
             $sig2 = $loop->onSignal(SIGUSR1, $f(2));
             $sig3 = $loop->onSignal(SIGUSR1, $f(" FAIL - MUST NOT BE CALLED "));
             $loop->disable($sig1);
-            $loop->onSignal(SIGUSR1, $f(2));
+            $sig4 = $loop->onSignal(SIGUSR1, $f(2));
             $loop->disable($sig2);
             $loop->enable($sig1);
             $loop->cancel($sig3);
-            $loop->onSignal(SIGUSR1, $f(2));
-            $loop->defer(function () use ($loop, $sig2): void {
+            $sig5 = $loop->onSignal(SIGUSR1, $f(2));
+            $loop->defer(function () use ($loop, $sig0, $sig1, $sig2, $sig3, $sig4, $sig5): void {
                 $loop->enable($sig2);
-                $loop->delay(0.001, function () use ($loop) {
+                $loop->delay(0.001, function () use ($loop, $sig0, $sig1, $sig2, $sig3, $sig4, $sig5) {
                     \posix_kill(\getmypid(), \SIGUSR1);
-                    $loop->delay(0.01, function () use ($loop): void {
-                        $loop->stop();
+
+                    $loop->delay(0.001, function () use ($loop, $sig0, $sig1, $sig2, $sig3, $sig4, $sig5) {
+                        $loop->cancel($sig0);
+                        $loop->cancel($sig1);
+                        $loop->cancel($sig2);
+                        $loop->cancel($sig3);
+                        $loop->cancel($sig4);
+                        $loop->cancel($sig5);
                     });
                 });
             });
@@ -1114,44 +1125,6 @@ abstract class DriverTest extends TestCase
                 $loop->delay(0.001, function () {
                     \posix_kill(\getmypid(), SIGUSR1);
                 });
-            });
-        });
-    }
-
-    public function testNestedLoopSignalDispatch(): void
-    {
-        $this->checkForSignalCapability();
-
-        $this->expectOutputString("inner SIGUSR2\nouter SIGUSR1\n");
-        $this->start(function (Driver $loop): void {
-            $loop->delay(0.3, function () use ($loop): void {
-                $loop->stop();
-            });
-            $loop->onSignal(SIGUSR1, function () use ($loop): void {
-                echo "outer SIGUSR1\n";
-                $loop->stop();
-            });
-
-            $loop->delay(0.001, function (): void {
-                /** @var Driver $loop */
-                $loop = ($this->getFactory())();
-                $stop = $loop->delay(0.1, function () use ($loop): void {
-                    echo "ERROR: manual stop";
-                    $loop->stop();
-                });
-                $loop->onSignal(SIGUSR2, function ($callbackId) use ($loop, $stop): void {
-                    echo "inner SIGUSR2\n";
-                    $loop->cancel($stop);
-                    $loop->cancel($callbackId);
-                });
-                $loop->delay(0.001, function (): void {
-                    \posix_kill(\getmypid(), SIGUSR2);
-                });
-                $loop->run();
-            });
-
-            $loop->delay(0.02, function (): void {
-                \posix_kill(\getmypid(), \SIGUSR1);
             });
         });
     }

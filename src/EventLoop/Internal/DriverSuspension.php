@@ -2,7 +2,6 @@
 
 namespace Revolt\EventLoop\Internal;
 
-use Revolt\EventLoop\Driver;
 use Revolt\EventLoop\Suspension;
 
 /**
@@ -11,57 +10,42 @@ use Revolt\EventLoop\Suspension;
 final class DriverSuspension implements Suspension
 {
     private ?\Fiber $fiber;
-    private \Fiber $scheduler;
-    private Driver $driver;
+
+    private ?\FiberError $fiberError = null;
+
+    private \Closure $run;
+
+    private \Closure $queue;
+
+    private \Closure $interrupt;
+
     private bool $pending = false;
-    private ?\FiberError $error = null;
-    /** @var callable */
-    private $interrupt;
 
     /**
-     * @param Driver $driver
-     * @param \Fiber $scheduler
-     * @param callable $interrupt
+     * @param \Closure $run
+     * @param \Closure $queue
+     * @param \Closure $interrupt
      *
      * @internal
      */
-    public function __construct(Driver $driver, \Fiber $scheduler, callable $interrupt)
+    public function __construct(\Closure $run, \Closure $queue, \Closure $interrupt)
     {
-        $this->driver = $driver;
-        $this->scheduler = $scheduler;
+        $this->run = $run;
+        $this->queue = $queue;
         $this->interrupt = $interrupt;
         $this->fiber = \Fiber::getCurrent();
-
-        // User callbacks are always executed outside the event loop fiber, so this should always be false.
-        \assert($this->fiber !== $this->scheduler);
-    }
-
-    public function throw(\Throwable $throwable): void
-    {
-        if (!$this->pending) {
-            throw $this->error ?? new \Error('Must call suspend() before calling throw()');
-        }
-
-        $this->pending = false;
-
-        if ($this->fiber) {
-            $this->driver->queue([$this->fiber, 'throw'], $throwable);
-        } else {
-            // Suspend event loop fiber to {main}.
-            ($this->interrupt)(static fn () => throw $throwable);
-        }
     }
 
     public function resume(mixed $value = null): void
     {
         if (!$this->pending) {
-            throw $this->error ?? new \Error('Must call suspend() before calling resume()');
+            throw $this->fiberError ?? new \Error('Must call suspend() before calling resume()');
         }
 
         $this->pending = false;
 
         if ($this->fiber) {
-            $this->driver->queue([$this->fiber, 'resume'], $value);
+            ($this->queue)([$this->fiber, 'resume'], $value);
         } else {
             // Suspend event loop fiber to {main}.
             ($this->interrupt)(static fn () => $value);
@@ -86,14 +70,14 @@ final class DriverSuspension implements Suspension
                 return \Fiber::suspend();
             } catch (\FiberError $exception) {
                 $this->pending = false;
-                $this->error = $exception;
+                $this->fiberError = $exception;
 
                 throw $exception;
             }
         }
 
         // Awaiting from {main}.
-        $lambda = $this->scheduler->isStarted() ? $this->scheduler->resume() : $this->scheduler->start();
+        $lambda = ($this->run)();
 
         /** @psalm-suppress RedundantCondition $this->pending should be changed when resumed. */
         if ($this->pending) {
@@ -102,5 +86,21 @@ final class DriverSuspension implements Suspension
         }
 
         return $lambda();
+    }
+
+    public function throw(\Throwable $throwable): void
+    {
+        if (!$this->pending) {
+            throw $this->fiberError ?? new \Error('Must call suspend() before calling throw()');
+        }
+
+        $this->pending = false;
+
+        if ($this->fiber) {
+            ($this->queue)([$this->fiber, 'throw'], $throwable);
+        } else {
+            // Suspend event loop fiber to {main}.
+            ($this->interrupt)(static fn () => throw $throwable);
+        }
     }
 }

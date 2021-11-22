@@ -20,8 +20,35 @@ use Revolt\EventLoop\UnsupportedFeatureException;
  */
 abstract class AbstractDriver implements Driver
 {
+    private static function checkFiberSupport(): void
+    {
+        if (!\class_exists(\Fiber::class, false)) {
+            if (\PHP_VERSION_ID < 80000) {
+                throw new \Error(
+                    "revolt/event-loop requires fibers to be available. " .
+                    "You're currently running PHP " . \PHP_VERSION . " without fiber support. " .
+                    "Please upgrade to PHP 8.1 or upgrade to PHP 8.0 and install ext-fiber from https://github.com/amphp/ext-fiber."
+                );
+            }
+
+            if (\PHP_VERSION_ID >= 80000 && \PHP_VERSION_ID < 80100) {
+                throw new \Error(
+                    "revolt/event-loop requires fibers to be available. " .
+                    "You're currently running PHP " . \PHP_VERSION . " without fiber support. " .
+                    "Please upgrade to PHP 8.1 or install ext-fiber from https://github.com/amphp/ext-fiber."
+                );
+            }
+
+            throw new \Error(
+                "revolt/event-loop requires PHP 8.1 or ext-fiber. You are currently running PHP " . \PHP_VERSION . "."
+            );
+        }
+    }
+
     /** @var string Next callback identifier. */
     private string $nextId = "a";
+
+    private \Fiber $fiber;
 
     private \Fiber $callbackFiber;
     private \Fiber $queueFiber;
@@ -49,21 +76,34 @@ abstract class AbstractDriver implements Driver
     private $interrupt;
 
     private \Closure $interruptCallback;
-
-    private bool $running = false;
-
-    private bool $inFiber = false;
+    private \Closure $queueCallback;
+    private \Closure $runCallback;
 
     private \stdClass $internalSuspensionMarker;
 
+    private bool $stopped = false;
+
     public function __construct()
     {
+        self::checkFiberSupport();
+
         $this->internalSuspensionMarker = new \stdClass();
+
+        $this->createFiber();
         $this->createCallbackFiber();
         $this->createQueueFiber();
         $this->createErrorCallback();
+
         /** @psalm-suppress InvalidArgument */
         $this->interruptCallback = \Closure::fromCallable([$this, 'setInterrupt']);
+        $this->queueCallback = \Closure::fromCallable([$this, 'queue']);
+        $this->runCallback = function () {
+            if ($this->fiber->isTerminated()) {
+                $this->createFiber();
+            }
+
+            return $this->fiber->isStarted() ? $this->fiber->resume() : $this->fiber->start();
+        };
     }
 
     /**
@@ -83,30 +123,24 @@ abstract class AbstractDriver implements Driver
      */
     public function run(): void
     {
-        if ($this->running) {
-            throw new \Error("The loop was already running");
+        if ($this->fiber->isRunning()) {
+            throw new \Error("The event loop is already running");
         }
 
-        $this->running = true;
-        $this->inFiber = \Fiber::getCurrent() !== null;
+        if (\Fiber::getCurrent()) {
+            throw new \Error(\sprintf("Can't call %s() within a fiber (i.e., outside of {main})", __METHOD__));
+        }
 
-        try {
-            while ($this->running) {
-                if ($this->interrupt) {
-                    $this->invokeInterrupt();
-                }
+        if ($this->fiber->isTerminated()) {
+            $this->createFiber();
+        }
 
-                $this->invokeMicrotasks();
+        $lambda = $this->fiber->isStarted() ? $this->fiber->resume() : $this->fiber->start();
 
-                if ($this->isEmpty()) {
-                    return;
-                }
+        if ($lambda) {
+            $lambda();
 
-                $this->tick();
-            }
-        } finally {
-            $this->running = false;
-            $this->inFiber = false;
+            throw new \Error('Interrupt from event loop must throw an exception');
         }
     }
 
@@ -118,7 +152,7 @@ abstract class AbstractDriver implements Driver
      */
     public function stop(): void
     {
-        $this->running = false;
+        $this->stopped = true;
     }
 
     /**
@@ -126,7 +160,7 @@ abstract class AbstractDriver implements Driver
      */
     public function isRunning(): bool
     {
-        return $this->running;
+        return $this->fiber->isRunning();
     }
 
     /**
@@ -456,9 +490,12 @@ abstract class AbstractDriver implements Driver
         return $callbackId;
     }
 
-    public function createSuspension(\Fiber $scheduler): Suspension
+    public function createSuspension(): Suspension
     {
-        return new DriverSuspension($this, $scheduler, $this->interruptCallback);
+        // User callbacks are always executed outside the event loop fiber, so this should always be false.
+        \assert(\Fiber::getCurrent() !== $this->fiber);
+
+        return new DriverSuspension($this->runCallback, $this->queueCallback, $this->interruptCallback);
     }
 
     /**
@@ -681,7 +718,7 @@ abstract class AbstractDriver implements Driver
         $this->dispatch(
             empty($this->nextTickQueue)
             && empty($this->enableQueue)
-            && $this->running
+            && !$this->stopped
             && !$this->isEmpty()
         );
     }
@@ -726,12 +763,28 @@ abstract class AbstractDriver implements Driver
         $interrupt = $this->interrupt;
         $this->interrupt = null;
 
-        if (!$this->inFiber) {
-            $interrupt();
-            throw new \Error('Interrupt must throw if not executing in a fiber');
-        }
-
         \Fiber::suspend($interrupt);
+    }
+
+    private function createFiber(): void
+    {
+        $this->fiber = new \Fiber(function () {
+            $this->stopped = false;
+
+            while (!$this->stopped) {
+                if ($this->interrupt) {
+                    $this->invokeInterrupt();
+                }
+
+                $this->invokeMicrotasks();
+
+                if ($this->isEmpty()) {
+                    return;
+                }
+
+                $this->tick();
+            }
+        });
     }
 
     private function createCallbackFiber(): void
