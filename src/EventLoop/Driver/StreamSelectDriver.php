@@ -72,6 +72,15 @@ final class StreamSelectDriver extends AbstractDriver
         };
     }
 
+    public function __destruct()
+    {
+        foreach ($this->signalCallbacks as $signalCallbacks) {
+            foreach ($signalCallbacks as $signalCallback) {
+                $this->deactivate($signalCallback);
+            }
+        }
+    }
+
     /**
      * {@inheritdoc}
      *
