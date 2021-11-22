@@ -32,11 +32,9 @@ interface Driver
     /**
      * Create an object used to suspend and resume execution, either within a fiber or from {main}.
      *
-     * @param \Fiber $scheduler Fiber containing the running event loop.
-     *
      * @return Suspension
      */
-    public function createSuspension(\Fiber $scheduler): Suspension;
+    public function createSuspension(): Suspension;
 
     /**
      * @return bool True if the event loop is running, false if it is stopped.
