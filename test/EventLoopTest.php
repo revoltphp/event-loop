@@ -108,7 +108,7 @@ class EventLoopTest extends TestCase
         EventLoop::queue(fn () => EventLoop::run());
 
         $this->expectException(\Error::class);
-        $this->expectExceptionMessage("within a fiber");
+        $this->expectExceptionMessage("The event loop is already running");
 
         EventLoop::run();
     }

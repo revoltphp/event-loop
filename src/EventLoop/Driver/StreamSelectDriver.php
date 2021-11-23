@@ -32,6 +32,9 @@ final class StreamSelectDriver extends AbstractDriver
     /** @var SignalCallback[][] */
     private array $signalCallbacks = [];
 
+    /** @var int[] */
+    private array $signalQueue = [];
+
     private bool $signalHandling;
 
     private \Closure $streamSelectErrorHandler;
@@ -134,6 +137,20 @@ final class StreamSelectDriver extends AbstractDriver
 
         if ($this->signalHandling) {
             \pcntl_signal_dispatch();
+
+            while ($this->signalQueue) {
+                $key = \array_key_first($this->signalQueue);
+                $signal = $this->signalQueue[$key];
+                unset($this->signalQueue[$key]);
+
+                foreach ($this->signalCallbacks[$signal] as $callback) {
+                    if (!isset($this->signalCallbacks[$signal][$callback->id])) {
+                        continue;
+                    }
+
+                    $this->invokeCallback($callback);
+                }
+            }
         }
     }
 
@@ -325,12 +342,7 @@ final class StreamSelectDriver extends AbstractDriver
 
     private function handleSignal(int $signal): void
     {
-        foreach ($this->signalCallbacks[$signal] as $callback) {
-            if (!isset($this->signalCallbacks[$signal][$callback->id])) {
-                continue;
-            }
-
-            $this->invokeCallback($callback);
-        }
+        // Queue signals, so we don't suspend inside pcntl_signal_dispatch, which disables signals while it runs
+        $this->signalQueue[] = $signal;
     }
 }
