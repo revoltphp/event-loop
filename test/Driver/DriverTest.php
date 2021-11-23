@@ -1093,7 +1093,6 @@ abstract class DriverTest extends TestCase
         $this->start(function (Driver $loop): void {
             $loop->delay(0.001, function () use ($loop): void {
                 \posix_kill(\getmypid(), \SIGUSR1);
-                $loop->delay(0.01, [$loop, "stop"]);
             });
 
             $loop->onSignal(SIGUSR1, function ($callbackId) use ($loop): void {
