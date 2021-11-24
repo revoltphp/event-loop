@@ -60,21 +60,28 @@ class StreamSelectDriverTest extends DriverTest
         $this->expectException(\Exception::class);
         $this->expectExceptionMessage("You have reached the limits of stream_select(). It has a FD_SETSIZE of 1024, but you have file descriptors numbered at least as high as 2");
 
-        $this->start(function (Driver $loop) use ($sockets) {
-            $loop->delay(0.1, function () {
-                // here to provide timeout to stream_select, as the warning is only issued after the system call returns
+        try {
+            $this->start(function (Driver $loop) use ($sockets) {
+                $loop->delay(0.1, function () {
+                    // here to provide timeout to stream_select, as the warning is only issued after the system call returns
+                });
+
+                foreach ($sockets as [$left, $right]) {
+                    $loop->onReadable($left, function () {
+                        // nothing
+                    });
+
+                    $loop->onReadable($right, function () {
+                        // nothing
+                    });
+                }
             });
-
+        } finally {
             foreach ($sockets as [$left, $right]) {
-                $loop->onReadable($left, function () {
-                    // nothing
-                });
-
-                $loop->onReadable($right, function () {
-                    // nothing
-                });
+                \fclose($left);
+                \fclose($right);
             }
-        });
+        }
     }
 
     /**
