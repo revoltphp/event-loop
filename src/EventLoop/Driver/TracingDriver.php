@@ -47,11 +47,11 @@ final class TracingDriver implements Driver
         return $this->driver->isRunning();
     }
 
-    public function defer(callable $callback): string
+    public function defer(\Closure $closure): string
     {
-        $id = $this->driver->defer(function (...$args) use ($callback) {
+        $id = $this->driver->defer(function (...$args) use ($closure) {
             $this->cancel($args[0]);
-            return $callback(...$args);
+            return $closure(...$args);
         });
 
         $this->creationTraces[$id] = $this->formatStacktrace(\debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS));
@@ -60,11 +60,11 @@ final class TracingDriver implements Driver
         return $id;
     }
 
-    public function delay(float $delay, callable $callback): string
+    public function delay(float $delay, \Closure $closure): string
     {
-        $id = $this->driver->delay($delay, function (...$args) use ($callback) {
+        $id = $this->driver->delay($delay, function (...$args) use ($closure) {
             $this->cancel($args[0]);
-            return $callback(...$args);
+            return $closure(...$args);
         });
 
         $this->creationTraces[$id] = $this->formatStacktrace(\debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS));
@@ -73,9 +73,9 @@ final class TracingDriver implements Driver
         return $id;
     }
 
-    public function repeat(float $interval, callable $callback): string
+    public function repeat(float $interval, \Closure $closure): string
     {
-        $id = $this->driver->repeat($interval, $callback);
+        $id = $this->driver->repeat($interval, $closure);
 
         $this->creationTraces[$id] = $this->formatStacktrace(\debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS));
         $this->enabledCallbacks[$id] = true;
@@ -83,9 +83,9 @@ final class TracingDriver implements Driver
         return $id;
     }
 
-    public function onReadable(mixed $stream, callable $callback): string
+    public function onReadable(mixed $stream, \Closure $closure): string
     {
-        $id = $this->driver->onReadable($stream, $callback);
+        $id = $this->driver->onReadable($stream, $closure);
 
         $this->creationTraces[$id] = $this->formatStacktrace(\debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS));
         $this->enabledCallbacks[$id] = true;
@@ -93,9 +93,9 @@ final class TracingDriver implements Driver
         return $id;
     }
 
-    public function onWritable(mixed $stream, callable $callback): string
+    public function onWritable(mixed $stream, \Closure $closure): string
     {
-        $id = $this->driver->onWritable($stream, $callback);
+        $id = $this->driver->onWritable($stream, $closure);
 
         $this->creationTraces[$id] = $this->formatStacktrace(\debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS));
         $this->enabledCallbacks[$id] = true;
@@ -103,9 +103,9 @@ final class TracingDriver implements Driver
         return $id;
     }
 
-    public function onSignal(int $signo, callable $callback): string
+    public function onSignal(int $signo, \Closure $closure): string
     {
-        $id = $this->driver->onSignal($signo, $callback);
+        $id = $this->driver->onSignal($signo, $closure);
 
         $this->creationTraces[$id] = $this->formatStacktrace(\debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS));
         $this->enabledCallbacks[$id] = true;
@@ -170,9 +170,9 @@ final class TracingDriver implements Driver
         return $callbackId;
     }
 
-    public function setErrorHandler(callable $callback = null): ?callable
+    public function setErrorHandler(\Closure $closure = null): ?callable
     {
-        return $this->driver->setErrorHandler($callback);
+        return $this->driver->setErrorHandler($closure);
     }
 
     /** @inheritdoc */
@@ -208,9 +208,9 @@ final class TracingDriver implements Driver
         return $this->driver->__debugInfo();
     }
 
-    public function queue(callable $callback, mixed ...$args): void
+    public function queue(\Closure $closure, mixed ...$args): void
     {
-        $this->driver->queue($callback, ...$args);
+        $this->driver->queue($closure, ...$args);
     }
 
     private function getCreationTrace(string $callbackId): string

@@ -10,9 +10,9 @@ final class InvalidCallbackError extends \Error
     /**
      * MUST be thrown if any callback returns a non-null value.
      */
-    public static function nonNullReturn(string $callbackId, callable $callable): self
+    public static function nonNullReturn(string $callbackId, \Closure $closure): self
     {
-        $description = self::getCallableDescription($callable);
+        $description = self::getClosureDescription($closure);
 
         return new self(
             $callbackId,
@@ -31,40 +31,25 @@ final class InvalidCallbackError extends \Error
         return new self($callbackId, self::E_INVALID_IDENTIFIER, 'Invalid callback identifier ' . $callbackId);
     }
 
-    private static function getCallableDescription(callable $callable): string
+    private static function getClosureDescription(\Closure $closure): string
     {
-        if (\is_string($callable)) {
-            return $callable;
-        }
+        try {
+            $reflection = new \ReflectionFunction($closure);
 
-        if (\is_array($callable) && \count($callable) === 2 && isset($callable[0], $callable[1])) {
-            if (\is_string($callable[0]) && \is_string($callable[1])) {
-                return $callable[0] . "::" . $callable[1];
+            $description = $reflection->name;
+
+            if ($scopeClass = $reflection->getClosureScopeClass()) {
+                $description = $scopeClass->name . '::' . $description;
             }
 
-            if (\is_object($callable[0]) && \is_string($callable[1])) {
-                return \get_class($callable[0]) . "::" . $callable[1];
+            if ($reflection->getFileName() && $reflection->getStartLine()) {
+                $description .= " defined in " . $reflection->getFileName() . ':' . $reflection->getStartLine();
             }
 
+            return $description;
+        } catch (\ReflectionException) {
             return '???';
         }
-
-        if ($callable instanceof \Closure) {
-            try {
-                $reflection = new \ReflectionFunction($callable);
-                if ($reflection->getFileName() && $reflection->getStartLine()) {
-                    return "defined in " . $reflection->getFileName() . ':' . $reflection->getStartLine();
-                }
-            } catch (\ReflectionException) {
-                // ignore
-            }
-        }
-
-        if (\is_object($callable) && \method_exists($callable, '__invoke')) {
-            return \get_class($callable) . '::__invoke';
-        }
-
-        return '???';
     }
 
     /** @var string */

@@ -10,9 +10,9 @@ abstract class StreamCallback extends Callback
      */
     public function __construct(
         string $id,
-        callable $callback,
+        \Closure $closure,
         public mixed $stream
     ) {
-        parent::__construct($id, $callback);
+        parent::__construct($id, $closure);
     }
 }

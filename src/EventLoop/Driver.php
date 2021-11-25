@@ -44,32 +44,32 @@ interface Driver
     /**
      * Queue a microtask.
      *
-     * The queued callable MUST be executed immediately once the event loop gains control. Order of queueing MUST be
+     * The queued callback MUST be executed immediately once the event loop gains control. Order of queueing MUST be
      * preserved when executing the callbacks. Recursive scheduling can thus result in infinite loops, use with care.
      *
      * Does NOT create an event callback, thus CAN NOT be marked as disabled or unreferenced.
      * Use {@see EventLoop::defer()} if you need these features.
      *
-     * @param callable $callback The callback to queue.
+     * @param \Closure $closure The callback to queue.
      * @param mixed    ...$args The callback arguments.
      */
-    public function queue(callable $callback, mixed ...$args): void;
+    public function queue(\Closure $closure, mixed ...$args): void;
 
     /**
      * Defer the execution of a callback.
      *
-     * The deferred callable MUST be executed before any other type of callback in a tick. Order of enabling MUST be
+     * The deferred callback MUST be executed before any other type of callback in a tick. Order of enabling MUST be
      * preserved when executing the callbacks.
      *
      * The created callback MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
-     * @param callable(string):void $callback The callback to defer. The `$callbackId` will be
+     * @param \Closure $closure The callback to defer. The `$callbackId` will be
      *                    invalidated before the callback invocation.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      */
-    public function defer(callable $callback): string;
+    public function defer(\Closure $closure): string;
 
     /**
      * Delay the execution of a callback.
@@ -80,13 +80,13 @@ interface Driver
      * The created callback MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
-     * @param float   $delay The amount of time, in seconds, to delay the execution for.
-     * @param callable(string):void $callback The callback to delay. The `$callbackId` will be
-     *                     invalidated before the callback invocation.
+     * @param float    $delay The amount of time, in seconds, to delay the execution for.
+     * @param \Closure $closure The callback to delay. The `$callbackId` will be invalidated before the callback
+     *     invocation.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      */
-    public function delay(float $delay, callable $callback): string;
+    public function delay(float $delay, \Closure $closure): string;
 
     /**
      * Repeatedly execute a callback.
@@ -98,12 +98,12 @@ interface Driver
      * The created callback MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
-     * @param float   $interval The time interval, in seconds, to wait between executions.
-     * @param callable(string):void $callback The callback to repeat.
+     * @param float    $interval The time interval, in seconds, to wait between executions.
+     * @param \Closure $closure The callback to repeat.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      */
-    public function repeat(float $interval, callable $callback): string;
+    public function repeat(float $interval, \Closure $closure): string;
 
     /**
      * Execute a callback when a stream resource becomes readable or is closed for reading.
@@ -119,11 +119,11 @@ interface Driver
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
      * @param resource|object $stream The stream to monitor.
-     * @param callable(string, resource|object):void $callback The callback to execute.
+     * @param \Closure        $closure The callback to execute.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      */
-    public function onReadable(mixed $stream, callable $callback): string;
+    public function onReadable(mixed $stream, \Closure $closure): string;
 
     /**
      * Execute a callback when a stream resource becomes writable or is closed for writing.
@@ -139,11 +139,11 @@ interface Driver
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
      * @param resource|object $stream The stream to monitor.
-     * @param callable(string, resource|object):void $callback The callback to execute.
+     * @param \Closure        $closure The callback to execute.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      */
-    public function onWritable(mixed $stream, callable $callback): string;
+    public function onWritable(mixed $stream, \Closure $closure): string;
 
     /**
      * Execute a callback when a signal is received.
@@ -157,20 +157,20 @@ interface Driver
      * The created callback MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
-     * @param int   $signo The signal number to monitor.
-     * @param callable(string, int):void $callback The callback to execute.
+     * @param int      $signo The signal number to monitor.
+     * @param \Closure $closure The callback to execute.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      *
      * @throws UnsupportedFeatureException If signal handling is not supported.
      */
-    public function onSignal(int $signo, callable $callback): string;
+    public function onSignal(int $signo, \Closure $closure): string;
 
     /**
      * Enable a callback to be active starting in the next tick.
      *
-     * Callbacks MUST immediately be marked as enabled, but only be activated (i.e. callbacks can be called) right before
-     * the next tick. Callbacks MUST NOT be called in the tick they were enabled.
+     * Callbacks MUST immediately be marked as enabled, but only be activated (i.e. callbacks can be called) right
+     * before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
      * @param string $callbackId The callback identifier.
      *
@@ -240,12 +240,11 @@ interface Driver
      *
      * Subsequent calls to this method will overwrite the previous handler.
      *
-     * @param (callable(\Throwable):void)|null $callback The callback to execute. `null` will clear the
-     *     current handler.
+     * @param \Closure|null $closure The callback to execute. `null` will clear the current handler.
      *
-     * @return (callable(\Throwable):void)|null The previous handler, `null` if there was none.
+     * @return \Closure|null The previous handler, `null` if there was none.
      */
-    public function setErrorHandler(callable $callback = null): ?callable;
+    public function setErrorHandler(?\Closure $closure = null): ?callable;
 
     /**
      * Get the underlying loop handle.

@@ -69,11 +69,8 @@ abstract class AbstractDriver implements Driver
     /** @var array<int, array<int, callable|list<mixed>>> */
     private array $microQueue = [];
 
-    /** @var callable(\Throwable):void|null */
-    private $errorHandler;
-
-    /** @var callable|null */
-    private $interrupt;
+    private ?\Closure $errorHandler = null;
+    private ?\Closure $interrupt = null;
 
     private \Closure $interruptCallback;
     private \Closure $queueCallback;
@@ -166,37 +163,36 @@ abstract class AbstractDriver implements Driver
     /**
      * Queue a microtask.
      *
-     * The queued callable MUST be executed immediately once the event loop gains control. Order of queueing MUST be
+     * The queued callback MUST be executed immediately once the event loop gains control. Order of queueing MUST be
      * preserved when executing the callbacks. Recursive scheduling can thus result in infinite loops, use with care.
      *
      * Does NOT create an event callback, thus CAN NOT be marked as disabled or unreferenced.
      * Use {@see EventLoop::defer()} if you need these features.
      *
-     * @param callable $callback The callback to queue.
-     * @param mixed ...$args The callback arguments.
+     * @param \Closure $closure The callback to queue.
+     * @param mixed    ...$args The callback arguments.
      */
-    public function queue(callable $callback, mixed ...$args): void
+    public function queue(\Closure $closure, mixed ...$args): void
     {
-        $this->microQueue[] = [$callback, $args];
+        $this->microQueue[] = [$closure, $args];
     }
 
     /**
      * Defer the execution of a callback.
      *
-     * The deferred callable MUST be executed before any other type of callback in a tick. Order of enabling MUST be
+     * The deferred callback MUST be executed before any other type of callback in a tick. Order of enabling MUST be
      * preserved when executing the callbacks.
      *
      * The created callback MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
-     * @param callable(string):void $callback The callback to defer. The `$callbackId` will be
-     *     invalidated before the callback call.
+     * @param \Closure $closure The callback to defer. The `$callbackId` will be invalidated before the callback call.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      */
-    public function defer(callable $callback): string
+    public function defer(\Closure $closure): string
     {
-        $deferCallback = new DeferCallback($this->nextId++, $callback);
+        $deferCallback = new DeferCallback($this->nextId++, $closure);
 
         $this->callbacks[$deferCallback->id] = $deferCallback;
         $this->nextTickQueue[$deferCallback->id] = $deferCallback;
@@ -213,19 +209,19 @@ abstract class AbstractDriver implements Driver
      * The created callback MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
-     * @param float $delay The amount of time, in seconds, to delay the execution for.
-     * @param callable(string):void $callback The callback to delay. The `$callbackId` will be
-     *     invalidated before the callback invocation.
+     * @param float    $delay The amount of time, in seconds, to delay the execution for.
+     * @param \Closure $closure The callback to delay. The `$callbackId` will be invalidated before the callback
+     *     invocation.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      */
-    public function delay(float $delay, callable $callback): string
+    public function delay(float $delay, \Closure $closure): string
     {
         if ($delay < 0) {
             throw new \Error("Delay must be greater than or equal to zero");
         }
 
-        $timerCallback = new TimerCallback($this->nextId++, $delay, $callback, $this->now() + $delay);
+        $timerCallback = new TimerCallback($this->nextId++, $delay, $closure, $this->now() + $delay);
 
         $this->callbacks[$timerCallback->id] = $timerCallback;
         $this->enableQueue[$timerCallback->id] = $timerCallback;
@@ -243,18 +239,18 @@ abstract class AbstractDriver implements Driver
      * The created callback MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
-     * @param float $interval The time interval, in seconds, to wait between executions.
-     * @param callable(string):void $callback The callback to repeat.
+     * @param float    $interval The time interval, in seconds, to wait between executions.
+     * @param \Closure $closure The callback to repeat.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      */
-    public function repeat(float $interval, callable $callback): string
+    public function repeat(float $interval, \Closure $closure): string
     {
         if ($interval < 0) {
             throw new \Error("Interval must be greater than or equal to zero");
         }
 
-        $timerCallback = new TimerCallback($this->nextId++, $interval, $callback, $this->now() + $interval, true);
+        $timerCallback = new TimerCallback($this->nextId++, $interval, $closure, $this->now() + $interval, true);
 
         $this->callbacks[$timerCallback->id] = $timerCallback;
         $this->enableQueue[$timerCallback->id] = $timerCallback;
@@ -276,13 +272,13 @@ abstract class AbstractDriver implements Driver
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
      * @param resource|object $stream The stream to monitor.
-     * @param callable(string, resource):void $callback The callback to execute.
+     * @param \Closure        $closure The callback to execute.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      */
-    public function onReadable(mixed $stream, callable $callback): string
+    public function onReadable(mixed $stream, \Closure $closure): string
     {
-        $streamCallback = new StreamReadableCallback($this->nextId++, $callback, $stream);
+        $streamCallback = new StreamReadableCallback($this->nextId++, $closure, $stream);
 
         $this->callbacks[$streamCallback->id] = $streamCallback;
         $this->enableQueue[$streamCallback->id] = $streamCallback;
@@ -304,13 +300,13 @@ abstract class AbstractDriver implements Driver
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
      * @param resource|object $stream The stream to monitor.
-     * @param callable(string, resource|object):void $callback The callback to execute.
+     * @param \Closure        $closure The callback to execute.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      */
-    public function onWritable($stream, callable $callback): string
+    public function onWritable($stream, \Closure $closure): string
     {
-        $streamCallback = new StreamWritableCallback($this->nextId++, $callback, $stream);
+        $streamCallback = new StreamWritableCallback($this->nextId++, $closure, $stream);
 
         $this->callbacks[$streamCallback->id] = $streamCallback;
         $this->enableQueue[$streamCallback->id] = $streamCallback;
@@ -330,16 +326,16 @@ abstract class AbstractDriver implements Driver
      * The created callback MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
-     * @param int   $signo The signal number to monitor.
-     * @param callable(string, int):void $callback The callback to execute.
+     * @param int      $signo The signal number to monitor.
+     * @param \Closure $closure The callback to execute.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      *
      * @throws UnsupportedFeatureException If signal handling is not supported.
      */
-    public function onSignal(int $signo, callable $callback): string
+    public function onSignal(int $signo, \Closure $closure): string
     {
-        $signalCallback = new SignalCallback($this->nextId++, $callback, $signo);
+        $signalCallback = new SignalCallback($this->nextId++, $closure, $signo);
 
         $this->callbacks[$signalCallback->id] = $signalCallback;
         $this->enableQueue[$signalCallback->id] = $signalCallback;
@@ -350,8 +346,8 @@ abstract class AbstractDriver implements Driver
     /**
      * Enable a callback to be active starting in the next tick.
      *
-     * Callbacks MUST immediately be marked as enabled, but only be activated (i.e. callbacks can be called) right before
-     * the next tick. Callbacks MUST NOT be called in the tick they were enabled.
+     * Callbacks MUST immediately be marked as enabled, but only be activated (i.e. callbacks can be called) right
+     * before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
      * @param string $callbackId The callback identifier.
      *
@@ -507,15 +503,14 @@ abstract class AbstractDriver implements Driver
      *
      * Subsequent calls to this method will overwrite the previous handler.
      *
-     * @param ?(callable(\Throwable):void) $callback The callback to execute. `null` will clear the
-     *     current handler.
+     * @param \Closure|null $closure The callback to execute. `null` will clear the current handler.
      *
-     * @return ?(callable(\Throwable):void) The previous handler, `null` if there was none.
+     * @return \Closure|null The previous handler, `null` if there was none.
      */
-    public function setErrorHandler(callable $callback = null): ?callable
+    public function setErrorHandler(\Closure $closure = null): ?callable
     {
         $previous = $this->errorHandler;
-        $this->errorHandler = $callback;
+        $this->errorHandler = $closure;
         return $previous;
     }
 
@@ -750,7 +745,7 @@ abstract class AbstractDriver implements Driver
         }
     }
 
-    private function setInterrupt(callable $interrupt): void
+    private function setInterrupt(\Closure $interrupt): void
     {
         \assert($this->interrupt === null);
         $this->interrupt = $interrupt;
@@ -794,13 +789,13 @@ abstract class AbstractDriver implements Driver
         $this->callbackFiber = new \Fiber(static function () use ($suspensionMarker): void {
             while ($callback = \Fiber::suspend($suspensionMarker)) {
                 $result = match (true) {
-                    $callback instanceof StreamCallback => ($callback->callback)($callback->id, $callback->stream),
-                    $callback instanceof SignalCallback => ($callback->callback)($callback->id, $callback->signal),
-                    default => ($callback->callback)($callback->id),
+                    $callback instanceof StreamCallback => ($callback->closure)($callback->id, $callback->stream),
+                    $callback instanceof SignalCallback => ($callback->closure)($callback->id, $callback->signal),
+                    default => ($callback->closure)($callback->id),
                 };
 
                 if ($result !== null) {
-                    throw InvalidCallbackError::nonNullReturn($callback->id, $callback->callback);
+                    throw InvalidCallbackError::nonNullReturn($callback->id, $callback->closure);
                 }
 
                 unset($callback);
@@ -827,7 +822,7 @@ abstract class AbstractDriver implements Driver
 
     private function createErrorCallback(): void
     {
-        $this->errorCallback = function (callable $errorHandler, \Throwable $exception): void {
+        $this->errorCallback = function (\Closure $errorHandler, \Throwable $exception): void {
             try {
                 $errorHandler($exception);
             } catch (\Throwable $exception) {
