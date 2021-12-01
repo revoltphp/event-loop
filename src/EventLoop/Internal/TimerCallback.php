@@ -8,7 +8,7 @@ final class TimerCallback extends Callback
     public function __construct(
         string $id,
         public float $interval,
-        callable $callback,
+        \Closure $callback,
         public float $expiration,
         public bool $repeat = false
     ) {

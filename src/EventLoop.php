@@ -67,37 +67,37 @@ final class EventLoop
     /**
      * Queue a microtask.
      *
-     * The queued callable MUST be executed immediately once the event loop gains control. Order of queueing MUST be
+     * The queued callback MUST be executed immediately once the event loop gains control. Order of queueing MUST be
      * preserved when executing the callbacks. Recursive scheduling can thus result in infinite loops, use with care.
      *
      * Does NOT create an event callback, thus CAN NOT be marked as disabled or unreferenced.
      * Use {@see EventLoop::defer()} if you need these features.
      *
-     * @param callable $callback The callback to queue.
+     * @param \Closure $closure The callback to queue.
      * @param mixed    ...$args The callback arguments.
      */
-    public static function queue(callable $callback, mixed ...$args): void
+    public static function queue(\Closure $closure, mixed ...$args): void
     {
-        self::getDriver()->queue($callback, ...$args);
+        self::getDriver()->queue($closure, ...$args);
     }
 
     /**
      * Defer the execution of a callback.
      *
-     * The deferred callable MUST be executed before any other type of callback in a tick. Order of enabling MUST be
+     * The deferred callback MUST be executed before any other type of callback in a tick. Order of enabling MUST be
      * preserved when executing the callbacks.
      *
      * The created callback MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
      * right before the next tick. Deferred callbacks MUST NOT be called in the tick they were enabled.
      *
-     * @param callable(string) $callback The callback to defer. The `$callbackId` will be
+     * @param \Closure(string):void $closure The callback to defer. The `$callbackId` will be
      *     invalidated before the callback invocation.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      */
-    public static function defer(callable $callback): string
+    public static function defer(\Closure $closure): string
     {
-        return self::getDriver()->defer($callback);
+        return self::getDriver()->defer($closure);
     }
 
     /**
@@ -110,14 +110,14 @@ final class EventLoop
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
      * @param float $delay The amount of time, in seconds, to delay the execution for.
-     * @param callable(string) $callback The callback to delay. The `$callbackId` will be invalidated before
-     *     the callback invocation.
+     * @param \Closure(string):void $closure The callback to delay. The `$callbackId` will be invalidated
+     *     before the callback invocation.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      */
-    public static function delay(float $delay, callable $callback): string
+    public static function delay(float $delay, \Closure $closure): string
     {
-        return self::getDriver()->delay($delay, $callback);
+        return self::getDriver()->delay($delay, $closure);
     }
 
     /**
@@ -131,13 +131,13 @@ final class EventLoop
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
      * @param float $interval The time interval, in seconds, to wait between executions.
-     * @param callable(string) $callback The callback to repeat.
+     * @param \Closure(string):void $closure The callback to repeat.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      */
-    public static function repeat(float $interval, callable $callback): string
+    public static function repeat(float $interval, \Closure $closure): string
     {
-        return self::getDriver()->repeat($interval, $callback);
+        return self::getDriver()->repeat($interval, $closure);
     }
 
     /**
@@ -154,13 +154,13 @@ final class EventLoop
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
      * @param resource|object $stream The stream to monitor.
-     * @param callable(string, resource|object) $callback The callback to execute.
+     * @param \Closure(string, resource|object):void $callback The callback to execute.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      */
-    public static function onReadable(mixed $stream, callable $callback): string
+    public static function onReadable(mixed $stream, \Closure $closure): string
     {
-        return self::getDriver()->onReadable($stream, $callback);
+        return self::getDriver()->onReadable($stream, $closure);
     }
 
     /**
@@ -177,13 +177,13 @@ final class EventLoop
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
      * @param resource|object $stream The stream to monitor.
-     * @param callable(string, resource|object) $callback The callback to execute.
+     * @param \Closure(string, resource|object):void $closure The callback to execute.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      */
-    public static function onWritable(mixed $stream, callable $callback): string
+    public static function onWritable(mixed $stream, \Closure $closure): string
     {
-        return self::getDriver()->onWritable($stream, $callback);
+        return self::getDriver()->onWritable($stream, $closure);
     }
 
     /**
@@ -198,16 +198,16 @@ final class EventLoop
      * The created callback MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
-     * @param int $signo The signal number to monitor.
-     * @param callable(string, int) $callback The callback to execute.
+     * @param int $signal The signal number to monitor.
+     * @param \Closure(string, int):void $closure The callback to execute.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      *
      * @throws UnsupportedFeatureException If signal handling is not supported.
      */
-    public static function onSignal(int $signo, callable $callback): string
+    public static function onSignal(int $signal, \Closure $closure): string
     {
-        return self::getDriver()->onSignal($signo, $callback);
+        return self::getDriver()->onSignal($signal, $closure);
     }
 
     /**
@@ -299,14 +299,13 @@ final class EventLoop
      *
      * Subsequent calls to this method will overwrite the previous handler.
      *
-     * @param callable(\Throwable)|null $callback The callback to execute. `null` will clear the
-     *     current handler.
+     * @param (\Closure(\Throwable):void)|null $closure The callback to execute. `null` will clear the current handler.
      *
-     * @return callable(\Throwable)|null The previous handler, `null` if there was none.
+     * @return (\Closure(\Throwable):void)|null The previous handler, `null` if there was none.
      */
-    public static function setErrorHandler(callable $callback = null): ?callable
+    public static function setErrorHandler(\Closure $closure = null): ?\Closure
     {
-        return self::getDriver()->setErrorHandler($callback);
+        return self::getDriver()->setErrorHandler($closure);
     }
 
     /**

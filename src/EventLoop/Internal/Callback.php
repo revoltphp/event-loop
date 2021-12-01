@@ -11,14 +11,13 @@ abstract class Callback
 
     public bool $referenced = true;
 
-    /** @var callable */
-    public $callback;
+    public \Closure $closure;
 
     public function __construct(
         public string $id,
-        callable $callback
+        \Closure $closure
     ) {
-        $this->callback = $callback;
+        $this->closure = $closure;
     }
 
     /**

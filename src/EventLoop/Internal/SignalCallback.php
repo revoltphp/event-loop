@@ -7,9 +7,9 @@ final class SignalCallback extends Callback
 {
     public function __construct(
         string $id,
-        callable $callback,
+        \Closure $closure,
         public int $signal
     ) {
-        parent::__construct($id, $callback);
+        parent::__construct($id, $closure);
     }
 }
