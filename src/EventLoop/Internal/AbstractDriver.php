@@ -2,11 +2,9 @@
 
 namespace Revolt\EventLoop\Internal;
 
-use Revolt\EventLoop;
 use Revolt\EventLoop\Driver;
 use Revolt\EventLoop\InvalidCallbackError;
 use Revolt\EventLoop\Suspension;
-use Revolt\EventLoop\UnsupportedFeatureException;
 
 /**
  * Event loop driver which implements all basic operations to allow interoperability.
