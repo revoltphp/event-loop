@@ -90,7 +90,7 @@ final class EventLoop
      * The created callback MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
      * right before the next tick. Deferred callbacks MUST NOT be called in the tick they were enabled.
      *
-     * @param \Closure $closure The callback to defer. The `$callbackId` will be
+     * @param \Closure(string):void $closure The callback to defer. The `$callbackId` will be
      *     invalidated before the callback invocation.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
@@ -109,9 +109,9 @@ final class EventLoop
      * The created callback MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
-     * @param float    $delay The amount of time, in seconds, to delay the execution for.
-     * @param \Closure $closure The callback to delay. The `$callbackId` will be invalidated before
-     *     the callback invocation.
+     * @param float $delay The amount of time, in seconds, to delay the execution for.
+     * @param \Closure(string):void $closure The callback to delay. The `$callbackId` will be invalidated
+     *     before the callback invocation.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      */
@@ -131,7 +131,7 @@ final class EventLoop
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
      * @param float $interval The time interval, in seconds, to wait between executions.
-     * @param \Closure $closure The callback to repeat.
+     * @param \Closure(string):void $closure The callback to repeat.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      */
@@ -154,7 +154,7 @@ final class EventLoop
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
      * @param resource|object $stream The stream to monitor.
-     * @param \Closure $callback The callback to execute.
+     * @param \Closure(string, resource|object):void $callback The callback to execute.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      */
@@ -177,7 +177,7 @@ final class EventLoop
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
      * @param resource|object $stream The stream to monitor.
-     * @param \Closure $closure The callback to execute.
+     * @param \Closure(string, resource|object):void $closure The callback to execute.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      */
@@ -198,16 +198,16 @@ final class EventLoop
      * The created callback MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
-     * @param int $signo The signal number to monitor.
-     * @param \Closure $closure The callback to execute.
+     * @param int $signal The signal number to monitor.
+     * @param \Closure(string, int):void $closure The callback to execute.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      *
      * @throws UnsupportedFeatureException If signal handling is not supported.
      */
-    public static function onSignal(int $signo, \Closure $closure): string
+    public static function onSignal(int $signal, \Closure $closure): string
     {
-        return self::getDriver()->onSignal($signo, $closure);
+        return self::getDriver()->onSignal($signal, $closure);
     }
 
     /**
@@ -299,9 +299,9 @@ final class EventLoop
      *
      * Subsequent calls to this method will overwrite the previous handler.
      *
-     * @param \Closure|null $closure The callback to execute. `null` will clear the current handler.
+     * @param (\Closure(\Throwable):void)|null $closure The callback to execute. `null` will clear the current handler.
      *
-     * @return \Closure|null The previous handler, `null` if there was none.
+     * @return (\Closure(\Throwable):void)|null The previous handler, `null` if there was none.
      */
     public static function setErrorHandler(\Closure $closure = null): ?\Closure
     {

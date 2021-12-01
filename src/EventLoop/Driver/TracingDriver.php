@@ -103,9 +103,9 @@ final class TracingDriver implements Driver
         return $id;
     }
 
-    public function onSignal(int $signo, \Closure $closure): string
+    public function onSignal(int $signal, \Closure $closure): string
     {
-        $id = $this->driver->onSignal($signo, $closure);
+        $id = $this->driver->onSignal($signal, $closure);
 
         $this->creationTraces[$id] = $this->formatStacktrace(\debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS));
         $this->enabledCallbacks[$id] = true;

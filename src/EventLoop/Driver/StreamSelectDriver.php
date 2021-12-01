@@ -89,13 +89,13 @@ final class StreamSelectDriver extends AbstractDriver
      *
      * @throws UnsupportedFeatureException If the pcntl extension is not available.
      */
-    public function onSignal(int $signo, \Closure $closure): string
+    public function onSignal(int $signal, \Closure $closure): string
     {
         if (!$this->signalHandling) {
             throw new UnsupportedFeatureException("Signal handling requires the pcntl extension");
         }
 
-        return parent::onSignal($signo, $closure);
+        return parent::onSignal($signal, $closure);
     }
 
     /**
