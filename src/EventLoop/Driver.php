@@ -240,11 +240,11 @@ interface Driver
      *
      * Subsequent calls to this method will overwrite the previous handler.
      *
-     * @param (\Closure(\Throwable):void)|null $closure The callback to execute. `null` will clear the current handler.
+     * @param (\Closure(\Throwable):void)|null $errorHandler The callback to execute. `null` will clear the current handler.
      *
      * @return (\Closure(\Throwable):void)|null The previous handler, `null` if there was none.
      */
-    public function setErrorHandler(?\Closure $closure = null): ?callable;
+    public function setErrorHandler(?\Closure $errorHandler): ?callable;
 
     /**
      * Get the underlying loop handle.
