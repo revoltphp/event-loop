@@ -5,7 +5,7 @@ namespace Revolt\EventLoop\Driver;
 use PHPUnit\Framework\TestCase;
 use Revolt\EventLoop\Driver;
 use Revolt\EventLoop\InvalidCallbackError;
-use Revolt\EventLoop\UnhandledException;
+use Revolt\EventLoop\UncaughtThrowable;
 use Revolt\EventLoop\UnsupportedFeatureException;
 
 if (!\defined("SIGUSR1")) {
@@ -829,7 +829,7 @@ abstract class DriverTest extends TestCase
                     $loop->enable($callbackId);
                 });
             });
-        } catch (UnhandledException $e) {
+        } catch (UncaughtThrowable $e) {
             throw $e->getPrevious();
         }
     }
@@ -844,7 +844,7 @@ abstract class DriverTest extends TestCase
                     $loop->enable($callbackId);
                 });
             });
-        } catch (UnhandledException $e) {
+        } catch (UncaughtThrowable $e) {
             throw $e->getPrevious();
         }
     }
@@ -1037,7 +1037,7 @@ abstract class DriverTest extends TestCase
                     throw new \Exception("loop error");
                 });
             });
-        } catch (UnhandledException $e) {
+        } catch (UncaughtThrowable $e) {
             throw $e->getPrevious();
         }
     }
@@ -1053,7 +1053,7 @@ abstract class DriverTest extends TestCase
                     throw new \RuntimeException("test");
                 });
             });
-        } catch (UnhandledException $e) {
+        } catch (UncaughtThrowable $e) {
             throw $e->getPrevious();
         }
     }
@@ -1090,7 +1090,7 @@ abstract class DriverTest extends TestCase
                     throw new \Exception("error");
                 });
             });
-        } catch (UnhandledException $e) {
+        } catch (UncaughtThrowable $e) {
             throw $e->getPrevious();
         }
     }
@@ -1109,7 +1109,7 @@ abstract class DriverTest extends TestCase
                     });
                 });
             });
-        } catch (UnhandledException $e) {
+        } catch (UncaughtThrowable $e) {
             throw $e->getPrevious();
         }
     }
@@ -1230,7 +1230,7 @@ abstract class DriverTest extends TestCase
                 });
                 $loop->delay(0.005, \Closure::fromCallable([$loop, "stop"]));
             });
-        } catch (UnhandledException $e) {
+        } catch (UncaughtThrowable $e) {
             throw $e->getPrevious();
         }
     }
@@ -1396,7 +1396,7 @@ abstract class DriverTest extends TestCase
                     $invoked = true;
                 });
             });
-        } catch (UnhandledException $e) {
+        } catch (UncaughtThrowable $e) {
             self::assertSame($exception, $e->getPrevious());
         }
 
@@ -1456,7 +1456,7 @@ abstract class DriverTest extends TestCase
                 $this->loop->run();
 
                 self::fail("Didn't throw expected exception.");
-            } catch (UnhandledException $e) {
+            } catch (UncaughtThrowable $e) {
                 self::assertSame("rethrow test", $e->getPrevious()->getMessage());
             }
         }

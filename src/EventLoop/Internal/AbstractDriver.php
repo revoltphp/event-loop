@@ -5,7 +5,7 @@ namespace Revolt\EventLoop\Internal;
 use Revolt\EventLoop\Driver;
 use Revolt\EventLoop\InvalidCallbackError;
 use Revolt\EventLoop\Suspension;
-use Revolt\EventLoop\UnhandledException;
+use Revolt\EventLoop\UncaughtThrowable;
 
 /**
  * Event loop driver which implements all basic operations to allow interoperability.
@@ -402,7 +402,7 @@ abstract class AbstractDriver implements Driver
     final protected function error(\Throwable $exception): void
     {
         if ($this->errorHandler === null) {
-            $this->setInterrupt(static fn () => throw new UnhandledException($exception));
+            $this->setInterrupt(static fn () => throw UncaughtThrowable::throwingCallback($exception));
             return;
         }
 
@@ -623,7 +623,7 @@ abstract class AbstractDriver implements Driver
             try {
                 $errorHandler($exception);
             } catch (\Throwable $exception) {
-                $this->interrupt = static fn () => throw new UnhandledException($exception);
+                $this->setInterrupt(static fn () => throw UncaughtThrowable::throwingErrorHandler($exception));
             }
         };
     }
