@@ -197,4 +197,18 @@ class EventLoopTest extends TestCase
 
         self::assertSame($send, $received);
     }
+
+    public function testSuspensionThrowingErrorViaInterrupt(): void
+    {
+        $suspension = EventLoop::createSuspension();
+        $error = new \Error("Test error");
+        EventLoop::queue(static fn () => throw $error);
+        EventLoop::defer(static fn () => $suspension->resume("Value"));
+        try {
+            $suspension->suspend();
+            self::fail("Error was not thrown");
+        } catch (\Throwable $t) {
+            self::assertSame($error, $t);
+        }
+    }
 }
