@@ -207,8 +207,8 @@ class EventLoopTest extends TestCase
         try {
             $suspension->suspend();
             self::fail("Error was not thrown");
-        } catch (\Throwable $t) {
-            self::assertSame($error, $t);
+        } catch (UnhandledException $t) {
+            self::assertSame($error, $t->getPrevious());
         }
     }
 }
