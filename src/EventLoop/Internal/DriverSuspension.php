@@ -77,7 +77,7 @@ final class DriverSuspension implements Suspension
         }
 
         // Awaiting from {main}.
-        $lambda = ($this->run)();
+        $result = ($this->run)()();
 
         /** @psalm-suppress RedundantCondition $this->pending should be changed when resumed. */
         if ($this->pending) {
@@ -85,7 +85,7 @@ final class DriverSuspension implements Suspension
             throw new \Error('Scheduler suspended or exited unexpectedly');
         }
 
-        return $lambda();
+        return $result;
     }
 
     public function throw(\Throwable $throwable): void
