@@ -77,15 +77,16 @@ final class DriverSuspension implements Suspension
         }
 
         // Awaiting from {main}.
-        $result = ($this->run)()();
+        $result = ($this->run)();
 
         /** @psalm-suppress RedundantCondition $this->pending should be changed when resumed. */
         if ($this->pending) {
-            // Should only be true if the event loop exited without resolving the promise.
-            throw new \Error('Scheduler suspended or exited unexpectedly');
+            $result && $result(); // Unwrap any uncaught exceptions from the event loop
+
+            throw new \Error('Event loop terminated without resuming the current suspension');
         }
 
-        return $result;
+        return $result();
     }
 
     public function throw(\Throwable $throwable): void
