@@ -60,7 +60,7 @@ abstract class DriverTest extends TestCase
         self::assertNotSame(0, $start);
         self::assertNotSame(0, $invoked);
 
-        self::assertGreaterThanOrEqual(1, $invoked - $start);
+        self::assertGreaterThanOrEqual(0.9995, $invoked - $start);
         self::assertLessThan(1.1, $invoked - $start);
     }
 

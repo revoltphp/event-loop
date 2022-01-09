@@ -75,7 +75,7 @@ abstract class AbstractDriver implements Driver
     /** @var \SplQueue<DriverCallback> */
     private \SplQueue $callbackQueue;
 
-    private bool $idle = true;
+    private bool $idle = false;
     private bool $stopped = false;
 
     public function __construct()
