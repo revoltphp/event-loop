@@ -585,10 +585,14 @@ abstract class AbstractDriver implements Driver
 
                     try {
                         $result = match (true) {
-                            $callback instanceof StreamCallback => ($callback->closure)($callback->id,
-                                $callback->stream),
-                            $callback instanceof SignalCallback => ($callback->closure)($callback->id,
-                                $callback->signal),
+                            $callback instanceof StreamCallback => ($callback->closure)(
+                                $callback->id,
+                                $callback->stream
+                            ),
+                            $callback instanceof SignalCallback => ($callback->closure)(
+                                $callback->id,
+                                $callback->signal
+                            ),
                             default => ($callback->closure)($callback->id),
                         };
 
