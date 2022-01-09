@@ -258,55 +258,58 @@ abstract class DriverTest extends TestCase
         });
     }
 
-    public function provideRegistrationArgs(): array
+    public function provideRegistrationArgs(): iterable
     {
-        return [
+        yield "defer" => [
+            "defer",
             [
-                "defer",
-                [
-                    static function () {
-                    },
-                ],
+                static function () {
+                },
             ],
+        ];
+
+        yield "delay" => [
+            "delay",
             [
-                "delay",
-                [
-                    0.005,
-                    static function () {
-                    },
-                ],
+                0.005,
+                static function () {
+                },
             ],
+        ];
+
+        yield "repeat" => [
+            "repeat",
             [
-                "repeat",
-                [
-                    0.005,
-                    static function () {
-                    },
-                ],
+                0.005,
+                static function () {
+                },
             ],
+        ];
+
+        yield "onWritable" => [
+            "onWritable",
             [
-                "onWritable",
-                [
-                    \STDOUT,
-                    static function () {
-                    },
-                ],
+                \STDOUT,
+                static function () {
+                },
             ],
+        ];
+
+        yield "onReadable" => [
+            "onReadable",
             [
-                "onReadable",
-                [
-                    \STDIN,
-                    static function () {
-                    },
-                ],
+                \STDIN,
+                static function () {
+                },
             ],
+        ];
+
+        yield "onSignal" => [
+            "onSignal",
             [
-                "onSignal",
-                [
-                    \SIGUSR1,
-                    static function () {
-                    },
-                ],
+                \SIGUSR1,
+                static function () {
+                },
             ],
         ];
     }
@@ -599,12 +602,12 @@ abstract class DriverTest extends TestCase
 
                             if ($i--) {
                                 $loop->onSignal(\SIGUSR1, $fn);
-                                $loop->delay(0.001, $sendSignal);
+                                $loop->delay(0, $sendSignal);
                             }
                             $loop->cancel($callbackId);
                         }
                     );
-                    $loop->delay(0.001, $sendSignal);
+                    $loop->delay(0, $sendSignal);
                     $loop->run();
                 }
             };
