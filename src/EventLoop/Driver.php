@@ -118,8 +118,8 @@ interface Driver
      * The created callback MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
-     * @param resource|object $stream The stream to monitor.
-     * @param \Closure(string, resource|object):void $closure The callback to execute.
+     * @param resource $stream The stream to monitor.
+     * @param \Closure(string, resource):void $closure The callback to execute.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      */
@@ -138,8 +138,8 @@ interface Driver
      * The created callback MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
-     * @param resource|object $stream The stream to monitor.
-     * @param \Closure(string, resource|object):void $closure The callback to execute.
+     * @param resource $stream The stream to monitor.
+     * @param \Closure(string, resource):void $closure The callback to execute.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      */
@@ -243,6 +243,8 @@ interface Driver
      * @param (\Closure(\Throwable):void)|null $closure The callback to execute. `null` will clear the current handler.
      *
      * @return (\Closure(\Throwable):void)|null The previous handler, `null` if there was none.
+     *
+     * @psalm-suppress InvalidReturnType TODO: Remove
      */
     public function setErrorHandler(?\Closure $closure = null): ?callable;
 

@@ -60,6 +60,7 @@ abstract class AbstractDriver implements Driver
     /** @var DriverCallback[] */
     private array $enableDeferQueue = [];
 
+    /** @var \Closure(\Throwable)|null */
     private ?\Closure $errorHandler = null;
     private ?\Closure $interrupt = null;
 
