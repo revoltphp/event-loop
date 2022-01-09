@@ -475,13 +475,18 @@ abstract class AbstractDriver implements Driver
 
         $this->enableDeferQueue = [];
 
-        $this->invokeCallbacks();
-
         $blocking = $previousIdle
-            && empty($this->enableDeferQueue)
-            && empty($this->enableQueue)
             && !$this->stopped
             && !$this->isEmpty();
+
+        if ($blocking) {
+            $this->invokeCallbacks();
+
+            /** @psalm-suppress TypeDoesNotContainType */
+            if (!empty($this->enableDeferQueue) || !empty($this->enableQueue)) {
+                $blocking = false;
+            }
+        }
 
         /** @psalm-suppress RedundantCondition */
         $this->dispatch($blocking);

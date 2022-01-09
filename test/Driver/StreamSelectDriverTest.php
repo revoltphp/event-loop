@@ -34,9 +34,17 @@ class StreamSelectDriverTest extends DriverTest
                 $callbackId = $loop->onSignal(SIGUSR1, function () use (&$invoked) {
                     $invoked = true;
                 });
-                $loop->unreference($callbackId);
-                $loop->defer(function () {
+
+                $loop->defer(function () use ($loop, $callbackId) {
                     \posix_kill(\getmypid(), \SIGUSR1);
+
+                    // Two defers, because defer is queued in the first tick and signals only after signals have been
+                    // processed, so the second tick dispatches the signal. At the start of the third tick, we're done!
+                    $loop->defer(function () use ($loop, $callbackId) {
+                        $loop->defer(function () use ($loop, $callbackId) {
+                            $loop->cancel($callbackId);
+                        });
+                    });
                 });
             });
         } finally {
