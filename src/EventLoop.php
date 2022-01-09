@@ -5,7 +5,7 @@ namespace Revolt;
 use Revolt\EventLoop\Driver;
 use Revolt\EventLoop\DriverFactory;
 use Revolt\EventLoop\Internal\AbstractDriver;
-use Revolt\EventLoop\Internal\Callback;
+use Revolt\EventLoop\Internal\DriverCallback;
 use Revolt\EventLoop\InvalidCallbackError;
 use Revolt\EventLoop\Suspension;
 use Revolt\EventLoop\UnsupportedFeatureException;
@@ -42,7 +42,7 @@ final class EventLoop
                     throw new \Error("Can't dispatch during garbage collection.");
                 }
 
-                protected function deactivate(Callback $callback): void
+                protected function deactivate(DriverCallback $callback): void
                 {
                     // do nothing
                 }

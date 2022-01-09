@@ -5,7 +5,7 @@
 namespace Revolt\EventLoop\Driver;
 
 use Revolt\EventLoop\Internal\AbstractDriver;
-use Revolt\EventLoop\Internal\Callback;
+use Revolt\EventLoop\Internal\DriverCallback;
 use Revolt\EventLoop\Internal\SignalCallback;
 use Revolt\EventLoop\Internal\StreamReadableCallback;
 use Revolt\EventLoop\Internal\StreamWritableCallback;
@@ -32,8 +32,8 @@ final class StreamSelectDriver extends AbstractDriver
     /** @var SignalCallback[][] */
     private array $signalCallbacks = [];
 
-    /** @var int[] */
-    private array $signalQueue = [];
+    /** @var \SplQueue<int> */
+    private \SplQueue $signalQueue;
 
     private bool $signalHandling;
 
@@ -45,6 +45,7 @@ final class StreamSelectDriver extends AbstractDriver
     {
         parent::__construct();
 
+        $this->signalQueue = new \SplQueue();
         $this->timerQueue = new TimerQueue();
         $this->signalHandling = \extension_loaded("pcntl");
 
@@ -116,6 +117,20 @@ final class StreamSelectDriver extends AbstractDriver
      */
     protected function dispatch(bool $blocking): void
     {
+        if ($this->signalHandling) {
+            \pcntl_signal_dispatch();
+
+            while (!$this->signalQueue->isEmpty()) {
+                $signal = $this->signalQueue->dequeue();
+
+                foreach ($this->signalCallbacks[$signal] as $callback) {
+                    $this->enqueueCallback($callback);
+                }
+
+                $blocking = false;
+            }
+        }
+
         $this->selectStreams(
             $this->readStreams,
             $this->writeStreams,
@@ -125,32 +140,7 @@ final class StreamSelectDriver extends AbstractDriver
         $now = $this->now();
 
         while ($callback = $this->timerQueue->extract($now)) {
-            if ($callback->repeat) {
-                $callback->enabled = false; // Trick base class into adding to enable queue when calling enable()
-                $this->enable($callback->id);
-            } else {
-                $this->cancel($callback->id);
-            }
-
-            $this->invokeCallback($callback);
-        }
-
-        if ($this->signalHandling) {
-            \pcntl_signal_dispatch();
-
-            while ($this->signalQueue) {
-                $key = \array_key_first($this->signalQueue);
-                $signal = $this->signalQueue[$key];
-                unset($this->signalQueue[$key]);
-
-                foreach ($this->signalCallbacks[$signal] as $callback) {
-                    if (!isset($this->signalCallbacks[$signal][$callback->id])) {
-                        continue;
-                    }
-
-                    $this->invokeCallback($callback);
-                }
-            }
+            $this->enqueueCallback($callback);
         }
     }
 
@@ -197,7 +187,7 @@ final class StreamSelectDriver extends AbstractDriver
     /**
      * {@inheritdoc}
      */
-    protected function deactivate(Callback $callback): void
+    protected function deactivate(DriverCallback $callback): void
     {
         if ($callback instanceof StreamReadableCallback) {
             $streamId = (int) $callback->stream;
@@ -278,11 +268,7 @@ final class StreamSelectDriver extends AbstractDriver
                 }
 
                 foreach ($this->readCallbacks[$streamId] as $callback) {
-                    if (!isset($this->readCallbacks[$streamId][$callback->id])) {
-                        continue; // Callback disabled by another IO callback.
-                    }
-
-                    $this->invokeCallback($callback);
+                    $this->enqueueCallback($callback);
                 }
             }
 
@@ -301,11 +287,7 @@ final class StreamSelectDriver extends AbstractDriver
                 }
 
                 foreach ($this->writeCallbacks[$streamId] as $callback) {
-                    if (!isset($this->writeCallbacks[$streamId][$callback->id])) {
-                        continue; // Callback disabled by another IO callback.
-                    }
-
-                    $this->invokeCallback($callback);
+                    $this->enqueueCallback($callback);
                 }
             }
 
@@ -343,6 +325,6 @@ final class StreamSelectDriver extends AbstractDriver
     private function handleSignal(int $signal): void
     {
         // Queue signals, so we don't suspend inside pcntl_signal_dispatch, which disables signals while it runs
-        $this->signalQueue[] = $signal;
+        $this->signalQueue->enqueue($signal);
     }
 }

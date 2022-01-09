@@ -5,7 +5,7 @@
 namespace Revolt\EventLoop\Driver;
 
 use Revolt\EventLoop\Internal\AbstractDriver;
-use Revolt\EventLoop\Internal\Callback;
+use Revolt\EventLoop\Internal\DriverCallback;
 use Revolt\EventLoop\Internal\SignalCallback;
 use Revolt\EventLoop\Internal\StreamCallback;
 use Revolt\EventLoop\Internal\StreamReadableCallback;
@@ -42,23 +42,15 @@ final class EventDriver extends AbstractDriver
         }
 
         $this->ioCallback = function ($resource, $what, StreamCallback $callback): void {
-            \assert(\is_resource($callback->stream));
-
-            $this->invokeCallback($callback);
+            $this->enqueueCallback($callback);
         };
 
         $this->timerCallback = function ($resource, $what, TimerCallback $callback): void {
-            if ($callback->repeat) {
-                $this->events[$callback->id]->add($callback->interval);
-            } else {
-                $this->cancel($callback->id);
-            }
-
-            $this->invokeCallback($callback);
+            $this->enqueueCallback($callback);
         };
 
         $this->signalCallback = function ($signo, $what, SignalCallback $callback): void {
-            $this->invokeCallback($callback);
+            $this->enqueueCallback($callback);
         };
     }
 
@@ -234,7 +226,7 @@ final class EventDriver extends AbstractDriver
     /**
      * {@inheritdoc}
      */
-    protected function deactivate(Callback $callback): void
+    protected function deactivate(DriverCallback $callback): void
     {
         if (isset($this->events[$id = $callback->id])) {
             $this->events[$id]->del();

@@ -867,10 +867,10 @@ abstract class DriverTest extends TestCase
                 });
 
                 $f = function () use ($loop): array {
-                    $callbacks[] = $loop->defer(\Closure::fromCallable([$this, "fail"]));
-                    $callbacks[] = $loop->delay(0, \Closure::fromCallable([$this, "fail"]));
-                    $callbacks[] = $loop->repeat(0, \Closure::fromCallable([$this, "fail"]));
-                    $callbacks[] = $loop->onWritable(STDIN, \Closure::fromCallable([$this, "fail"]));
+                    $callbacks[] = $loop->defer(fn () => $this->fail());
+                    $callbacks[] = $loop->delay(0, fn () => $this->fail());
+                    $callbacks[] = $loop->repeat(0, fn () => $this->fail());
+                    $callbacks[] = $loop->onWritable(STDIN, fn () => $this->fail());
                     return $callbacks;
                 };
                 $callbacks = $f();
@@ -1091,7 +1091,7 @@ abstract class DriverTest extends TestCase
 
         $this->expectOutputString("caught SIGUSR1");
         $this->start(function (Driver $loop): void {
-            $loop->delay(0.001, function () use ($loop): void {
+            $loop->delay(0.001, function (): void {
                 \posix_kill(\getmypid(), \SIGUSR1);
             });
 

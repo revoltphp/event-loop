@@ -3,7 +3,7 @@
 namespace Revolt\EventLoop\Internal;
 
 /** @internal */
-final class TimerCallback extends Callback
+final class TimerCallback extends DriverCallback
 {
     public function __construct(
         string $id,

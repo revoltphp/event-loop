@@ -5,8 +5,10 @@ namespace Revolt\EventLoop\Internal;
 /**
  * @internal
  */
-abstract class Callback
+abstract class DriverCallback
 {
+    public bool $invokable = true;
+
     public bool $enabled = true;
 
     public bool $referenced = true;

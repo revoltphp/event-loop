@@ -3,7 +3,7 @@
 namespace Revolt\EventLoop\Driver;
 
 use Revolt\EventLoop\Internal\AbstractDriver;
-use Revolt\EventLoop\Internal\Callback;
+use Revolt\EventLoop\Internal\DriverCallback;
 use Revolt\EventLoop\Internal\SignalCallback;
 use Revolt\EventLoop\Internal\StreamCallback;
 use Revolt\EventLoop\Internal\StreamReadableCallback;
@@ -21,7 +21,7 @@ final class UvDriver extends AbstractDriver
     private $handle;
     /** @var resource[] */
     private array $events = [];
-    /** @var Callback[][] */
+    /** @var DriverCallback[][] */
     private array $callbacks = [];
     /** @var resource[] */
     private array $streams = [];
@@ -45,7 +45,7 @@ final class UvDriver extends AbstractDriver
                 foreach ($callbacks as $callback) {
                     \assert($callback instanceof StreamCallback);
 
-                    $flags |= $callback->enabled ? $this->getStreamCallbackFlags($callback) : 0;
+                    $flags |= $callback->invokable ? $this->getStreamCallbackFlags($callback) : 0;
                 }
                 \uv_poll_start($event, $flags, $this->ioCallback);
             }
@@ -55,11 +55,11 @@ final class UvDriver extends AbstractDriver
 
                 // $events is ORed with 4 to trigger callback if no events are indicated (0) or on UV_DISCONNECT (4).
                 // http://docs.libuv.org/en/v1.x/poll.html
-                if (!($callback->enabled && ($this->getStreamCallbackFlags($callback) & $events || ($events | 4) === 4))) {
+                if (!($this->getStreamCallbackFlags($callback) & $events || ($events | 4) === 4)) {
                     continue;
                 }
 
-                $this->invokeCallback($callback);
+                $this->enqueueCallback($callback);
             }
         };
 
@@ -68,23 +68,13 @@ final class UvDriver extends AbstractDriver
 
             \assert($callback instanceof TimerCallback);
 
-            if (!$callback->repeat) {
-                unset($this->events[$callback->id], $this->callbacks[(int) $event]); // Avoid call to uv_is_active().
-                $this->cancel($callback->id); // Remove reference to callback in parent.
-            } else {
-                // Disable and re-enable so it's not executed repeatedly in the same tick
-                // See https://github.com/amphp/amp/issues/131
-                $this->disable($callback->id);
-                $this->enable($callback->id);
-            }
-
-            $this->invokeCallback($callback);
+            $this->enqueueCallback($callback);
         };
 
         $this->signalCallback = function ($event): void {
             $callback = $this->callbacks[(int) $event][0];
 
-            $this->invokeCallback($callback);
+            $this->enqueueCallback($callback);
         };
     }
 
@@ -175,7 +165,7 @@ final class UvDriver extends AbstractDriver
                 foreach ($this->callbacks[$eventId] as $w) {
                     \assert($w instanceof StreamCallback);
 
-                    $flags |= $w->enabled ? ($this->getStreamCallbackFlags($w)) : 0;
+                    $flags |= $w->invokable ? ($this->getStreamCallbackFlags($w)) : 0;
                 }
                 \uv_poll_start($event, $flags, $this->ioCallback);
             } elseif ($callback instanceof TimerCallback) {
@@ -216,7 +206,7 @@ final class UvDriver extends AbstractDriver
     /**
      * {@inheritdoc}
      */
-    protected function deactivate(Callback $callback): void
+    protected function deactivate(DriverCallback $callback): void
     {
         $id = $callback->id;
 
@@ -235,7 +225,7 @@ final class UvDriver extends AbstractDriver
             foreach ($this->callbacks[(int) $event] as $w) {
                 \assert($w instanceof StreamCallback);
 
-                $flags |= $w->enabled ? ($this->getStreamCallbackFlags($w)) : 0;
+                $flags |= $w->invokable ? ($this->getStreamCallbackFlags($w)) : 0;
             }
 
             if ($flags) {
