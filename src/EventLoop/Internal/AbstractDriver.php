@@ -60,7 +60,7 @@ abstract class AbstractDriver implements Driver
     /** @var DriverCallback[] */
     private array $enableDeferQueue = [];
 
-    /** @var \Closure(\Throwable)|null */
+    /** @var null|\Closure(\Throwable) */
     private ?\Closure $errorHandler = null;
     private ?\Closure $interrupt = null;
 
@@ -397,8 +397,6 @@ abstract class AbstractDriver implements Driver
      * Invokes the error handler with the given exception.
      *
      * @param \Throwable $exception The exception thrown from an event callback.
-     *
-     * @throws \Throwable If no error handler has been set.
      */
     final protected function error(\Throwable $exception): void
     {
@@ -408,6 +406,8 @@ abstract class AbstractDriver implements Driver
         }
 
         $fiber = new \Fiber($this->errorCallback);
+
+        /** @noinspection PhpUnhandledExceptionInspection */
         $fiber->start($this->errorHandler, $exception);
     }
 
@@ -428,8 +428,6 @@ abstract class AbstractDriver implements Driver
                 $callback(...$args);
             } catch (\Throwable $exception) {
                 $this->createCallbackFiber();
-
-                // TODO: This might throw
                 $this->error($exception);
             }
 
