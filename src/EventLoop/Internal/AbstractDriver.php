@@ -75,6 +75,7 @@ abstract class AbstractDriver implements Driver
     /** @var \SplQueue<DriverCallback> */
     private \SplQueue $callbackQueue;
 
+    private bool $idle = true;
     private bool $stopped = false;
 
     public function __construct()
@@ -385,9 +386,10 @@ abstract class AbstractDriver implements Driver
      */
     abstract protected function deactivate(DriverCallback $callback): void;
 
-    protected function enqueueCallback(DriverCallback $callback): void
+    final protected function enqueueCallback(DriverCallback $callback): void
     {
         $this->callbackQueue->enqueue($callback);
+        $this->idle = false;
     }
 
     /**
@@ -397,7 +399,7 @@ abstract class AbstractDriver implements Driver
      *
      * @throws \Throwable If no error handler has been set.
      */
-    protected function error(\Throwable $exception): void
+    final protected function error(\Throwable $exception): void
     {
         if ($this->errorHandler === null) {
             $this->setInterrupt(static fn () => throw $exception);
@@ -456,7 +458,7 @@ abstract class AbstractDriver implements Driver
     /**
      * Executes a single tick of the event loop.
      */
-    private function tick(): void
+    private function tick(bool $previousIdle): void
     {
         $this->activate($this->enableQueue);
 
@@ -475,13 +477,14 @@ abstract class AbstractDriver implements Driver
 
         $this->invokeCallbacks();
 
-        /** @psalm-suppress RedundantCondition */
-        $this->dispatch(
-            empty($this->enableDeferQueue)
+        $blocking = $previousIdle
+            && empty($this->enableDeferQueue)
             && empty($this->enableQueue)
             && !$this->stopped
-            && !$this->isEmpty()
-        );
+            && !$this->isEmpty();
+
+        /** @psalm-suppress RedundantCondition */
+        $this->dispatch($blocking);
     }
 
     private function invokeCallbacks(): void
@@ -533,7 +536,10 @@ abstract class AbstractDriver implements Driver
                     return;
                 }
 
-                $this->tick();
+                $previousIdle = $this->idle;
+                $this->idle = true;
+
+                $this->tick($previousIdle);
                 $this->invokeCallbacks();
             }
         });

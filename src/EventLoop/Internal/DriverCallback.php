@@ -7,7 +7,7 @@ namespace Revolt\EventLoop\Internal;
  */
 abstract class DriverCallback
 {
-    public bool $invokable = true;
+    public bool $invokable = false;
 
     public bool $enabled = true;
 

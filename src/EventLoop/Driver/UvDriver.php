@@ -165,7 +165,7 @@ final class UvDriver extends AbstractDriver
                 foreach ($this->callbacks[$eventId] as $w) {
                     \assert($w instanceof StreamCallback);
 
-                    $flags |= $w->invokable ? ($this->getStreamCallbackFlags($w)) : 0;
+                    $flags |= $w->enabled ? ($this->getStreamCallbackFlags($w)) : 0;
                 }
                 \uv_poll_start($event, $flags, $this->ioCallback);
             } elseif ($callback instanceof TimerCallback) {
