@@ -31,11 +31,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: Install OS dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install libuv1-dev libevent-dev
+
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-version }}
-          extensions: fiber-amphp/ext-fiber@master
+          extensions: fiber-amphp/ext-fiber@master, uv-amphp/ext-uv@master, ev-beta, event, :xdebug
 
       - name: Get Composer cache directory
         id: composer-cache
@@ -60,6 +65,7 @@ jobs:
           retry_wait_seconds: 30
           command: |
             composer update --optimize-autoloader --no-interaction --no-progress ${{ matrix.composer-flags }}
+            php -v
             composer info -D
 
       - name: Run tests
