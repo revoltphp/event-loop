@@ -1110,6 +1110,11 @@ abstract class DriverTest extends TestCase
                 });
             });
         } catch (UncaughtThrowable $e) {
+            $this->assertStringStartsWith(
+                'Uncaught RuntimeException thrown in event loop callback Revolt\EventLoop\Driver\DriverTest::Revolt\EventLoop\Driver\{closure} defined in',
+                $e->getMessage()
+            );
+
             throw $e->getPrevious();
         }
     }
