@@ -5,7 +5,7 @@ namespace Revolt;
 use Revolt\EventLoop\Driver;
 use Revolt\EventLoop\DriverFactory;
 use Revolt\EventLoop\Internal\AbstractDriver;
-use Revolt\EventLoop\Internal\Callback;
+use Revolt\EventLoop\Internal\DriverCallback;
 use Revolt\EventLoop\InvalidCallbackError;
 use Revolt\EventLoop\Suspension;
 use Revolt\EventLoop\UnsupportedFeatureException;
@@ -42,7 +42,7 @@ final class EventLoop
                     throw new \Error("Can't dispatch during garbage collection.");
                 }
 
-                protected function deactivate(Callback $callback): void
+                protected function deactivate(DriverCallback $callback): void
                 {
                     // do nothing
                 }
@@ -153,8 +153,8 @@ final class EventLoop
      * The created callback MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
-     * @param resource|object $stream The stream to monitor.
-     * @param \Closure(string, resource|object):void $callback The callback to execute.
+     * @param resource $stream The stream to monitor.
+     * @param \Closure(string, resource):void $closure The callback to execute.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      */
@@ -176,8 +176,8 @@ final class EventLoop
      * The created callback MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
-     * @param resource|object $stream The stream to monitor.
-     * @param \Closure(string, resource|object):void $closure The callback to execute.
+     * @param resource $stream The stream to monitor.
+     * @param \Closure(string, resource):void $closure The callback to execute.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      */

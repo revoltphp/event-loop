@@ -60,7 +60,7 @@ abstract class DriverTest extends TestCase
         self::assertNotSame(0, $start);
         self::assertNotSame(0, $invoked);
 
-        self::assertGreaterThanOrEqual(1, $invoked - $start);
+        self::assertGreaterThanOrEqual(0.9995, $invoked - $start);
         self::assertLessThan(1.1, $invoked - $start);
     }
 
@@ -258,55 +258,58 @@ abstract class DriverTest extends TestCase
         });
     }
 
-    public function provideRegistrationArgs(): array
+    public function provideRegistrationArgs(): iterable
     {
-        return [
+        yield "defer" => [
+            "defer",
             [
-                "defer",
-                [
-                    static function () {
-                    },
-                ],
+                static function () {
+                },
             ],
+        ];
+
+        yield "delay" => [
+            "delay",
             [
-                "delay",
-                [
-                    0.005,
-                    static function () {
-                    },
-                ],
+                0.005,
+                static function () {
+                },
             ],
+        ];
+
+        yield "repeat" => [
+            "repeat",
             [
-                "repeat",
-                [
-                    0.005,
-                    static function () {
-                    },
-                ],
+                0.005,
+                static function () {
+                },
             ],
+        ];
+
+        yield "onWritable" => [
+            "onWritable",
             [
-                "onWritable",
-                [
-                    \STDOUT,
-                    static function () {
-                    },
-                ],
+                \STDOUT,
+                static function () {
+                },
             ],
+        ];
+
+        yield "onReadable" => [
+            "onReadable",
             [
-                "onReadable",
-                [
-                    \STDIN,
-                    static function () {
-                    },
-                ],
+                \STDIN,
+                static function () {
+                },
             ],
+        ];
+
+        yield "onSignal" => [
+            "onSignal",
             [
-                "onSignal",
-                [
-                    \SIGUSR1,
-                    static function () {
-                    },
-                ],
+                \SIGUSR1,
+                static function () {
+                },
             ],
         ];
     }
@@ -599,12 +602,12 @@ abstract class DriverTest extends TestCase
 
                             if ($i--) {
                                 $loop->onSignal(\SIGUSR1, $fn);
-                                $loop->delay(0.001, $sendSignal);
+                                $loop->delay(0, $sendSignal);
                             }
                             $loop->cancel($callbackId);
                         }
                     );
-                    $loop->delay(0.001, $sendSignal);
+                    $loop->delay(0, $sendSignal);
                     $loop->run();
                 }
             };
@@ -867,10 +870,10 @@ abstract class DriverTest extends TestCase
                 });
 
                 $f = function () use ($loop): array {
-                    $callbacks[] = $loop->defer(\Closure::fromCallable([$this, "fail"]));
-                    $callbacks[] = $loop->delay(0, \Closure::fromCallable([$this, "fail"]));
-                    $callbacks[] = $loop->repeat(0, \Closure::fromCallable([$this, "fail"]));
-                    $callbacks[] = $loop->onWritable(STDIN, \Closure::fromCallable([$this, "fail"]));
+                    $callbacks[] = $loop->defer(fn () => $this->fail());
+                    $callbacks[] = $loop->delay(0, fn () => $this->fail());
+                    $callbacks[] = $loop->repeat(0, fn () => $this->fail());
+                    $callbacks[] = $loop->onWritable(STDIN, fn () => $this->fail());
                     return $callbacks;
                 };
                 $callbacks = $f();
@@ -1091,7 +1094,7 @@ abstract class DriverTest extends TestCase
 
         $this->expectOutputString("caught SIGUSR1");
         $this->start(function (Driver $loop): void {
-            $loop->delay(0.001, function () use ($loop): void {
+            $loop->delay(0.001, function (): void {
                 \posix_kill(\getmypid(), \SIGUSR1);
             });
 

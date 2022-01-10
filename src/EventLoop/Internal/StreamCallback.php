@@ -3,7 +3,7 @@
 namespace Revolt\EventLoop\Internal;
 
 /** @internal */
-abstract class StreamCallback extends Callback
+abstract class StreamCallback extends DriverCallback
 {
     /**
      * @param resource|object $stream

@@ -3,6 +3,6 @@
 namespace Revolt\EventLoop\Internal;
 
 /** @internal */
-final class DeferCallback extends Callback
+final class DeferCallback extends DriverCallback
 {
 }

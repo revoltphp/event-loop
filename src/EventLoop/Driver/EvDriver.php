@@ -5,7 +5,7 @@
 namespace Revolt\EventLoop\Driver;
 
 use Revolt\EventLoop\Internal\AbstractDriver;
-use Revolt\EventLoop\Internal\Callback;
+use Revolt\EventLoop\Internal\DriverCallback;
 use Revolt\EventLoop\Internal\SignalCallback;
 use Revolt\EventLoop\Internal\StreamCallback;
 use Revolt\EventLoop\Internal\StreamReadableCallback;
@@ -50,30 +50,21 @@ final class EvDriver extends AbstractDriver
             /** @var StreamCallback $callback */
             $callback = $event->data;
 
-            $this->invokeCallback($callback);
+            $this->enqueueCallback($callback);
         };
 
         $this->timerCallback = function (\EvTimer $event): void {
             /** @var TimerCallback $callback */
             $callback = $event->data;
 
-            if (!$callback->repeat) {
-                $this->cancel($callback->id);
-            } else {
-                // Disable and re-enable so it's not executed repeatedly in the same tick
-                // See https://github.com/amphp/amp/issues/131
-                $this->disable($callback->id);
-                $this->enable($callback->id);
-            }
-
-            $this->invokeCallback($callback);
+            $this->enqueueCallback($callback);
         };
 
         $this->signalCallback = function (\EvSignal $event): void {
             /** @var SignalCallback $callback */
             $callback = $event->data;
 
-            $this->invokeCallback($callback);
+            $this->enqueueCallback($callback);
         };
     }
 
@@ -213,7 +204,7 @@ final class EvDriver extends AbstractDriver
         }
     }
 
-    protected function deactivate(Callback $callback): void
+    protected function deactivate(DriverCallback $callback): void
     {
         if (isset($this->events[$id = $callback->id])) {
             $this->events[$id]->stop();

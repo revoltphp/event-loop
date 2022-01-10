@@ -29,7 +29,7 @@ abstract class AbstractDriver implements Driver
                 );
             }
 
-            if (\PHP_VERSION_ID >= 80000 && \PHP_VERSION_ID < 80100) {
+            if (\PHP_VERSION_ID < 80100) {
                 throw new \Error(
                     "revolt/event-loop requires fibers to be available. " .
                     "You're currently running PHP " . \PHP_VERSION . " without fiber support. " .
@@ -49,24 +49,18 @@ abstract class AbstractDriver implements Driver
     private \Fiber $fiber;
 
     private \Fiber $callbackFiber;
-    private \Fiber $queueFiber;
     private \Closure $errorCallback;
 
-    /** @var Callback[] */
+    /** @var DriverCallback[] */
     private array $callbacks = [];
 
-    /** @var Callback[] */
+    /** @var DriverCallback[] */
     private array $enableQueue = [];
 
-    /** @var Callback[] */
-    private array $deferQueue = [];
+    /** @var DriverCallback[] */
+    private array $enableDeferQueue = [];
 
-    /** @var Callback[] */
-    private array $nextTickQueue = [];
-
-    /** @var array<int, array<int, callable|list<mixed>>> */
-    private array $microQueue = [];
-
+    /** @var null|\Closure(\Throwable) */
     private ?\Closure $errorHandler = null;
     private ?\Closure $interrupt = null;
 
@@ -76,6 +70,13 @@ abstract class AbstractDriver implements Driver
 
     private \stdClass $internalSuspensionMarker;
 
+    /** @var \SplQueue<array{callable, array}> */
+    private \SplQueue $microtaskQueue;
+
+    /** @var \SplQueue<DriverCallback> */
+    private \SplQueue $callbackQueue;
+
+    private bool $idle = false;
     private bool $stopped = false;
 
     public function __construct()
@@ -83,10 +84,11 @@ abstract class AbstractDriver implements Driver
         self::checkFiberSupport();
 
         $this->internalSuspensionMarker = new \stdClass();
+        $this->microtaskQueue = new \SplQueue();
+        $this->callbackQueue = new \SplQueue();
 
         $this->createFiber();
         $this->createCallbackFiber();
-        $this->createQueueFiber();
         $this->createErrorCallback();
 
         /** @psalm-suppress InvalidArgument */
@@ -115,6 +117,7 @@ abstract class AbstractDriver implements Driver
             $this->createFiber();
         }
 
+        /** @noinspection PhpUnhandledExceptionInspection */
         $lambda = $this->fiber->isStarted() ? $this->fiber->resume() : $this->fiber->start();
 
         if ($lambda) {
@@ -136,7 +139,7 @@ abstract class AbstractDriver implements Driver
 
     public function queue(\Closure $closure, mixed ...$args): void
     {
-        $this->microQueue[] = [$closure, $args];
+        $this->microtaskQueue->enqueue([$closure, $args]);
     }
 
     public function defer(\Closure $closure): string
@@ -144,7 +147,7 @@ abstract class AbstractDriver implements Driver
         $deferCallback = new DeferCallback($this->nextId++, $closure);
 
         $this->callbacks[$deferCallback->id] = $deferCallback;
-        $this->nextTickQueue[$deferCallback->id] = $deferCallback;
+        $this->enableDeferQueue[$deferCallback->id] = $deferCallback;
 
         return $deferCallback->id;
     }
@@ -222,7 +225,7 @@ abstract class AbstractDriver implements Driver
         $callback->enabled = true;
 
         if ($callback instanceof DeferCallback) {
-            $this->nextTickQueue[$callback->id] = $callback;
+            $this->enableDeferQueue[$callback->id] = $callback;
         } elseif ($callback instanceof TimerCallback) {
             $callback->expiration = $this->now() + $callback->interval;
             $this->enableQueue[$callback->id] = $callback;
@@ -252,22 +255,17 @@ abstract class AbstractDriver implements Driver
         }
 
         $callback->enabled = false;
+        $callback->invokable = false;
         $id = $callback->id;
 
         if ($callback instanceof DeferCallback) {
-            if (isset($this->nextTickQueue[$id])) {
-                // Callback was only queued to be enabled.
-                unset($this->nextTickQueue[$id]);
-            } else {
-                unset($this->deferQueue[$id]);
-            }
+            // Callback was only queued to be enabled.
+            unset($this->enableDeferQueue[$id]);
+        } elseif (isset($this->enableQueue[$id])) {
+            // Callback was only queued to be enabled.
+            unset($this->enableQueue[$id]);
         } else {
-            if (isset($this->enableQueue[$id])) {
-                // Callback was only queued to be enabled.
-                unset($this->enableQueue[$id]);
-            } else {
-                $this->deactivate($callback);
-            }
+            $this->deactivate($callback);
         }
 
         return $callbackId;
@@ -387,42 +385,20 @@ abstract class AbstractDriver implements Driver
     /**
      * Deactivates (disables) the given callback.
      */
-    abstract protected function deactivate(Callback $callback): void;
+    abstract protected function deactivate(DriverCallback $callback): void;
 
-    protected function invokeCallback(Callback $callback): void
+    final protected function enqueueCallback(DriverCallback $callback): void
     {
-        if ($this->callbackFiber->isRunning()) {
-            $this->createCallbackFiber();
-        }
-
-        try {
-            $yielded = $this->callbackFiber->resume($callback);
-            if ($yielded !== $this->internalSuspensionMarker) {
-                // Callback suspended.
-                $this->createCallbackFiber();
-            }
-        } catch (\Throwable $exception) {
-            $this->createCallbackFiber();
-            $this->error($exception);
-        }
-
-        if ($this->interrupt) {
-            $this->invokeInterrupt();
-        }
-
-        if ($this->microQueue) {
-            $this->invokeMicrotasks();
-        }
+        $this->callbackQueue->enqueue($callback);
+        $this->idle = false;
     }
 
     /**
      * Invokes the error handler with the given exception.
      *
      * @param \Throwable $exception The exception thrown from an event callback.
-     *
-     * @throws \Throwable If no error handler has been set.
      */
-    protected function error(\Throwable $exception): void
+    final protected function error(\Throwable $exception): void
     {
         if ($this->errorHandler === null) {
             $this->setInterrupt(static fn () => throw $exception);
@@ -430,6 +406,8 @@ abstract class AbstractDriver implements Driver
         }
 
         $fiber = new \Fiber($this->errorCallback);
+
+        /** @noinspection PhpUnhandledExceptionInspection */
         $fiber->start($this->errorHandler, $exception);
     }
 
@@ -440,6 +418,27 @@ abstract class AbstractDriver implements Driver
      * in relative comparisons to prior values returned by this method (intervals, expiration calculations, etc.).
      */
     abstract protected function now(): float;
+
+    private function invokeMicrotasks(): void
+    {
+        while (!$this->microtaskQueue->isEmpty()) {
+            [$callback, $args] = $this->microtaskQueue->dequeue();
+
+            try {
+                $callback(...$args);
+            } catch (\Throwable $exception) {
+                $this->createCallbackFiber();
+                $this->error($exception);
+            }
+
+            unset($callback, $args);
+
+            if ($this->interrupt) {
+                /** @noinspection PhpUnhandledExceptionInspection */
+                \Fiber::suspend($this->internalSuspensionMarker);
+            }
+        }
+    }
 
     /**
      * @return bool True if no enabled and referenced callbacks remain in the loop.
@@ -458,60 +457,51 @@ abstract class AbstractDriver implements Driver
     /**
      * Executes a single tick of the event loop.
      */
-    private function tick(): void
+    private function tick(bool $previousIdle): void
     {
-        if (empty($this->deferQueue)) {
-            $this->deferQueue = $this->nextTickQueue;
-        } else {
-            $this->deferQueue = \array_merge($this->deferQueue, $this->nextTickQueue);
-        }
-        $this->nextTickQueue = [];
-
         $this->activate($this->enableQueue);
+
+        foreach ($this->enableQueue as $callback) {
+            $callback->invokable = true;
+        }
+
         $this->enableQueue = [];
 
-        foreach ($this->deferQueue as $callback) {
-            if (!isset($this->deferQueue[$callback->id])) {
-                continue; // Callback disabled by another deferred callback.
+        foreach ($this->enableDeferQueue as $callback) {
+            $callback->invokable = true;
+            $this->enqueueCallback($callback);
+        }
+
+        $this->enableDeferQueue = [];
+
+        $blocking = $previousIdle
+            && !$this->stopped
+            && !$this->isEmpty();
+
+        if ($blocking) {
+            $this->invokeCallbacks();
+
+            /** @psalm-suppress TypeDoesNotContainType */
+            if (!empty($this->enableDeferQueue) || !empty($this->enableQueue)) {
+                $blocking = false;
             }
-
-            unset($this->callbacks[$callback->id], $this->deferQueue[$callback->id]);
-
-            $this->invokeCallback($callback);
         }
 
         /** @psalm-suppress RedundantCondition */
-        $this->dispatch(
-            empty($this->nextTickQueue)
-            && empty($this->enableQueue)
-            && !$this->stopped
-            && !$this->isEmpty()
-        );
+        $this->dispatch($blocking);
     }
 
-    private function invokeMicrotasks(): void
+    private function invokeCallbacks(): void
     {
-        while ($this->microQueue) {
-            foreach ($this->microQueue as $id => $queueEntry) {
-                if ($this->queueFiber->isRunning()) {
-                    $this->createQueueFiber();
-                }
+        while (!$this->microtaskQueue->isEmpty() || !$this->callbackQueue->isEmpty()) {
+            /** @noinspection PhpUnhandledExceptionInspection */
+            $yielded = $this->callbackFiber->resume();
+            if ($yielded !== $this->internalSuspensionMarker) {
+                $this->createCallbackFiber();
+            }
 
-                try {
-                    unset($this->microQueue[$id]);
-
-                    $yielded = $this->queueFiber->resume($queueEntry);
-                    if ($yielded !== $this->internalSuspensionMarker) {
-                        $this->createQueueFiber();
-                    }
-                } catch (\Throwable $exception) {
-                    $this->createQueueFiber();
-                    $this->error($exception);
-                }
-
-                if ($this->interrupt) {
-                    $this->invokeInterrupt();
-                }
+            if ($this->interrupt) {
+                $this->invokeInterrupt();
             }
         }
     }
@@ -529,6 +519,7 @@ abstract class AbstractDriver implements Driver
         $interrupt = $this->interrupt;
         $this->interrupt = null;
 
+        /** @noinspection PhpUnhandledExceptionInspection */
         \Fiber::suspend($interrupt);
     }
 
@@ -537,58 +528,94 @@ abstract class AbstractDriver implements Driver
         $this->fiber = new \Fiber(function () {
             $this->stopped = false;
 
+            // Invoke microtasks if we have some
+            $this->invokeCallbacks();
+
             while (!$this->stopped) {
                 if ($this->interrupt) {
                     $this->invokeInterrupt();
                 }
 
-                $this->invokeMicrotasks();
-
                 if ($this->isEmpty()) {
                     return;
                 }
 
-                $this->tick();
+                $previousIdle = $this->idle;
+                $this->idle = true;
+
+                $this->tick($previousIdle);
+                $this->invokeCallbacks();
             }
         });
     }
 
     private function createCallbackFiber(): void
     {
-        $suspensionMarker = $this->internalSuspensionMarker;
+        $this->callbackFiber = new \Fiber(function (): void {
+            while (true) {
+                /** @noinspection PhpUnhandledExceptionInspection */
+                \Fiber::suspend($this->internalSuspensionMarker);
 
-        $this->callbackFiber = new \Fiber(static function () use ($suspensionMarker): void {
-            while ($callback = \Fiber::suspend($suspensionMarker)) {
-                $result = match (true) {
-                    $callback instanceof StreamCallback => ($callback->closure)($callback->id, $callback->stream),
-                    $callback instanceof SignalCallback => ($callback->closure)($callback->id, $callback->signal),
-                    default => ($callback->closure)($callback->id),
-                };
+                $this->invokeMicrotasks();
 
-                if ($result !== null) {
-                    throw InvalidCallbackError::nonNullReturn($callback->id, $callback->closure);
+                while (!$this->callbackQueue->isEmpty()) {
+                    /** @var DriverCallback $callback */
+                    $callback = $this->callbackQueue->dequeue();
+
+                    if (!isset($this->callbacks[$callback->id]) || !$callback->invokable) {
+                        unset($callback);
+
+                        continue;
+                    }
+
+                    if ($callback instanceof DeferCallback) {
+                        $this->cancel($callback->id);
+                    } elseif ($callback instanceof TimerCallback) {
+                        if (!$callback->repeat) {
+                            $this->cancel($callback->id);
+                        } else {
+                            // Disable and re-enable, so it's not executed repeatedly in the same tick
+                            // See https://github.com/amphp/amp/issues/131
+                            $this->disable($callback->id);
+                            $this->enable($callback->id);
+                        }
+                    }
+
+                    try {
+                        $result = match (true) {
+                            $callback instanceof StreamCallback => ($callback->closure)(
+                                $callback->id,
+                                $callback->stream
+                            ),
+                            $callback instanceof SignalCallback => ($callback->closure)(
+                                $callback->id,
+                                $callback->signal
+                            ),
+                            default => ($callback->closure)($callback->id),
+                        };
+
+                        if ($result !== null) {
+                            throw InvalidCallbackError::nonNullReturn($callback->id, $callback->closure);
+                        }
+                    } catch (\Throwable $exception) {
+                        $this->createCallbackFiber();
+                        $this->error($exception);
+                    }
+
+                    unset($callback);
+
+                    if ($this->interrupt) {
+                        /** @noinspection PhpUnhandledExceptionInspection */
+                        \Fiber::suspend($this->internalSuspensionMarker);
+                    }
+
+                    $this->invokeMicrotasks();
                 }
-
-                unset($callback);
             }
         });
 
+        /** @noinspection PhpUnhandledExceptionInspection */
         $this->callbackFiber->start();
-    }
-
-    private function createQueueFiber(): void
-    {
-        $suspensionMarker = $this->internalSuspensionMarker;
-
-        $this->queueFiber = new \Fiber(static function () use ($suspensionMarker): void {
-            while ([$callback, $args] = \Fiber::suspend($suspensionMarker)) {
-                $callback(...$args);
-
-                unset($callback, $args);
-            }
-        });
-
-        $this->queueFiber->start();
     }
 
     private function createErrorCallback(): void
