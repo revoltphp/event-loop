@@ -71,7 +71,7 @@ abstract class AbstractDriver implements Driver
 
     private \stdClass $internalSuspensionMarker;
 
-    /** @var \SplQueue<array{callable, array}> */
+    /** @var \SplQueue<array{\Closure, array}> */
     private \SplQueue $microtaskQueue;
 
     /** @var \SplQueue<DriverCallback> */
