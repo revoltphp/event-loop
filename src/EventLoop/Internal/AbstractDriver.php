@@ -304,7 +304,8 @@ abstract class AbstractDriver implements Driver
         // User callbacks are always executed outside the event loop fiber, so this should always be false.
         \assert($fiber !== $this->fiber);
 
-        return $this->suspensions[$fiber] ??= new DriverSuspension(
+        // Use current object in case of {main}
+        return $this->suspensions[$fiber ?? $this] ??= new DriverSuspension(
             $this->runCallback,
             $this->queueCallback,
             $this->interruptCallback
