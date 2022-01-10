@@ -1046,7 +1046,8 @@ abstract class DriverTest extends TestCase
         $msg = "";
         $this->loop->setErrorHandler($f = static function (): void {
         });
-        $oldErrorHandler = $this->loop->setErrorHandler(function (\Exception $error) use (&$msg): void {
+        $oldErrorHandler = $this->loop->getErrorHandler();
+        $this->loop->setErrorHandler(function (\Exception $error) use (&$msg): void {
             $msg = $error->getMessage();
         });
         self::assertSame($f, $oldErrorHandler);
