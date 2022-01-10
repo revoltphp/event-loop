@@ -598,7 +598,6 @@ abstract class AbstractDriver implements Driver
                             throw InvalidCallbackError::nonNullReturn($callback->id, $callback->closure);
                         }
                     } catch (\Throwable $exception) {
-                        $this->createCallbackFiber();
                         $this->error($exception);
                     }
 
