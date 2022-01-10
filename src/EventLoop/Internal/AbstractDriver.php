@@ -79,9 +79,13 @@ abstract class AbstractDriver implements Driver
     private bool $idle = false;
     private bool $stopped = false;
 
+    private \WeakMap $suspensions;
+
     public function __construct()
     {
         self::checkFiberSupport();
+
+        $this->suspensions = new \WeakMap();
 
         $this->internalSuspensionMarker = new \stdClass();
         $this->microtaskQueue = new \SplQueue();
@@ -295,10 +299,16 @@ abstract class AbstractDriver implements Driver
 
     public function createSuspension(): Suspension
     {
-        // User callbacks are always executed outside the event loop fiber, so this should always be false.
-        \assert(\Fiber::getCurrent() !== $this->fiber);
+        $fiber = \Fiber::getCurrent();
 
-        return new DriverSuspension($this->runCallback, $this->queueCallback, $this->interruptCallback);
+        // User callbacks are always executed outside the event loop fiber, so this should always be false.
+        \assert($fiber !== $this->fiber);
+
+        return $this->suspensions[$fiber] ??= new DriverSuspension(
+            $this->runCallback,
+            $this->queueCallback,
+            $this->interruptCallback
+        );
     }
 
     public function setErrorHandler(?\Closure $errorHandler): ?callable
