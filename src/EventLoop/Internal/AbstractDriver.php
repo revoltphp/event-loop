@@ -301,11 +301,14 @@ abstract class AbstractDriver implements Driver
         return new DriverSuspension($this->runCallback, $this->queueCallback, $this->interruptCallback);
     }
 
-    public function setErrorHandler(?\Closure $errorHandler): ?callable
+    public function setErrorHandler(?\Closure $errorHandler): void
     {
-        $previous = $this->errorHandler;
         $this->errorHandler = $errorHandler;
-        return $previous;
+    }
+
+    public function getErrorHandler(): ?\Closure
+    {
+        return $this->errorHandler;
     }
 
     public function __debugInfo(): array

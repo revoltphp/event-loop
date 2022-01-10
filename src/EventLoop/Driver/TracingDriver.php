@@ -170,9 +170,14 @@ final class TracingDriver implements Driver
         return $callbackId;
     }
 
-    public function setErrorHandler(?\Closure $errorHandler): ?callable
+    public function setErrorHandler(?\Closure $errorHandler): void
     {
-        return $this->driver->setErrorHandler($errorHandler);
+        $this->driver->setErrorHandler($errorHandler);
+    }
+
+    public function getErrorHandler(): ?\Closure
+    {
+        return $this->driver->getErrorHandler();
     }
 
     /** @inheritdoc */

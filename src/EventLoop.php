@@ -299,13 +299,21 @@ final class EventLoop
      *
      * Subsequent calls to this method will overwrite the previous handler.
      *
-     * @param (\Closure(\Throwable):void)|null $errorHandler The callback to execute. `null` will clear the current handler.
-     *
-     * @return (\Closure(\Throwable):void)|null The previous handler, `null` if there was none.
+     * @param null|\Closure(\Throwable):void $errorHandler The callback to execute. `null` will clear the current handler.
      */
-    public static function setErrorHandler(?\Closure $errorHandler): ?\Closure
+    public static function setErrorHandler(?\Closure $errorHandler): void
     {
-        return self::getDriver()->setErrorHandler($errorHandler);
+        self::getDriver()->setErrorHandler($errorHandler);
+    }
+
+    /**
+     * Gets the error handler closure or {@code null} if none is set.
+     *
+     * @return null|\Closure(\Throwable):void The previous handler, `null` if there was none.
+     */
+    public function getErrorHandler(): ?\Closure
+    {
+        return self::getDriver()->getErrorHandler();
     }
 
     /**
