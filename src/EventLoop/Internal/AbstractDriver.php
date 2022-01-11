@@ -438,7 +438,6 @@ abstract class AbstractDriver implements Driver
             try {
                 $callback(...$args);
             } catch (\Throwable $exception) {
-                $this->createCallbackFiber();
                 $this->error($exception);
             }
 
@@ -506,7 +505,10 @@ abstract class AbstractDriver implements Driver
     {
         while (!$this->microtaskQueue->isEmpty() || !$this->callbackQueue->isEmpty()) {
             /** @noinspection PhpUnhandledExceptionInspection */
-            $yielded = $this->callbackFiber->resume();
+            $yielded = $this->callbackFiber->isStarted()
+                ? $this->callbackFiber->resume()
+                : $this->callbackFiber->start();
+
             if ($yielded !== $this->internalSuspensionMarker) {
                 $this->createCallbackFiber();
             }
@@ -563,10 +565,7 @@ abstract class AbstractDriver implements Driver
     private function createCallbackFiber(): void
     {
         $this->callbackFiber = new \Fiber(function (): void {
-            while (true) {
-                /** @noinspection PhpUnhandledExceptionInspection */
-                \Fiber::suspend($this->internalSuspensionMarker);
-
+            do {
                 $this->invokeMicrotasks();
 
                 while (!$this->callbackQueue->isEmpty()) {
@@ -609,7 +608,6 @@ abstract class AbstractDriver implements Driver
                             throw InvalidCallbackError::nonNullReturn($callback->id, $callback->closure);
                         }
                     } catch (\Throwable $exception) {
-                        $this->createCallbackFiber();
                         $this->error($exception);
                     }
 
@@ -622,11 +620,11 @@ abstract class AbstractDriver implements Driver
 
                     $this->invokeMicrotasks();
                 }
-            }
-        });
 
-        /** @noinspection PhpUnhandledExceptionInspection */
-        $this->callbackFiber->start();
+                /** @noinspection PhpUnhandledExceptionInspection */
+                \Fiber::suspend($this->internalSuspensionMarker);
+            } while (true);
+        });
     }
 
     private function createErrorCallback(): void
