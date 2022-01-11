@@ -240,13 +240,16 @@ interface Driver
      *
      * Subsequent calls to this method will overwrite the previous handler.
      *
-     * @param (\Closure(\Throwable):void)|null $errorHandler The callback to execute. `null` will clear the current handler.
-     *
-     * @return (\Closure(\Throwable):void)|null The previous handler, `null` if there was none.
-     *
-     * @psalm-suppress InvalidReturnType TODO: Remove
+     * @param null|\Closure(\Throwable):void $errorHandler The callback to execute. `null` will clear the current handler.
      */
-    public function setErrorHandler(?\Closure $errorHandler): ?callable;
+    public function setErrorHandler(?\Closure $errorHandler): void;
+
+    /**
+     * Gets the error handler closure or {@code null} if none is set.
+     *
+     * @return null|\Closure(\Throwable):void The previous handler, `null` if there was none.
+     */
+    public function getErrorHandler(): ?\Closure;
 
     /**
      * Get the underlying loop handle.
