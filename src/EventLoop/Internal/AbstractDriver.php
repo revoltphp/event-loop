@@ -427,7 +427,6 @@ abstract class AbstractDriver implements Driver
             try {
                 $callback(...$args);
             } catch (\Throwable $exception) {
-                $this->createCallbackFiber();
                 $this->error($exception);
             }
 
