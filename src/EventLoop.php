@@ -372,7 +372,6 @@ final class EventLoop
      * @deprecated This old name is only kept temporarily to allow smooth transitions from 0.1 to 0.2 and will be
      *     removed at a later point.
      */
-    #[Deprecated]
     public static function createSuspension(): Suspension
     {
         return self::getDriver()->getSuspension();

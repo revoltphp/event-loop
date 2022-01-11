@@ -36,8 +36,7 @@
         "ext-json": "*",
         "phpunit/phpunit": "^9",
         "jetbrains/phpstorm-stubs": "^2019.3",
-        "psalm/phar": "^4.7",
-        "jetbrains/phpstorm-attributes": "^1.0"
+        "psalm/phar": "^4.7"
     },
     "autoload": {
         "psr-4": {
