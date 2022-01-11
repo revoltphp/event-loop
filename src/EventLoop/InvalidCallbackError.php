@@ -2,6 +2,8 @@
 
 namespace Revolt\EventLoop;
 
+use Revolt\EventLoop\Internal\ClosureHelper;
+
 final class InvalidCallbackError extends \Error
 {
     public const E_NONNULL_RETURN = 1;
@@ -12,12 +14,10 @@ final class InvalidCallbackError extends \Error
      */
     public static function nonNullReturn(string $callbackId, \Closure $closure): self
     {
-        $description = self::getClosureDescription($closure);
-
         return new self(
             $callbackId,
             self::E_NONNULL_RETURN,
-            'Non-null return value received from callback ' . $description
+            'Non-null return value received from callback ' . ClosureHelper::getDescription($closure)
         );
     }
 
@@ -29,27 +29,6 @@ final class InvalidCallbackError extends \Error
     public static function invalidIdentifier(string $callbackId): self
     {
         return new self($callbackId, self::E_INVALID_IDENTIFIER, 'Invalid callback identifier ' . $callbackId);
-    }
-
-    private static function getClosureDescription(\Closure $closure): string
-    {
-        try {
-            $reflection = new \ReflectionFunction($closure);
-
-            $description = $reflection->name;
-
-            if ($scopeClass = $reflection->getClosureScopeClass()) {
-                $description = $scopeClass->name . '::' . $description;
-            }
-
-            if ($reflection->getFileName() && $reflection->getStartLine()) {
-                $description .= " defined in " . $reflection->getFileName() . ':' . $reflection->getStartLine();
-            }
-
-            return $description;
-        } catch (\ReflectionException) {
-            return '???';
-        }
     }
 
     /** @var string */

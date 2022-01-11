@@ -257,8 +257,7 @@ final class StreamSelectDriver extends AbstractDriver
             }
 
             if (!$result) {
-                $this->error(new \Exception('Unknown error during stream_select'));
-                return;
+                throw new \Exception('Unknown error during stream_select');
             }
 
             foreach ($read as $stream) {

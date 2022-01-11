@@ -5,6 +5,7 @@ namespace Revolt\EventLoop\Internal;
 use Revolt\EventLoop\Driver;
 use Revolt\EventLoop\InvalidCallbackError;
 use Revolt\EventLoop\Suspension;
+use Revolt\EventLoop\UncaughtThrowable;
 
 /**
  * Event loop driver which implements all basic operations to allow interoperability.
@@ -70,7 +71,7 @@ abstract class AbstractDriver implements Driver
 
     private \stdClass $internalSuspensionMarker;
 
-    /** @var \SplQueue<array{callable, array}> */
+    /** @var \SplQueue<array{\Closure, array}> */
     private \SplQueue $microtaskQueue;
 
     /** @var \SplQueue<DriverCallback> */
@@ -398,10 +399,10 @@ abstract class AbstractDriver implements Driver
      *
      * @param \Throwable $exception The exception thrown from an event callback.
      */
-    final protected function error(\Throwable $exception): void
+    final protected function error(\Closure $closure, \Throwable $exception): void
     {
         if ($this->errorHandler === null) {
-            $this->setInterrupt(static fn () => throw $exception);
+            $this->setInterrupt(static fn () => throw UncaughtThrowable::throwingCallback($closure, $exception));
             return;
         }
 
@@ -427,7 +428,7 @@ abstract class AbstractDriver implements Driver
             try {
                 $callback(...$args);
             } catch (\Throwable $exception) {
-                $this->error($exception);
+                $this->error($callback, $exception);
             }
 
             unset($callback, $args);
@@ -597,7 +598,7 @@ abstract class AbstractDriver implements Driver
                             throw InvalidCallbackError::nonNullReturn($callback->id, $callback->closure);
                         }
                     } catch (\Throwable $exception) {
-                        $this->error($exception);
+                        $this->error($callback->closure, $exception);
                     }
 
                     unset($callback);
@@ -622,7 +623,9 @@ abstract class AbstractDriver implements Driver
             try {
                 $errorHandler($exception);
             } catch (\Throwable $exception) {
-                $this->interrupt = static fn () => throw $exception;
+                $this->setInterrupt(
+                    static fn () => throw UncaughtThrowable::throwingErrorHandler($errorHandler, $exception)
+                );
             }
         };
     }

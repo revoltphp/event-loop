@@ -5,6 +5,7 @@ namespace Revolt\EventLoop\Driver;
 use PHPUnit\Framework\TestCase;
 use Revolt\EventLoop\Driver;
 use Revolt\EventLoop\InvalidCallbackError;
+use Revolt\EventLoop\UncaughtThrowable;
 use Revolt\EventLoop\UnsupportedFeatureException;
 
 if (!\defined("SIGUSR1")) {
@@ -822,22 +823,30 @@ abstract class DriverTest extends TestCase
     {
         $this->expectException(InvalidCallbackError::class);
 
-        $this->start(function (Driver $loop): void {
-            $loop->defer(function ($callbackId) use ($loop): void {
-                $loop->enable($callbackId);
+        try {
+            $this->start(function (Driver $loop): void {
+                $loop->defer(function ($callbackId) use ($loop): void {
+                    $loop->enable($callbackId);
+                });
             });
-        });
+        } catch (UncaughtThrowable $e) {
+            throw $e->getPrevious();
+        }
     }
 
     public function testInvalidityOnDelay(): void
     {
         $this->expectException(InvalidCallbackError::class);
 
-        $this->start(function (Driver $loop): void {
-            $loop->delay(0, function ($callbackId) use ($loop): void {
-                $loop->enable($callbackId);
+        try {
+            $this->start(function (Driver $loop): void {
+                $loop->delay(0, function ($callbackId) use ($loop): void {
+                    $loop->enable($callbackId);
+                });
             });
-        });
+        } catch (UncaughtThrowable $e) {
+            throw $e->getPrevious();
+        }
     }
 
     public function testEventsNotExecutedInSameTickAsEnabled(): void
@@ -1022,11 +1031,15 @@ abstract class DriverTest extends TestCase
         $this->expectException(\Exception::class);
         $this->expectExceptionMessage("loop error");
 
-        $this->start(function (Driver $loop): void {
-            $loop->defer(function (): void {
-                throw new \Exception("loop error");
+        try {
+            $this->start(function (Driver $loop): void {
+                $loop->defer(function (): void {
+                    throw new \Exception("loop error");
+                });
             });
-        });
+        } catch (UncaughtThrowable $e) {
+            throw $e->getPrevious();
+        }
     }
 
     public function testLoopAllowsExceptionToBubbleUpFromRepeatingAlarmDuringStart(): void
@@ -1034,11 +1047,15 @@ abstract class DriverTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage("test");
 
-        $this->start(function (Driver $loop): void {
-            $loop->repeat(0.001, function (): void {
-                throw new \RuntimeException("test");
+        try {
+            $this->start(function (Driver $loop): void {
+                $loop->repeat(0.001, function (): void {
+                    throw new \RuntimeException("test");
+                });
             });
-        });
+        } catch (UncaughtThrowable $e) {
+            throw $e->getPrevious();
+        }
     }
 
     public function testErrorHandlerCapturesUncaughtException(): void
@@ -1066,11 +1083,16 @@ abstract class DriverTest extends TestCase
         $this->loop->setErrorHandler(function (): void {
             throw new \Exception("errorception");
         });
-        $this->start(function (Driver $loop): void {
-            $loop->delay(0.005, function () {
-                throw new \Exception("error");
+
+        try {
+            $this->start(function (Driver $loop): void {
+                $loop->delay(0.005, function () {
+                    throw new \Exception("error");
+                });
             });
-        });
+        } catch (UncaughtThrowable $e) {
+            throw $e->getPrevious();
+        }
     }
 
     public function testLoopException(): void
@@ -1078,14 +1100,23 @@ abstract class DriverTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage("test");
 
-        $this->start(function (Driver $loop): void {
-            $loop->defer(function () use ($loop): void {
-                // force next tick, outside of primary startup tick
-                $loop->defer(function () {
-                    throw new \RuntimeException("test");
+        try {
+            $this->start(function (Driver $loop): void {
+                $loop->defer(function () use ($loop): void {
+                    // force next tick, outside of primary startup tick
+                    $loop->defer(function () {
+                        throw new \RuntimeException("test");
+                    });
                 });
             });
-        });
+        } catch (UncaughtThrowable $e) {
+            $this->assertStringStartsWith(
+                'Uncaught RuntimeException thrown in event loop callback Revolt\EventLoop',
+                $e->getMessage()
+            );
+
+            throw $e->getPrevious();
+        }
     }
 
     public function testOnSignalCallback(): void
@@ -1197,12 +1228,16 @@ abstract class DriverTest extends TestCase
     {
         $this->expectException(\RuntimeException::class);
 
-        $this->start(function (Driver $loop): void {
-            $loop->onWritable(STDOUT, function () {
-                throw new \RuntimeException();
+        try {
+            $this->start(function (Driver $loop): void {
+                $loop->onWritable(STDOUT, function () {
+                    throw new \RuntimeException();
+                });
+                $loop->delay(0.005, \Closure::fromCallable([$loop, "stop"]));
             });
-            $loop->delay(0.005, \Closure::fromCallable([$loop, "stop"]));
-        });
+        } catch (UncaughtThrowable $e) {
+            throw $e->getPrevious();
+        }
     }
 
     public function testReactorRunsUntilNoCallbacksRemain(): void
@@ -1366,8 +1401,8 @@ abstract class DriverTest extends TestCase
                     $invoked = true;
                 });
             });
-        } catch (\Exception $e) {
-            self::assertSame($exception, $e);
+        } catch (UncaughtThrowable $e) {
+            self::assertSame($exception, $e->getPrevious());
         }
 
         $this->start(fn () => null);
@@ -1426,8 +1461,8 @@ abstract class DriverTest extends TestCase
                 $this->loop->run();
 
                 self::fail("Didn't throw expected exception.");
-            } catch (\Exception $e) {
-                self::assertSame("rethrow test", $e->getMessage());
+            } catch (UncaughtThrowable $e) {
+                self::assertSame("rethrow test", $e->getPrevious()->getMessage());
             }
         }
     }
