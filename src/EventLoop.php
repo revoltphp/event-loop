@@ -2,6 +2,7 @@
 
 namespace Revolt;
 
+use JetBrains\PhpStorm\Deprecated;
 use Revolt\EventLoop\Driver;
 use Revolt\EventLoop\DriverFactory;
 use Revolt\EventLoop\Internal\AbstractDriver;
@@ -74,7 +75,7 @@ final class EventLoop
      * Use {@see EventLoop::defer()} if you need these features.
      *
      * @param \Closure $closure The callback to queue.
-     * @param mixed    ...$args The callback arguments.
+     * @param mixed ...$args The callback arguments.
      */
     public static function queue(\Closure $closure, mixed ...$args): void
     {
@@ -357,6 +358,22 @@ final class EventLoop
      * @return Suspension
      */
     public static function getSuspension(): Suspension
+    {
+        return self::getDriver()->getSuspension();
+    }
+
+    /**
+     * Returns an object used to suspend and resume execution of the current fiber or {main}.
+     *
+     * Calls from the same fiber will return the same suspension object.
+     *
+     * @return Suspension
+     *
+     * @deprecated This old name is only kept temporarily to allow smooth transitions from 0.1 to 0.2 and will be
+     *     removed at a later point.
+     */
+    #[Deprecated]
+    public static function createSuspension(): Suspension
     {
         return self::getDriver()->getSuspension();
     }
