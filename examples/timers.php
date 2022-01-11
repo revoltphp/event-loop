@@ -5,7 +5,7 @@ require __DIR__ . '/../vendor/autoload.php';
 
 use Revolt\EventLoop;
 
-$suspension = EventLoop::createSuspension();
+$suspension = EventLoop::getSuspension();
 
 $repeatWatcher = EventLoop::repeat(1, function () {
     print "++ Executing watcher created by Loop::repeat()" . PHP_EOL;

@@ -350,13 +350,15 @@ final class EventLoop
     }
 
     /**
-     * Create an object used to suspend and resume execution, either within a fiber or from {main}.
+     * Returns an object used to suspend and resume execution of the current fiber or {main}.
+     *
+     * Calls from the same fiber will return the same suspension object.
      *
      * @return Suspension
      */
-    public static function createSuspension(): Suspension
+    public static function getSuspension(): Suspension
     {
-        return self::getDriver()->createSuspension();
+        return self::getDriver()->getSuspension();
     }
 
     /**

@@ -31,7 +31,7 @@ class EventLoopTest extends TestCase
         \fwrite($ends[0], "trigger readability callback");
 
         $count = 0;
-        $suspension = EventLoop::createSuspension();
+        $suspension = EventLoop::getSuspension();
 
         EventLoop::onReadable($ends[1], function ($callbackId) use (&$count, $suspension): void {
             $this->assertTrue(true);
@@ -49,7 +49,7 @@ class EventLoopTest extends TestCase
     public function testOnWritable(): void
     {
         $count = 0;
-        $suspension = EventLoop::createSuspension();
+        $suspension = EventLoop::getSuspension();
 
         EventLoop::onWritable(STDOUT, function ($callbackId) use (&$count, $suspension): void {
             $this->assertTrue(true);
@@ -115,7 +115,7 @@ class EventLoopTest extends TestCase
 
     public function testRunAfterSuspension(): void
     {
-        $suspension = EventLoop::createSuspension();
+        $suspension = EventLoop::getSuspension();
 
         EventLoop::defer(fn () => $suspension->resume('test'));
 
@@ -142,7 +142,7 @@ class EventLoopTest extends TestCase
 
         self::assertTrue($invoked);
 
-        $suspension = EventLoop::createSuspension();
+        $suspension = EventLoop::getSuspension();
 
         EventLoop::defer(fn () => $suspension->resume('test'));
 
@@ -154,7 +154,7 @@ class EventLoopTest extends TestCase
         $invoked = false;
 
         EventLoop::queue(function () use (&$invoked): void {
-            $suspension = EventLoop::createSuspension();
+            $suspension = EventLoop::getSuspension();
 
             EventLoop::defer(fn () => $suspension->resume('test'));
 
@@ -173,7 +173,7 @@ class EventLoopTest extends TestCase
         $send = 42;
 
         EventLoop::defer(static function () use (&$received, $send): void {
-            $suspension = EventLoop::createSuspension();
+            $suspension = EventLoop::getSuspension();
             EventLoop::defer(static fn () => $suspension->resume($send));
             $received = $suspension->suspend();
         });
@@ -188,7 +188,7 @@ class EventLoopTest extends TestCase
         $send = 42;
 
         EventLoop::queue(static function () use (&$received, $send): void {
-            $suspension = EventLoop::createSuspension();
+            $suspension = EventLoop::getSuspension();
             EventLoop::defer(static fn () => $suspension->resume($send));
             $received = $suspension->suspend();
         });
@@ -200,7 +200,7 @@ class EventLoopTest extends TestCase
 
     public function testSuspensionThrowingErrorViaInterrupt(): void
     {
-        $suspension = EventLoop::createSuspension();
+        $suspension = EventLoop::getSuspension();
         $error = new \Error("Test error");
         EventLoop::queue(static fn () => throw $error);
         EventLoop::defer(static fn () => $suspension->resume("Value"));

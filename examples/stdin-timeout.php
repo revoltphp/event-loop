@@ -12,7 +12,7 @@ if (\stream_set_blocking(STDIN, false) !== true) {
 
 print "Write something and hit enter" . PHP_EOL;
 
-$suspension = EventLoop::createSuspension();
+$suspension = EventLoop::getSuspension();
 
 $readWatcher = EventLoop::onReadable(STDIN, function ($watcherId, $stream) use ($suspension) {
     EventLoop::cancel($watcherId);

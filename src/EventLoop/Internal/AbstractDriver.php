@@ -297,7 +297,7 @@ abstract class AbstractDriver implements Driver
         return $callbackId;
     }
 
-    public function createSuspension(): Suspension
+    public function getSuspension(): Suspension
     {
         $fiber = \Fiber::getCurrent();
 
