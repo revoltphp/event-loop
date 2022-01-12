@@ -218,7 +218,6 @@ class EventLoopTest extends TestCase
         $suspension = EventLoop::getSuspension();
         $error = new \Error("Test error");
         EventLoop::queue(static fn () => throw $error);
-        EventLoop::defer(static fn () => $suspension->resume("Value"));
         try {
             $suspension->suspend();
             self::fail("Error was not thrown");
