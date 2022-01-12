@@ -15,10 +15,20 @@ final class FiberLocal
 
     public static function clear(): void
     {
-        $fiber = self::getFiber();
-        $localStorage = self::getLocalStorage();
+        $fiber = \Fiber::getCurrent();
 
-        unset($localStorage[$fiber]);
+        if ($fiber === null) {
+            $fiber = self::$mainFiber;
+            if ($fiber === null) {
+                return;
+            }
+        }
+
+        if (self::$localStorage === null) {
+            return;
+        }
+
+        unset(self::$localStorage[$fiber]);
     }
 
     private static function getLocalStorage(): \WeakMap
