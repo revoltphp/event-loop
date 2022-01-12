@@ -574,6 +574,7 @@ abstract class AbstractDriver implements Driver
     private function createCallbackFiber(): void
     {
         $this->callbackFiber = new \Fiber(function (): void {
+            /** @var \Fiber $fiber */
             $fiber = \Fiber::getCurrent();
 
             do {
