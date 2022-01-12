@@ -436,7 +436,7 @@ abstract class AbstractDriver implements Driver
      */
     abstract protected function now(): float;
 
-    private function invokeMicrotasks(): void
+    private function invokeMicrotasks(\Fiber $fiber): void
     {
         while (!$this->microtaskQueue->isEmpty()) {
             [$callback, $args] = $this->microtaskQueue->dequeue();
@@ -446,7 +446,7 @@ abstract class AbstractDriver implements Driver
             } catch (\Throwable $exception) {
                 $this->error($callback, $exception);
             } finally {
-                FiberLocal::clear();
+                FiberLocal::clear($fiber);
             }
 
             unset($callback, $args);
@@ -574,8 +574,10 @@ abstract class AbstractDriver implements Driver
     private function createCallbackFiber(): void
     {
         $this->callbackFiber = new \Fiber(function (): void {
+            $fiber = \Fiber::getCurrent();
+
             do {
-                $this->invokeMicrotasks();
+                $this->invokeMicrotasks($fiber);
 
                 while (!$this->callbackQueue->isEmpty()) {
                     /** @var DriverCallback $callback */
@@ -619,7 +621,7 @@ abstract class AbstractDriver implements Driver
                     } catch (\Throwable $exception) {
                         $this->error($callback->closure, $exception);
                     } finally {
-                        FiberLocal::clear();
+                        FiberLocal::clear($fiber);
                     }
 
                     unset($callback);
@@ -629,7 +631,7 @@ abstract class AbstractDriver implements Driver
                         \Fiber::suspend($this->internalSuspensionMarker);
                     }
 
-                    $this->invokeMicrotasks();
+                    $this->invokeMicrotasks($fiber);
                 }
 
                 /** @noinspection PhpUnhandledExceptionInspection */

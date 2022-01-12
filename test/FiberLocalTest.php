@@ -108,4 +108,23 @@ class FiberLocalTest extends TestCase
         self::assertNull($suspension->suspend());
         self::assertSame($fiber1, $fiber2);
     }
+
+    public function testMicrotaskAfterSuspension(): void
+    {
+        $fiberLocal = new FiberLocal('main');
+
+        $mainSuspension = EventLoop::createSuspension();
+
+        EventLoop::queue(static function () use ($fiberLocal, $mainSuspension) {
+            $fiberLocal->set('fiber');
+
+            $suspension = EventLoop::createSuspension();
+            EventLoop::defer(static fn () => $suspension->resume());
+            $suspension->suspend();
+
+            $mainSuspension->resume($fiberLocal->get());
+        });
+
+        self::assertSame('fiber', $mainSuspension->suspend());
+    }
 }
