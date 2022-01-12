@@ -168,6 +168,18 @@ class EventLoopTest extends TestCase
         self::assertTrue($invoked);
     }
 
+    public function testDoubleResumeWithinFiber(): void
+    {
+        $suspension = EventLoop::createSuspension();
+
+        EventLoop::queue(static function () use ($suspension): void {
+            $suspension->resume();
+            $suspension->resume();
+        });
+
+        $suspension->suspend();
+    }
+
     public function testSuspensionWithinCallback(): void
     {
         $send = 42;
