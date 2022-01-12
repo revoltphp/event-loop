@@ -177,6 +177,9 @@ class EventLoopTest extends TestCase
             $suspension->resume();
         });
 
+        $this->expectException(UncaughtThrowable::class);
+        $this->expectExceptionMessage('Must call suspend() before calling resume()');
+
         $suspension->suspend();
     }
 
