@@ -10,7 +10,8 @@ require __DIR__ . '/../vendor/autoload.php';
  *
  * This might be used to log the current URL, authenticated user, or request identifier in an HTTP server.
  */
-final class Logger {
+final class Logger
+{
     private FiberLocal $transactionId;
 
     public function __construct()
