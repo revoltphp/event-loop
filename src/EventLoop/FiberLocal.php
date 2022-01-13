@@ -54,7 +54,7 @@ final class FiberLocal
      */
     public function set(mixed $value): void
     {
-        self::getFiberStorage()[$this] = $value;
+        self::getFiberStorage()[$this] = [$value];
     }
 
     /**
@@ -65,9 +65,9 @@ final class FiberLocal
         $fiberStorage = self::getFiberStorage();
 
         if (!isset($fiberStorage[$this])) {
-            $fiberStorage[$this] = ($this->initializer)();
+            $fiberStorage[$this] = [($this->initializer)()];
         }
 
-        return $fiberStorage[$this];
+        return $fiberStorage[$this][0];
     }
 }

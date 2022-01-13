@@ -127,4 +127,17 @@ class FiberLocalTest extends TestCase
 
         self::assertSame('fiber', $mainSuspension->suspend());
     }
+
+    public function testInitializeWithNull(): void
+    {
+        $invoked = 0;
+        $fiberLocal = new FiberLocal(function () use (&$invoked) {
+            ++$invoked;
+            return null;
+        });
+
+        self::assertNull($fiberLocal->get());
+        self::assertNull($fiberLocal->get());
+        self::assertSame(1, $invoked);
+    }
 }
