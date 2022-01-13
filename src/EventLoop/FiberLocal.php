@@ -17,6 +17,10 @@ final class FiberLocal
 
     public static function clear(): void
     {
+        if (self::$localStorage === null) {
+            return;
+        }
+
         $fiber = \Fiber::getCurrent() ?? self::$mainFiber;
 
         if ($fiber === null) {
