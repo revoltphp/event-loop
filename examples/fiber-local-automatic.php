@@ -12,11 +12,12 @@ require __DIR__ . '/../vendor/autoload.php';
  */
 final class Logger
 {
+    private int $nextId = 1;
     private FiberLocal $transactionId;
 
     public function __construct()
     {
-        $this->transactionId = new FiberLocal(fn () => null);
+        $this->transactionId = new FiberLocal(fn () => $this->nextId++);
     }
 
     public function setTransactionId(int $transactionId): void
@@ -31,11 +32,8 @@ final class Logger
 }
 
 $logger = new Logger();
-$logger->setTransactionId(1);
 
 EventLoop::delay(1, static function () use ($logger) {
-    $logger->setTransactionId(2);
-
     $logger->log('Initializing...');
 
     $suspension = EventLoop::createSuspension();
