@@ -9,9 +9,9 @@ class FiberLocalTest extends TestCase
 {
     public function test(): void
     {
-        $fiberLocal = new FiberLocal('main');
+        $fiberLocal = new FiberLocal(fn () => 'initial');
 
-        self::assertSame('main', $fiberLocal->get());
+        self::assertSame('initial', $fiberLocal->get());
 
         $suspension = EventLoop::createSuspension();
 
@@ -19,7 +19,7 @@ class FiberLocalTest extends TestCase
             $suspension->resume($fiberLocal->get());
         });
 
-        self::assertNull($suspension->suspend());
+        self::assertSame('initial', $suspension->suspend());
 
         EventLoop::queue(static function () use ($suspension, $fiberLocal) {
             $fiberLocal->set('fiber');
@@ -28,14 +28,14 @@ class FiberLocalTest extends TestCase
         });
 
         self::assertSame('fiber', $suspension->suspend());
-        self::assertSame('main', $fiberLocal->get());
+        self::assertSame('initial', $fiberLocal->get());
     }
 
     public function testManualClear(): void
     {
-        $fiberLocal = new FiberLocal('main');
+        $fiberLocal = new FiberLocal(fn () => 'initial');
 
-        self::assertSame('main', $fiberLocal->get());
+        self::assertSame('initial', $fiberLocal->get());
 
         $suspension = EventLoop::createSuspension();
 
@@ -54,24 +54,24 @@ class FiberLocalTest extends TestCase
         });
 
         self::assertSame('fiber', $suspension->suspend());
-        self::assertSame('main', $fiberLocal->get());
+        self::assertSame('initial', $fiberLocal->get());
 
         FiberLocal::clear();
 
         $fiberSuspension->resume();
 
         self::assertSame('fiber', $suspension->suspend());
-        self::assertNull($fiberLocal->get());
+        self::assertSame('initial', $fiberLocal->get());
 
         $fiberSuspension->resume();
 
-        self::assertNull($suspension->suspend());
-        self::assertNull($fiberLocal->get());
+        self::assertSame('initial', $suspension->suspend());
+        self::assertSame('initial', $fiberLocal->get());
     }
 
     public function testCallbackFiberClear(): void
     {
-        $fiberLocal = new FiberLocal('main');
+        $fiberLocal = new FiberLocal(fn () => 'initial');
 
         $suspension = EventLoop::createSuspension();
 
@@ -85,13 +85,13 @@ class FiberLocalTest extends TestCase
             $suspension->resume($fiberLocal->get());
         });
 
-        self::assertNull($suspension->suspend());
+        self::assertSame('initial', $suspension->suspend());
         self::assertSame($fiber1, $fiber2);
     }
 
     public function testMicrotaskFiberClear(): void
     {
-        $fiberLocal = new FiberLocal('main');
+        $fiberLocal = new FiberLocal(fn () => 'initial');
 
         $suspension = EventLoop::createSuspension();
 
@@ -105,13 +105,13 @@ class FiberLocalTest extends TestCase
             $suspension->resume($fiberLocal->get());
         });
 
-        self::assertNull($suspension->suspend());
+        self::assertSame('initial', $suspension->suspend());
         self::assertSame($fiber1, $fiber2);
     }
 
     public function testMicrotaskAfterSuspension(): void
     {
-        $fiberLocal = new FiberLocal('main');
+        $fiberLocal = new FiberLocal(fn () => 'initial');
 
         $mainSuspension = EventLoop::createSuspension();
 
