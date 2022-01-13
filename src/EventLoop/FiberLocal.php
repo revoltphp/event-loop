@@ -13,18 +13,11 @@ final class FiberLocal
     private static ?\Fiber $mainFiber = null;
     private static ?\WeakMap $localStorage = null;
 
-    public static function clear(?\Fiber $fiber = null): void
+    public static function clear(): void
     {
-        $fiber ??= \Fiber::getCurrent();
+        $fiber = \Fiber::getCurrent() ?? self::$mainFiber;
 
         if ($fiber === null) {
-            $fiber = self::$mainFiber;
-            if ($fiber === null) {
-                return;
-            }
-        }
-
-        if (self::$localStorage === null) {
             return;
         }
 
