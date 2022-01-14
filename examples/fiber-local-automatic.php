@@ -20,11 +20,6 @@ final class Logger
         $this->transactionId = new FiberLocal(fn () => $this->nextId++);
     }
 
-    public function setTransactionId(int $transactionId): void
-    {
-        $this->transactionId->set($transactionId);
-    }
-
     public function log(string $message): void
     {
         echo $this->transactionId->get() . ': ' . $message . PHP_EOL;
