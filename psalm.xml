@@ -16,6 +16,12 @@
     </projectFiles>
 
     <issueHandlers>
+        <DuplicateClass>
+            <errorLevel type="suppress">
+                <directory name="examples" />
+            </errorLevel>
+        </DuplicateClass>
+
         <StringIncrement>
             <errorLevel type="suppress">
                 <directory name="examples"/>

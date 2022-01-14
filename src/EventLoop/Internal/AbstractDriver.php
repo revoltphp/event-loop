@@ -3,6 +3,7 @@
 namespace Revolt\EventLoop\Internal;
 
 use Revolt\EventLoop\Driver;
+use Revolt\EventLoop\FiberLocal;
 use Revolt\EventLoop\InvalidCallbackError;
 use Revolt\EventLoop\Suspension;
 use Revolt\EventLoop\UncaughtThrowable;
@@ -444,6 +445,8 @@ abstract class AbstractDriver implements Driver
                 $callback(...$args);
             } catch (\Throwable $exception) {
                 $this->error($callback, $exception);
+            } finally {
+                FiberLocal::clear();
             }
 
             unset($callback, $args);
@@ -615,6 +618,8 @@ abstract class AbstractDriver implements Driver
                         }
                     } catch (\Throwable $exception) {
                         $this->error($callback->closure, $exception);
+                    } finally {
+                        FiberLocal::clear();
                     }
 
                     unset($callback);

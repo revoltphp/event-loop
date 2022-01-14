@@ -2,6 +2,10 @@
 
 namespace Revolt\EventLoop;
 
+/**
+ * The driver MUST run in its own fiber and execute callbacks in a separate fiber. If fibers are reused, the driver
+ * needs to call {@see FiberLocal::clear()} after running the callback.
+ */
 interface Driver
 {
     /**
