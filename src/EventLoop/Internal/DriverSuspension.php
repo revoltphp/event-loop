@@ -81,6 +81,7 @@ final class DriverSuspension implements Suspension
 
         /** @psalm-suppress RedundantCondition $this->pending should be changed when resumed. */
         if ($this->pending) {
+            $this->pending = false;
             $result && $result(); // Unwrap any uncaught exceptions from the event loop
 
             throw new \Error('Event loop terminated without resuming the current suspension');
