@@ -13,7 +13,7 @@ class FiberLocalTest extends TestCase
 
         self::assertSame('initial', $fiberLocal->get());
 
-        $suspension = EventLoop::createSuspension();
+        $suspension = EventLoop::getSuspension();
 
         EventLoop::queue(static function () use ($suspension, $fiberLocal) {
             $suspension->resume($fiberLocal->get());
@@ -37,10 +37,10 @@ class FiberLocalTest extends TestCase
 
         self::assertSame('initial', $fiberLocal->get());
 
-        $suspension = EventLoop::createSuspension();
+        $suspension = EventLoop::getSuspension();
 
         EventLoop::queue(static function () use ($suspension, $fiberLocal, &$fiberSuspension) {
-            $fiberSuspension = EventLoop::createSuspension();
+            $fiberSuspension = EventLoop::getSuspension();
 
             $fiberLocal->set('fiber');
             $suspension->resume($fiberLocal->get());
@@ -73,7 +73,7 @@ class FiberLocalTest extends TestCase
     {
         $fiberLocal = new FiberLocal(fn () => 'initial');
 
-        $suspension = EventLoop::createSuspension();
+        $suspension = EventLoop::getSuspension();
 
         EventLoop::defer(static function () use ($fiberLocal, &$fiber1) {
             $fiberLocal->set('fiber');
@@ -93,7 +93,7 @@ class FiberLocalTest extends TestCase
     {
         $fiberLocal = new FiberLocal(fn () => 'initial');
 
-        $suspension = EventLoop::createSuspension();
+        $suspension = EventLoop::getSuspension();
 
         EventLoop::queue(static function () use ($fiberLocal, &$fiber1) {
             $fiberLocal->set('fiber');
@@ -113,12 +113,12 @@ class FiberLocalTest extends TestCase
     {
         $fiberLocal = new FiberLocal(fn () => 'initial');
 
-        $mainSuspension = EventLoop::createSuspension();
+        $mainSuspension = EventLoop::getSuspension();
 
         EventLoop::queue(static function () use ($fiberLocal, $mainSuspension) {
             $fiberLocal->set('fiber');
 
-            $suspension = EventLoop::createSuspension();
+            $suspension = EventLoop::getSuspension();
             EventLoop::defer(static fn () => $suspension->resume());
             $suspension->suspend();
 
