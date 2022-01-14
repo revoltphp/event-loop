@@ -38,7 +38,7 @@ EventLoop::delay(1, static function () use ($logger) {
 
     $logger->log('Initializing...');
 
-    $suspension = EventLoop::createSuspension();
+    $suspension = EventLoop::getSuspension();
     EventLoop::delay(1, static fn () => $suspension->resume());
     $suspension->suspend();
 
@@ -47,7 +47,7 @@ EventLoop::delay(1, static function () use ($logger) {
 
 $logger->log('Initializing...');
 
-$suspension = EventLoop::createSuspension();
+$suspension = EventLoop::getSuspension();
 EventLoop::delay(3, static fn () => $suspension->resume());
 $suspension->suspend();
 
