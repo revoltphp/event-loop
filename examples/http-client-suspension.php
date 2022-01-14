@@ -6,7 +6,7 @@ require __DIR__ . '/../vendor/autoload.php';
 
 function fetch(string $url): string
 {
-    $suspension = EventLoop::createSuspension();
+    $suspension = EventLoop::getSuspension();
 
     $parsedUrl = \parse_url($url);
     if (!isset($parsedUrl['host'], $parsedUrl['path'])) {

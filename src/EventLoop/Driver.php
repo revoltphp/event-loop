@@ -30,11 +30,13 @@ interface Driver
     public function stop(): void;
 
     /**
-     * Create an object used to suspend and resume execution, either within a fiber or from {main}.
+     * Returns an object used to suspend and resume execution of the current fiber or {main}.
+     *
+     * Calls from the same fiber will return the same suspension object.
      *
      * @return Suspension
      */
-    public function createSuspension(): Suspension;
+    public function getSuspension(): Suspension;
 
     /**
      * @return bool True if the event loop is running, false if it is stopped.

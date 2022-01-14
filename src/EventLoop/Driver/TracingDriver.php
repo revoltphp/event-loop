@@ -37,9 +37,9 @@ final class TracingDriver implements Driver
         $this->driver->stop();
     }
 
-    public function createSuspension(): Suspension
+    public function getSuspension(): Suspension
     {
-        return $this->driver->createSuspension();
+        return $this->driver->getSuspension();
     }
 
     public function isRunning(): bool

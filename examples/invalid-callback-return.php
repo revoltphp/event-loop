@@ -7,7 +7,7 @@ use Revolt\EventLoop;
 
 print "Press Ctrl+C to exit..." . PHP_EOL;
 
-$suspension = EventLoop::createSuspension();
+$suspension = EventLoop::getSuspension();
 
 EventLoop::onSignal(\SIGINT, function (string $watcherId) use ($suspension) {
     EventLoop::cancel($watcherId);
