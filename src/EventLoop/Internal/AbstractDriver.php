@@ -128,7 +128,7 @@ abstract class AbstractDriver implements Driver
         if ($lambda) {
             $lambda();
 
-            throw new \Error('Interrupt from event loop must throw an exception');
+            throw new \Error('Interrupt from event loop must throw an exception: ' . ClosureHelper::getDescription($lambda));
         }
     }
 
@@ -416,7 +416,8 @@ abstract class AbstractDriver implements Driver
     final protected function error(\Closure $closure, \Throwable $exception): void
     {
         if ($this->errorHandler === null) {
-            $this->setInterrupt(static fn () => throw UncaughtThrowable::throwingCallback($closure, $exception));
+            // Explicitly override the previous interrupt if it exists in this case, hiding the exception is worse
+            $this->interrupt = static fn () => throw UncaughtThrowable::throwingCallback($closure, $exception);
             return;
         }
 
@@ -526,6 +527,7 @@ abstract class AbstractDriver implements Driver
     private function setInterrupt(\Closure $interrupt): void
     {
         \assert($this->interrupt === null);
+
         $this->interrupt = $interrupt;
     }
 
