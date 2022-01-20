@@ -6,6 +6,9 @@ use Revolt\EventLoop\Suspension;
 
 /**
  * @internal
+ *
+ * @template T
+ * @implements Suspension<T>
  */
 final class DriverSuspension implements Suspension
 {

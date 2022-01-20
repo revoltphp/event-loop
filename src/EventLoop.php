@@ -2,7 +2,6 @@
 
 namespace Revolt;
 
-use JetBrains\PhpStorm\Deprecated;
 use Revolt\EventLoop\Driver;
 use Revolt\EventLoop\DriverFactory;
 use Revolt\EventLoop\Internal\AbstractDriver;
@@ -363,7 +362,9 @@ final class EventLoop
      *
      * Calls from the same fiber will return the same suspension object.
      *
-     * @return Suspension
+     * @template T
+     *
+     * @return Suspension<T>
      */
     public static function getSuspension(): Suspension
     {
@@ -375,7 +376,9 @@ final class EventLoop
      *
      * Calls from the same fiber will return the same suspension object.
      *
-     * @return Suspension
+     * @template T
+     *
+     * @return Suspension<T>
      *
      * @deprecated This old name is only kept temporarily to allow smooth transitions from 0.1 to 0.2 and will be
      *     removed at a later point.

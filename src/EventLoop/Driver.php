@@ -38,7 +38,9 @@ interface Driver
      *
      * Calls from the same fiber will return the same suspension object.
      *
-     * @return Suspension
+     * @template T
+     *
+     * @return Suspension<T>
      */
     public function getSuspension(): Suspension;
 
