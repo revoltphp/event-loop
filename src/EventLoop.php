@@ -362,9 +362,7 @@ final class EventLoop
      *
      * Calls from the same fiber will return the same suspension object.
      *
-     * @template T
-     *
-     * @return Suspension<T>
+     * @return Suspension
      */
     public static function getSuspension(): Suspension
     {
@@ -376,9 +374,7 @@ final class EventLoop
      *
      * Calls from the same fiber will return the same suspension object.
      *
-     * @template T
-     *
-     * @return Suspension<T>
+     * @return Suspension
      *
      * @deprecated This old name is only kept temporarily to allow smooth transitions from 0.1 to 0.2 and will be
      *     removed at a later point.
