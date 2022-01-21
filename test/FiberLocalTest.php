@@ -140,4 +140,30 @@ class FiberLocalTest extends TestCase
         self::assertNull($fiberLocal->get());
         self::assertSame(1, $invoked);
     }
+
+    public function testInitializeThrow(): void
+    {
+        $fiberLocal = new FiberLocal(fn () => throw new \Exception('test'));
+
+        self::assertThrows(static fn () => $fiberLocal->get(), \Exception::class);
+
+        // throws repeatedly
+        self::assertThrows(static fn () => $fiberLocal->get(), \Exception::class);
+
+        $fiberLocal->set(null);
+        self::assertNull($fiberLocal->get());
+
+        $fiberLocal->unset();
+        self::assertThrows(static fn () => $fiberLocal->get(), \Exception::class);
+    }
+
+    private static function assertThrows(\Closure $closure, string $exceptionClass): void
+    {
+        try {
+            $closure();
+            self::fail('Expected ' . $exceptionClass . ' to be thrown');
+        } catch (\Throwable $exception) {
+            self::assertInstanceOf($exceptionClass, $exception);
+        }
+    }
 }

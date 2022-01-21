@@ -53,12 +53,15 @@ final class FiberLocal
 
     /**
      * @param T $value
-     *
-     * @return void
      */
     public function set(mixed $value): void
     {
         self::getFiberStorage()[$this] = [$value];
+    }
+
+    public function unset(): void
+    {
+        unset(self::getFiberStorage()[$this]);
     }
 
     /**
