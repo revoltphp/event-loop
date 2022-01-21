@@ -2,7 +2,6 @@
 
 namespace Revolt;
 
-use JetBrains\PhpStorm\Deprecated;
 use Revolt\EventLoop\Driver;
 use Revolt\EventLoop\DriverFactory;
 use Revolt\EventLoop\Internal\AbstractDriver;

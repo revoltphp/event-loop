@@ -8,7 +8,7 @@ namespace Revolt\EventLoop;
  * **Example**
  *
  * ```php
- * $suspension = EventLoop::createSuspension();
+ * $suspension = EventLoop::getSuspension();
  *
  * $promise->then(
  *     fn (mixed $value) => $suspension->resume($value),
@@ -17,11 +17,21 @@ namespace Revolt\EventLoop;
  *
  * $suspension->suspend();
  * ```
+ *
+ * @template T
  */
 interface Suspension
 {
+    /**
+     * @param T $value
+     *
+     * @return void
+     */
     public function resume(mixed $value = null): void;
 
+    /**
+     * @return T
+     */
     public function suspend(): mixed;
 
     public function throw(\Throwable $throwable): void;
