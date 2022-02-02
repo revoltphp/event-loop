@@ -16,12 +16,17 @@ final class Logger
 
     public function __construct()
     {
-        $this->transactionId = new FiberLocal(fn () => null);
+        $this->transactionId = new FiberLocal(fn () => throw new \Exception('Unknown transaction ID'));
     }
 
     public function setTransactionId(int $transactionId): void
     {
         $this->transactionId->set($transactionId);
+    }
+
+    public function unsetTransactionId(): void
+    {
+        $this->transactionId->unset();
     }
 
     public function log(string $message): void
@@ -43,6 +48,26 @@ EventLoop::delay(1, static function () use ($logger) {
     $suspension->suspend();
 
     $logger->log('Done.');
+
+    $logger->unsetTransactionId();
+
+    try {
+        $logger->log('Outside transaction');
+    } catch (\Exception) {
+        echo 'Caught exception, because we\'re outside a transaction' . PHP_EOL;
+    }
+
+    $logger->setTransactionId(3);
+
+    $logger->log('Initializing...');
+
+    $suspension = EventLoop::getSuspension();
+    EventLoop::delay(1, static fn () => $suspension->resume());
+    $suspension->suspend();
+
+    $logger->log('Done.');
+
+    $logger->unsetTransactionId();
 });
 
 $logger->log('Initializing...');
