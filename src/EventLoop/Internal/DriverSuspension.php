@@ -24,6 +24,8 @@ final class DriverSuspension implements Suspension
 
     private bool $pending = false;
 
+    private \WeakReference $suspensions;
+
     /**
      * @param \Closure $run
      * @param \Closure $queue
@@ -31,12 +33,13 @@ final class DriverSuspension implements Suspension
      *
      * @internal
      */
-    public function __construct(\Closure $run, \Closure $queue, \Closure $interrupt)
+    public function __construct(\Closure $run, \Closure $queue, \Closure $interrupt, \WeakMap $suspensions)
     {
         $this->run = $run;
         $this->queue = $queue;
         $this->interrupt = $interrupt;
         $this->fiber = \Fiber::getCurrent();
+        $this->suspensions = \WeakReference::create($suspensions);
     }
 
     public function resume(mixed $value = null): void
@@ -87,7 +90,22 @@ final class DriverSuspension implements Suspension
             $this->pending = false;
             $result && $result(); // Unwrap any uncaught exceptions from the event loop
 
-            throw new \Error('Event loop terminated without resuming the current suspension');
+            $info = '';
+            $suspensions = $this->suspensions->get();
+            if ($suspensions) {
+                \gc_collect_cycles();
+
+                foreach ($suspensions as $suspension) {
+                    if ($suspension->fiber === null) {
+                        continue;
+                    }
+
+                    $reflectionFiber = new \ReflectionFiber($suspension->fiber);
+                    $info .= "\n\n" . $this->formatStacktrace($reflectionFiber->getTrace(\DEBUG_BACKTRACE_IGNORE_ARGS));
+                }
+            }
+
+            throw new \Error('Event loop terminated without resuming the current suspension:' . $info);
         }
 
         return $result();
@@ -107,5 +125,22 @@ final class DriverSuspension implements Suspension
             // Suspend event loop fiber to {main}.
             ($this->interrupt)(static fn () => throw $throwable);
         }
+    }
+
+    private function formatStacktrace(array $trace): string
+    {
+        return \implode("\n", \array_map(static function ($e, $i) {
+            $line = "#{$i} ";
+
+            if (isset($e["file"])) {
+                $line .= "{$e['file']}:{$e['line']} ";
+            }
+
+            if (isset($e["class"], $e["type"])) {
+                $line .= $e["class"] . $e["type"];
+            }
+
+            return $line . $e["function"] . "()";
+        }, $trace, \array_keys($trace)));
     }
 }

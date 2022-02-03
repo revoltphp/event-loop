@@ -310,7 +310,8 @@ abstract class AbstractDriver implements Driver
         return $this->suspensions[$fiber ?? $this] ??= new DriverSuspension(
             $this->runCallback,
             $this->queueCallback,
-            $this->interruptCallback
+            $this->interruptCallback,
+            $this->suspensions
         );
     }
 
