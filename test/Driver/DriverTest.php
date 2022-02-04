@@ -1609,6 +1609,40 @@ abstract class DriverTest extends TestCase
         self::assertNotSame(0, $j);
     }
 
+    public function testLargeDelayTimer(): void
+    {
+        $invoked = false;
+
+        $this->loop->delay(\PHP_INT_MAX, function () use (&$invoked) {
+            $invoked = true;
+        });
+
+        $this->loop->delay(0.002, function () {
+            $this->loop->stop();
+        });
+
+        $this->loop->run();
+
+        self::assertFalse($invoked);
+    }
+
+    public function testLargeRepeatTimer(): void
+    {
+        $invoked = false;
+
+        $this->loop->repeat(\PHP_INT_MAX, function () use (&$invoked) {
+            $invoked = true;
+        });
+
+        $this->loop->delay(0.002, function () {
+            $this->loop->stop();
+        });
+
+        $this->loop->run();
+
+        self::assertFalse($invoked);
+    }
+
     protected function start($cb): void
     {
         $cb($this->loop);

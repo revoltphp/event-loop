@@ -179,8 +179,8 @@ final class UvDriver extends AbstractDriver
 
                 \uv_timer_start(
                     $event,
-                    (int) \ceil(\max(0, $callback->expiration - $now) * 1000),
-                    $callback->repeat ? (int) \ceil($callback->interval * 1000) : 0,
+                    (int) \min(\max(0, \ceil(($callback->expiration - $now) * 1000)), \PHP_INT_MAX),
+                    $callback->repeat ? (int) \min(\max(0, \ceil($callback->interval * 1000)), \PHP_INT_MAX) : 0,
                     $this->timerCallback
                 );
             } elseif ($callback instanceof SignalCallback) {
