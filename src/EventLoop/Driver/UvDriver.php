@@ -109,7 +109,7 @@ final class UvDriver extends AbstractDriver
     }
 
     /**
-     * {@inheritdoc}
+     * @return \UVLoop|resource
      */
     public function getHandle(): mixed
     {
