@@ -35,10 +35,10 @@ if (5 < $t) {
     });
 }
 
-EventLoop::repeat(1, function () use (&$runs) {
+EventLoop::repeat(0.001, function () use (&$runs) {
     $runs++;
 
-    EventLoop::repeat(1, function (string $watcher) {
+    EventLoop::repeat(0.001, function (string $watcher) {
         EventLoop::cancel($watcher);
     });
 });
