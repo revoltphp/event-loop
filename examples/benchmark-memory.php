@@ -13,7 +13,7 @@ use Revolt\EventLoop\Driver;
 require __DIR__ . '/../vendor/autoload.php';
 
 $args = \getopt('t:l:r:');
-$t  = (int) \round((\array_key_exists('t', $args) ? (int) $args['t'] : 0) * 1_000);
+$t  = (int) \round((\array_key_exists('t', $args) ? (int) $args['t'] : 0));
 if (\array_key_exists('d', $args)) {
     if (\is_string($args['d'])) {
         $loopClass = 'Revolt\EventLoop\Driver\\' . $args['d'] . 'Driver';
@@ -25,20 +25,20 @@ if (\array_key_exists('d', $args)) {
         }
     }
 }
-$r = (int) \round((\array_key_exists('r', $args) ? (int) $args['r'] : 2) * 1_000);
+$r = (int) \round((\array_key_exists('r', $args) ? (int) $args['r'] : 2));
 
 $runs = 0;
 
-if (5_000 < $t) {
+if (5 < $t) {
     EventLoop::delay($t, function () {
         EventLoop::getDriver()->stop();
     });
 }
 
-EventLoop::repeat(1, function () use (&$runs) {
+EventLoop::repeat(0.001, function () use (&$runs) {
     $runs++;
 
-    EventLoop::repeat(1_000, function (string $watcher) {
+    EventLoop::repeat(1, function (string $watcher) {
         EventLoop::cancel($watcher);
     });
 });
