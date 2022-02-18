@@ -14,20 +14,21 @@ class FiberLocalTest extends TestCase
         self::assertSame('initial', $fiberLocal->get());
 
         $suspension = EventLoop::getSuspension();
+        $continuation = $suspension->getContinuation();
 
-        EventLoop::queue(static function () use ($suspension, $fiberLocal) {
-            $suspension->resume($fiberLocal->get());
+        EventLoop::queue(static function () use ($continuation, $fiberLocal) {
+            $continuation->resume($fiberLocal->get());
         });
 
-        self::assertSame('initial', $suspension->suspend());
+        self::assertSame('initial', EventLoop::getSuspension()->suspend());
 
-        EventLoop::queue(static function () use ($suspension, $fiberLocal) {
+        EventLoop::queue(static function () use ($continuation, $fiberLocal) {
             $fiberLocal->set('fiber');
 
-            $suspension->resume($fiberLocal->get());
+            $continuation->resume($fiberLocal->get());
         });
 
-        self::assertSame('fiber', $suspension->suspend());
+        self::assertSame('fiber', EventLoop::getSuspension()->suspend());
         self::assertSame('initial', $fiberLocal->get());
     }
 
@@ -38,34 +39,36 @@ class FiberLocalTest extends TestCase
         self::assertSame('initial', $fiberLocal->get());
 
         $suspension = EventLoop::getSuspension();
+        $continuation = $suspension->getContinuation();
 
-        EventLoop::queue(static function () use ($suspension, $fiberLocal, &$fiberSuspension) {
+        EventLoop::queue(static function () use ($continuation, $fiberLocal, &$fiberContinuation) {
             $fiberSuspension = EventLoop::getSuspension();
+            $fiberContinuation = $fiberSuspension->getContinuation();
 
             $fiberLocal->set('fiber');
-            $suspension->resume($fiberLocal->get());
+            $continuation->resume($fiberLocal->get());
 
-            $fiberSuspension->suspend();
-            $suspension->resume($fiberLocal->get());
+            EventLoop::getSuspension()->suspend();
+            $continuation->resume($fiberLocal->get());
 
-            $fiberSuspension->suspend();
+            EventLoop::getSuspension()->suspend();
             FiberLocal::clear();
-            $suspension->resume($fiberLocal->get());
+            $continuation->resume($fiberLocal->get());
         });
 
-        self::assertSame('fiber', $suspension->suspend());
+        self::assertSame('fiber', EventLoop::getSuspension()->suspend());
         self::assertSame('initial', $fiberLocal->get());
 
         FiberLocal::clear();
 
-        $fiberSuspension->resume();
+        $fiberContinuation->resume();
 
-        self::assertSame('fiber', $suspension->suspend());
+        self::assertSame('fiber', EventLoop::getSuspension()->suspend());
         self::assertSame('initial', $fiberLocal->get());
 
-        $fiberSuspension->resume();
+        $fiberContinuation->resume();
 
-        self::assertSame('initial', $suspension->suspend());
+        self::assertSame('initial', EventLoop::getSuspension()->suspend());
         self::assertSame('initial', $fiberLocal->get());
     }
 
@@ -74,18 +77,19 @@ class FiberLocalTest extends TestCase
         $fiberLocal = new FiberLocal(fn () => 'initial');
 
         $suspension = EventLoop::getSuspension();
+        $continuation = $suspension->getContinuation();
 
         EventLoop::defer(static function () use ($fiberLocal, &$fiber1) {
             $fiberLocal->set('fiber');
             $fiber1 = \Fiber::getCurrent();
         });
 
-        EventLoop::defer(static function () use ($suspension, $fiberLocal, &$fiber2) {
+        EventLoop::defer(static function () use ($continuation, $fiberLocal, &$fiber2) {
             $fiber2 = \Fiber::getCurrent();
-            $suspension->resume($fiberLocal->get());
+            $continuation->resume($fiberLocal->get());
         });
 
-        self::assertSame('initial', $suspension->suspend());
+        self::assertSame('initial', EventLoop::getSuspension()->suspend());
         self::assertSame($fiber1, $fiber2);
     }
 
@@ -94,18 +98,19 @@ class FiberLocalTest extends TestCase
         $fiberLocal = new FiberLocal(fn () => 'initial');
 
         $suspension = EventLoop::getSuspension();
+        $continuation = $suspension->getContinuation();
 
         EventLoop::queue(static function () use ($fiberLocal, &$fiber1) {
             $fiberLocal->set('fiber');
             $fiber1 = \Fiber::getCurrent();
         });
 
-        EventLoop::queue(static function () use ($suspension, $fiberLocal, &$fiber2) {
+        EventLoop::queue(static function () use ($continuation, $fiberLocal, &$fiber2) {
             $fiber2 = \Fiber::getCurrent();
-            $suspension->resume($fiberLocal->get());
+            $continuation->resume($fiberLocal->get());
         });
 
-        self::assertSame('initial', $suspension->suspend());
+        self::assertSame('initial', EventLoop::getSuspension()->suspend());
         self::assertSame($fiber1, $fiber2);
     }
 
@@ -114,18 +119,20 @@ class FiberLocalTest extends TestCase
         $fiberLocal = new FiberLocal(fn () => 'initial');
 
         $mainSuspension = EventLoop::getSuspension();
+        $mainContinuation = $mainSuspension->getContinuation();
 
-        EventLoop::queue(static function () use ($fiberLocal, $mainSuspension) {
+        EventLoop::queue(static function () use ($fiberLocal, $mainContinuation) {
             $fiberLocal->set('fiber');
 
             $suspension = EventLoop::getSuspension();
-            EventLoop::defer(static fn () => $suspension->resume());
-            $suspension->suspend();
+            $continuation = $suspension->getContinuation();
+            EventLoop::defer(static fn () => $continuation->resume());
+            EventLoop::getSuspension()->suspend();
 
-            $mainSuspension->resume($fiberLocal->get());
+            $mainContinuation->resume($fiberLocal->get());
         });
 
-        self::assertSame('fiber', $mainSuspension->suspend());
+        self::assertSame('fiber', EventLoop::getSuspension()->suspend());
     }
 
     public function testInitializeWithNull(): void

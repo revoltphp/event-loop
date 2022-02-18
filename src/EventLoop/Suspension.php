@@ -9,10 +9,11 @@ namespace Revolt\EventLoop;
  *
  * ```php
  * $suspension = EventLoop::getSuspension();
+ * $continuation = $suspension->getContinuation();
  *
  * $promise->then(
- *     fn (mixed $value) => $suspension->resume($value),
- *     fn (Throwable $error) => $suspension->throw($error)
+ *     fn (mixed $value) => $continuation->resume($value),
+ *     fn (Throwable $error) => $continuation->throw($error)
  * );
  *
  * $suspension->suspend();
@@ -23,16 +24,12 @@ namespace Revolt\EventLoop;
 interface Suspension
 {
     /**
-     * @param T $value
-     *
-     * @return void
-     */
-    public function resume(mixed $value = null): void;
-
-    /**
      * @return T
      */
     public function suspend(): mixed;
 
-    public function throw(\Throwable $throwable): void;
+    /**
+     * @return Continuation<T>
+     */
+    public function getContinuation(): Continuation;
 }

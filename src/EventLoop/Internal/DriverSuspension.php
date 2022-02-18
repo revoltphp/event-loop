@@ -2,6 +2,7 @@
 
 namespace Revolt\EventLoop\Internal;
 
+use Revolt\EventLoop\Continuation;
 use Revolt\EventLoop\Suspension;
 
 /**
@@ -12,71 +13,43 @@ use Revolt\EventLoop\Suspension;
  */
 final class DriverSuspension implements Suspension
 {
-    private ?\Fiber $fiber;
-
-    private ?\FiberError $fiberError = null;
-
-    private \Closure $run;
-
-    private \Closure $queue;
-
-    private \Closure $interrupt;
-
-    private bool $pending = false;
-
-    private \WeakReference $suspensions;
-
-    /**
-     * @param \Closure $run
-     * @param \Closure $queue
-     * @param \Closure $interrupt
-     *
-     * @internal
-     */
-    public function __construct(\Closure $run, \Closure $queue, \Closure $interrupt, \WeakMap $suspensions)
-    {
-        $this->run = $run;
-        $this->queue = $queue;
-        $this->interrupt = $interrupt;
-        $this->fiber = \Fiber::getCurrent();
-        $this->suspensions = \WeakReference::create($suspensions);
+    public function __construct(
+        private \Closure $run,
+        private \Closure $queue,
+        private \Closure $interrupt,
+        private SuspensionState $state
+    ) {
     }
 
-    public function resume(mixed $value = null): void
+    public function getContinuation(): Continuation
     {
-        if (!$this->pending) {
-            throw $this->fiberError ?? new \Error('Must call suspend() before calling resume()');
+        if ($this->state->reference && $this->state->reference->get() === null) {
+            throw new \Error('Suspension already destroyed; create a Continuation before suspending');
         }
 
-        $this->pending = false;
-
-        if ($this->fiber) {
-            ($this->queue)(\Closure::fromCallable([$this->fiber, 'resume']), $value);
-        } else {
-            // Suspend event loop fiber to {main}.
-            ($this->interrupt)(static fn () => $value);
-        }
+        return new DriverContinuation($this->queue, $this->interrupt, $this->state);
     }
 
     public function suspend(): mixed
     {
-        if ($this->pending) {
+        if ($this->state->pending) {
             throw new \Error('Must call resume() or throw() before calling suspend() again');
         }
 
-        if ($this->fiber !== \Fiber::getCurrent()) {
+        if ($this->state->reference?->get() !== \Fiber::getCurrent()) {
             throw new \Error('Must not call suspend() from another fiber');
         }
 
-        $this->pending = true;
+        $this->state->pending = true;
 
         // Awaiting from within a fiber.
-        if ($this->fiber) {
+        if ($this->state->reference) {
+
             try {
                 return \Fiber::suspend();
             } catch (\FiberError $exception) {
-                $this->pending = false;
-                $this->fiberError = $exception;
+                $this->state->pending = false;
+                $this->state->fiberError = $exception;
 
                 throw $exception;
             }
@@ -86,45 +59,30 @@ final class DriverSuspension implements Suspension
         $result = ($this->run)();
 
         /** @psalm-suppress RedundantCondition $this->pending should be changed when resumed. */
-        if ($this->pending) {
-            $this->pending = false;
+        if ($this->state->pending) {
+            $this->state->pending = false;
             $result && $result(); // Unwrap any uncaught exceptions from the event loop
 
             $info = '';
-            $suspensions = $this->suspensions->get();
-            if ($suspensions) {
+            $states = $this->state->suspensions->get();
+            if ($states) {
                 \gc_collect_cycles();
 
-                foreach ($suspensions as $suspension) {
-                    if ($suspension->fiber === null) {
+                /** @var SuspensionState $state */
+                foreach ($states as $state) {
+                    if ($state->reference?->get() === null) {
                         continue;
                     }
 
-                    $reflectionFiber = new \ReflectionFiber($suspension->fiber);
+                    $reflectionFiber = new \ReflectionFiber($state->fiber);
                     $info .= "\n\n" . $this->formatStacktrace($reflectionFiber->getTrace(\DEBUG_BACKTRACE_IGNORE_ARGS));
                 }
             }
 
-            throw new \Error('Event loop terminated without resuming the current suspension:' . $info);
+            throw new \Error('Event loop terminated without resuming the current continuation:' . $info);
         }
 
         return $result();
-    }
-
-    public function throw(\Throwable $throwable): void
-    {
-        if (!$this->pending) {
-            throw $this->fiberError ?? new \Error('Must call suspend() before calling throw()');
-        }
-
-        $this->pending = false;
-
-        if ($this->fiber) {
-            ($this->queue)(\Closure::fromCallable([$this->fiber, 'throw']), $throwable);
-        } else {
-            // Suspend event loop fiber to {main}.
-            ($this->interrupt)(static fn () => throw $throwable);
-        }
     }
 
     private function formatStacktrace(array $trace): string

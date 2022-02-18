@@ -44,7 +44,8 @@ EventLoop::delay(1, static function () use ($logger) {
     $logger->log('Initializing...');
 
     $suspension = EventLoop::getSuspension();
-    EventLoop::delay(1, static fn () => $suspension->resume());
+    $continuation = $suspension->getContinuation();
+    EventLoop::delay(1, static fn () => $continuation->resume());
     $suspension->suspend();
 
     $logger->log('Done.');
@@ -62,7 +63,8 @@ EventLoop::delay(1, static function () use ($logger) {
     $logger->log('Initializing...');
 
     $suspension = EventLoop::getSuspension();
-    EventLoop::delay(1, static fn () => $suspension->resume());
+    $continuation = $suspension->getContinuation();
+    EventLoop::delay(1, static fn () => $continuation->resume());
     $suspension->suspend();
 
     $logger->log('Done.');
@@ -73,7 +75,8 @@ EventLoop::delay(1, static function () use ($logger) {
 $logger->log('Initializing...');
 
 $suspension = EventLoop::getSuspension();
-EventLoop::delay(3, static fn () => $suspension->resume());
+$continuation = $suspension->getContinuation();
+EventLoop::delay(3, static fn () => $continuation->resume());
 $suspension->suspend();
 
 $logger->log('Done.');

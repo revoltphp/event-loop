@@ -2,6 +2,7 @@
 
 namespace Revolt\EventLoop\Internal;
 
+use Revolt\EventLoop\Continuation;
 use Revolt\EventLoop\Driver;
 use Revolt\EventLoop\FiberLocal;
 use Revolt\EventLoop\InvalidCallbackError;
@@ -311,7 +312,10 @@ abstract class AbstractDriver implements Driver
             $this->runCallback,
             $this->queueCallback,
             $this->interruptCallback,
-            $this->suspensions
+            new SuspensionState(
+                $fiber,
+                \WeakReference::create($this->suspensions),
+            ),
         );
     }
 

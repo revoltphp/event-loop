@@ -32,16 +32,17 @@ class EventLoopTest extends TestCase
 
         $count = 0;
         $suspension = EventLoop::getSuspension();
+        $continuation = $suspension->getContinuation();
 
-        EventLoop::onReadable($ends[1], function ($callbackId) use (&$count, $suspension): void {
+        EventLoop::onReadable($ends[1], function ($callbackId) use (&$count, $continuation): void {
             $this->assertTrue(true);
             EventLoop::cancel($callbackId);
             $count++;
 
-            $suspension->resume();
+            $continuation->resume();
         });
 
-        $suspension->suspend();
+        EventLoop::getSuspension()->suspend();
 
         self::assertSame(1, $count);
     }
@@ -50,16 +51,17 @@ class EventLoopTest extends TestCase
     {
         $count = 0;
         $suspension = EventLoop::getSuspension();
+        $continuation = $suspension->getContinuation();
 
-        EventLoop::onWritable(STDOUT, function ($callbackId) use (&$count, $suspension): void {
+        EventLoop::onWritable(STDOUT, function ($callbackId) use (&$count, $continuation): void {
             $this->assertTrue(true);
             EventLoop::cancel($callbackId);
             $count++;
 
-            $suspension->resume();
+            $continuation->resume();
         });
 
-        $suspension->suspend();
+        EventLoop::getSuspension()->suspend();
 
         self::assertSame(1, $count);
     }
@@ -116,10 +118,11 @@ class EventLoopTest extends TestCase
     public function testRunAfterSuspension(): void
     {
         $suspension = EventLoop::getSuspension();
+        $continuation = $suspension->getContinuation();
 
-        EventLoop::defer(fn () => $suspension->resume('test'));
+        EventLoop::defer(fn () => $continuation->resume('test'));
 
-        self::assertSame($suspension->suspend(), 'test');
+        self::assertSame(EventLoop::getSuspension()->suspend(), 'test');
 
         $invoked = false;
         EventLoop::defer(function () use (&$invoked): void {
@@ -143,10 +146,11 @@ class EventLoopTest extends TestCase
         self::assertTrue($invoked);
 
         $suspension = EventLoop::getSuspension();
+        $continuation = $suspension->getContinuation();
 
-        EventLoop::defer(fn () => $suspension->resume('test'));
+        EventLoop::defer(fn () => $continuation->resume('test'));
 
-        self::assertSame($suspension->suspend(), 'test');
+        self::assertSame(EventLoop::getSuspension()->suspend(), 'test');
     }
 
     public function testSuspensionWithinFiber(): void
@@ -155,10 +159,11 @@ class EventLoopTest extends TestCase
 
         EventLoop::queue(function () use (&$invoked): void {
             $suspension = EventLoop::getSuspension();
+            $continuation = $suspension->getContinuation();
 
-            EventLoop::defer(fn () => $suspension->resume('test'));
+            EventLoop::defer(fn () => $continuation->resume('test'));
 
-            self::assertSame($suspension->suspend(), 'test');
+            self::assertSame(EventLoop::getSuspension()->suspend(), 'test');
 
             $invoked = true;
         });
@@ -170,17 +175,18 @@ class EventLoopTest extends TestCase
 
     public function testDoubleResumeWithinFiber(): void
     {
-        $suspension = EventLoop::createSuspension();
+        $suspension = EventLoop::getSuspension();
+        $continuation = $suspension->getContinuation();
 
-        EventLoop::queue(static function () use ($suspension): void {
-            $suspension->resume();
-            $suspension->resume();
+        EventLoop::queue(static function () use ($continuation): void {
+            $continuation->resume();
+            $continuation->resume();
         });
 
         $this->expectException(UncaughtThrowable::class);
         $this->expectExceptionMessage('Must call suspend() before calling resume()');
 
-        $suspension->suspend();
+        EventLoop::getSuspension()->suspend();
     }
 
     public function testSuspensionWithinCallback(): void
@@ -189,8 +195,9 @@ class EventLoopTest extends TestCase
 
         EventLoop::defer(static function () use (&$received, $send): void {
             $suspension = EventLoop::getSuspension();
-            EventLoop::defer(static fn () => $suspension->resume($send));
-            $received = $suspension->suspend();
+            $continuation = $suspension->getContinuation();
+            EventLoop::defer(static fn () => $continuation->resume($send));
+            $received = EventLoop::getSuspension()->suspend();
         });
 
         EventLoop::run();
@@ -204,8 +211,9 @@ class EventLoopTest extends TestCase
 
         EventLoop::queue(static function () use (&$received, $send): void {
             $suspension = EventLoop::getSuspension();
-            EventLoop::defer(static fn () => $suspension->resume($send));
-            $received = $suspension->suspend();
+            $continuation = $suspension->getContinuation();
+            EventLoop::defer(static fn () => $continuation->resume($send));
+            $received = EventLoop::getSuspension()->suspend();
         });
 
         EventLoop::run();
@@ -216,10 +224,11 @@ class EventLoopTest extends TestCase
     public function testSuspensionThrowingErrorViaInterrupt(): void
     {
         $suspension = EventLoop::getSuspension();
+        $continuation = $suspension->getContinuation();
         $error = new \Error("Test error");
         EventLoop::queue(static fn () => throw $error);
         try {
-            $suspension->suspend();
+            EventLoop::getSuspension()->suspend();
             self::fail("Error was not thrown");
         } catch (UncaughtThrowable $t) {
             self::assertSame($error, $t->getPrevious());

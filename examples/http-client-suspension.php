@@ -7,6 +7,7 @@ require __DIR__ . '/../vendor/autoload.php';
 function fetch(string $url): string
 {
     $suspension = EventLoop::getSuspension();
+    $continuation = $suspension->getContinuation();
 
     $parsedUrl = \parse_url($url);
     if (!isset($parsedUrl['host'], $parsedUrl['path'])) {
@@ -30,7 +31,7 @@ function fetch(string $url): string
     \stream_set_blocking($stream, false);
 
     // wait for connection success/error
-    $watcher = EventLoop::onWritable($stream, fn () => $suspension->resume());
+    $watcher = EventLoop::onWritable($stream, fn () => $continuation->resume());
     $suspension->suspend();
     EventLoop::cancel($watcher);
 
@@ -40,7 +41,7 @@ function fetch(string $url): string
     $buffer = '';
 
     // wait for HTTP response
-    $watcher = EventLoop::onReadable($stream, fn () => $suspension->resume());
+    $watcher = EventLoop::onReadable($stream, fn () => $continuation->resume());
 
     do {
         $suspension->suspend();

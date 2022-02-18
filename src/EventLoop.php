@@ -370,21 +370,6 @@ final class EventLoop
     }
 
     /**
-     * Returns an object used to suspend and resume execution of the current fiber or {main}.
-     *
-     * Calls from the same fiber will return the same suspension object.
-     *
-     * @return Suspension
-     *
-     * @deprecated This old name is only kept temporarily to allow smooth transitions from 0.1 to 0.2 and will be
-     *     removed at a later point.
-     */
-    public static function createSuspension(): Suspension
-    {
-        return self::getDriver()->getSuspension();
-    }
-
-    /**
      * Run the event loop.
      *
      * This function may only be called from {main}, that is, not within a fiber.

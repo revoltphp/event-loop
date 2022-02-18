@@ -13,18 +13,19 @@ if (\stream_set_blocking(STDIN, false) !== true) {
 print "Write something and hit enter" . PHP_EOL;
 
 $suspension = EventLoop::getSuspension();
+$continuation = $suspension->getContinuation();
 
-$readWatcher = EventLoop::onReadable(STDIN, function ($watcherId, $stream) use ($suspension) {
+$readWatcher = EventLoop::onReadable(STDIN, function ($watcherId, $stream) use ($continuation) {
     EventLoop::cancel($watcherId);
 
     $chunk = \fread($stream, 8192);
 
     print "Read " . \strlen($chunk) . " bytes" . PHP_EOL;
 
-    $suspension->resume();
+    $continuation->resume();
 });
 
-$timeoutWatcher = EventLoop::delay(5000, fn () => $suspension->resume());
+$timeoutWatcher = EventLoop::delay(5, fn () => $continuation->resume());
 
 $suspension->suspend();
 
