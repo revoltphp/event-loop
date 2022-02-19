@@ -12,7 +12,10 @@ use Revolt\EventLoop\Suspension;
  */
 final class DriverSuspension implements Suspension
 {
-    private ?\Fiber $fiber;
+    private ?\Fiber $suspendedFiber = null;
+
+    /** @var \WeakReference<\Fiber>|null */
+    private ?\WeakReference $fiberRef;
 
     private ?\FiberError $fiberError = null;
 
@@ -35,10 +38,12 @@ final class DriverSuspension implements Suspension
      */
     public function __construct(\Closure $run, \Closure $queue, \Closure $interrupt, \WeakMap $suspensions)
     {
+        $fiber = \Fiber::getCurrent();
+
         $this->run = $run;
         $this->queue = $queue;
         $this->interrupt = $interrupt;
-        $this->fiber = \Fiber::getCurrent();
+        $this->fiberRef = $fiber ? \WeakReference::create($fiber) : null;
         $this->suspensions = \WeakReference::create($suspensions);
     }
 
@@ -50,8 +55,8 @@ final class DriverSuspension implements Suspension
 
         $this->pending = false;
 
-        if ($this->fiber) {
-            ($this->queue)(\Closure::fromCallable([$this->fiber, 'resume']), $value);
+        if ($this->suspendedFiber) {
+            ($this->queue)(\Closure::fromCallable([$this->suspendedFiber, 'resume']), $value);
         } else {
             // Suspend event loop fiber to {main}.
             ($this->interrupt)(static fn () => $value);
@@ -64,14 +69,17 @@ final class DriverSuspension implements Suspension
             throw new \Error('Must call resume() or throw() before calling suspend() again');
         }
 
-        if ($this->fiber !== \Fiber::getCurrent()) {
+        $fiber = $this->fiberRef?->get();
+
+        if ($fiber !== \Fiber::getCurrent()) {
             throw new \Error('Must not call suspend() from another fiber');
         }
 
         $this->pending = true;
+        $this->suspendedFiber = $fiber;
 
         // Awaiting from within a fiber.
-        if ($this->fiber) {
+        if ($fiber) {
             try {
                 return \Fiber::suspend();
             } catch (\FiberError $exception) {
@@ -79,6 +87,8 @@ final class DriverSuspension implements Suspension
                 $this->fiberError = $exception;
 
                 throw $exception;
+            } finally {
+                $this->suspendedFiber = null;
             }
         }
 
@@ -119,8 +129,8 @@ final class DriverSuspension implements Suspension
 
         $this->pending = false;
 
-        if ($this->fiber) {
-            ($this->queue)(\Closure::fromCallable([$this->fiber, 'throw']), $throwable);
+        if ($this->suspendedFiber) {
+            ($this->queue)(\Closure::fromCallable([$this->suspendedFiber, 'throw']), $throwable);
         } else {
             // Suspend event loop fiber to {main}.
             ($this->interrupt)(static fn () => throw $throwable);
