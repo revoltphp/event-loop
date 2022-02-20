@@ -200,6 +200,34 @@ class EventLoopTest extends TestCase
 
     public function testSuspensionWithinCallbackGarbageCollection(): void
     {
+        $memory = 0;
+        $i = 0;
+
+        EventLoop::repeat(0.001, static function (string $id) use (&$memory, &$i) {
+            $suspension = EventLoop::getSuspension();
+            EventLoop::defer(static fn () => $suspension->resume());
+            $suspension->suspend();
+
+            if (++$i % 250 === 0) {
+                \gc_collect_cycles();
+
+                if ($memory > 0) {
+                    self::assertSame($memory, \memory_get_usage());
+                }
+
+                $memory = \memory_get_usage();
+            }
+
+            if ($i === 10000) {
+                EventLoop::cancel($id);
+            }
+        });
+
+        EventLoop::run();
+    }
+
+    public function testSuspensionWithinCallbackGarbageCollectionSuspended(): void
+    {
         EventLoop::defer(static function () use (&$finally): void {
             $suspension = EventLoop::getSuspension();
 
