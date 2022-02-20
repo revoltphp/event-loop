@@ -203,15 +203,13 @@ class EventLoopTest extends TestCase
         $memory = 0;
         $i = 0;
 
-        EventLoop::repeat(0.001, static function (string $id) use (&$memory, &$i) {
+        EventLoop::repeat(0, static function (string $id) use (&$memory, &$i) {
             $suspension = EventLoop::getSuspension();
             EventLoop::defer(static fn () => $suspension->resume());
             $suspension->suspend();
 
             if (++$i % 250 === 0) {
-                \gc_collect_cycles();
-
-                if ($memory > 0) {
+                if ($i > 500) {
                     self::assertSame($memory, \memory_get_usage());
                 }
 
