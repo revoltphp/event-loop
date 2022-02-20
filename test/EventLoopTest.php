@@ -198,6 +198,26 @@ class EventLoopTest extends TestCase
         self::assertSame($send, $received);
     }
 
+    public function testSuspensionWithinCallbackGarbageCollection(): void
+    {
+        EventLoop::defer(static function () use (&$finally): void {
+            $suspension = EventLoop::getSuspension();
+
+            try {
+                $suspension->suspend();
+            } finally {
+                $finally = true;
+            }
+        });
+
+        EventLoop::run();
+
+        \gc_collect_cycles();
+
+        // This documents an expected failure, should actually be true, but suspensions have to be resumed currently.
+        self::assertNull($finally);
+    }
+
     public function testSuspensionWithinQueue(): void
     {
         $send = 42;
