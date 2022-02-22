@@ -26,7 +26,7 @@ abstract class AbstractDriver implements Driver
     private \Fiber $fiber;
 
     private \Fiber $callbackFiber;
-    private readonly \Closure $errorCallback;
+    private \Closure $errorCallback;
 
     /** @var DriverCallback[] */
     private array $callbacks = [];
@@ -56,7 +56,7 @@ abstract class AbstractDriver implements Driver
     private bool $idle = false;
     private bool $stopped = false;
 
-    private readonly \WeakMap $suspensions;
+    private \WeakMap $suspensions;
 
     public function __construct()
     {
