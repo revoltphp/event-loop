@@ -21,8 +21,7 @@ Different (strongly) opinionated libraries can be built on top of it and both Am
 ## Installation
 
 It may surprise people to learn that the PHP standard library already has everything we need to write event-driven and non-blocking applications.
-This package can be installed as a [Composer](https://getcomposer.org/) dependency on PHP 8 and later.
-PHP 8.1 ships with fibers built-in, but users on PHP 8.0 can install [`ext-fiber`](https://github.com/amphp/ext-fiber) with almost identical behavior.
+This package can be installed as a [Composer](https://getcomposer.org/) dependency on PHP 8.1 and later.
 
 ```bash
 composer require revolt/event-loop
