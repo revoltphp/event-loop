@@ -167,7 +167,9 @@ final class StreamSelectDriver extends AbstractDriver
             } elseif ($callback instanceof SignalCallback) {
                 if (!isset($this->signalCallbacks[$callback->signal])) {
                     \set_error_handler(static function (int $errno, string $errstr): bool {
-                        throw new \Error(\sprintf("Failed to register signal handler; Errno: %d; %s", $errno, $errstr));
+                        throw new UnsupportedFeatureException(
+                            \sprintf("Failed to register signal handler; Errno: %d; %s", $errno, $errstr)
+                        );
                     });
 
                     // Avoid bug in Psalm handling of first-class callables by assigning to a temp variable.
