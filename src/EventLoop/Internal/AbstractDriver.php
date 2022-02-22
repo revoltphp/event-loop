@@ -26,7 +26,7 @@ abstract class AbstractDriver implements Driver
     private \Fiber $fiber;
 
     private \Fiber $callbackFiber;
-    private \Closure $errorCallback;
+    private readonly \Closure $errorCallback;
 
     /** @var DriverCallback[] */
     private array $callbacks = [];
@@ -45,7 +45,7 @@ abstract class AbstractDriver implements Driver
     private readonly \Closure $queueCallback;
     private readonly \Closure $runCallback;
 
-    private \stdClass $internalSuspensionMarker;
+    private readonly \stdClass $internalSuspensionMarker;
 
     /** @var \SplQueue<array{\Closure, array}> */
     private readonly \SplQueue $microtaskQueue;
@@ -56,7 +56,7 @@ abstract class AbstractDriver implements Driver
     private bool $idle = false;
     private bool $stopped = false;
 
-    private \WeakMap $suspensions;
+    private readonly \WeakMap $suspensions;
 
     public function __construct()
     {
