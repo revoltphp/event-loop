@@ -12,9 +12,6 @@ jobs:
       matrix:
         include:
           - operating-system: 'ubuntu-latest'
-            php-version: '8.0'
-            composer-flags: '--ignore-platform-req=php'
-          - operating-system: 'ubuntu-latest'
             php-version: '8.1'
             composer-flags: '--ignore-platform-req=php'
 
@@ -40,7 +37,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-version }}
-          extensions: fiber-amphp/ext-fiber@master, uv-amphp/ext-uv@master, ev-beta, event, :xdebug
+          extensions: uv-amphp/ext-uv@master, ev-beta, event, :xdebug
 
       - name: Get Composer cache directory
         id: composer-cache
