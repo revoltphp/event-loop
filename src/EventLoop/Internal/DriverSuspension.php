@@ -76,10 +76,11 @@ final class DriverSuspension implements Suspension
         }
 
         $this->pending = true;
-        $this->suspendedFiber = $fiber;
 
         // Awaiting from within a fiber.
         if ($fiber) {
+            $this->suspendedFiber = $fiber;
+
             try {
                 return \Fiber::suspend();
             } catch (\FiberError $exception) {
@@ -105,12 +106,14 @@ final class DriverSuspension implements Suspension
             if ($suspensions) {
                 \gc_collect_cycles();
 
+                /** @var self $suspension */
                 foreach ($suspensions as $suspension) {
-                    if ($suspension->fiber === null) {
+                    $fiber = $suspension->fiberRef?->get();
+                    if ($fiber === null) {
                         continue;
                     }
 
-                    $reflectionFiber = new \ReflectionFiber($suspension->fiber);
+                    $reflectionFiber = new \ReflectionFiber($fiber);
                     $info .= "\n\n" . $this->formatStacktrace($reflectionFiber->getTrace(\DEBUG_BACKTRACE_IGNORE_ARGS));
                 }
             }
