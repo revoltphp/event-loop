@@ -55,8 +55,11 @@ final class DriverSuspension implements Suspension
 
         $this->pending = false;
 
-        if ($this->suspendedFiber) {
-            ($this->queue)(\Closure::fromCallable([$this->suspendedFiber, 'resume']), $value);
+        /** @var \Fiber|null $fiber */
+        $fiber = $this->fiberRef?->get();
+
+        if ($fiber) {
+            ($this->queue)(\Closure::fromCallable([$fiber, 'resume']), $value);
         } else {
             // Suspend event loop fiber to {main}.
             ($this->interrupt)(static fn () => $value);
@@ -132,8 +135,11 @@ final class DriverSuspension implements Suspension
 
         $this->pending = false;
 
-        if ($this->suspendedFiber) {
-            ($this->queue)(\Closure::fromCallable([$this->suspendedFiber, 'throw']), $throwable);
+        /** @var \Fiber|null $fiber */
+        $fiber = $this->fiberRef?->get();
+
+        if ($fiber) {
+            ($this->queue)(\Closure::fromCallable([$fiber, 'throw']), $throwable);
         } else {
             // Suspend event loop fiber to {main}.
             ($this->interrupt)(static fn () => throw $throwable);
