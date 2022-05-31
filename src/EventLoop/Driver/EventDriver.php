@@ -210,7 +210,7 @@ final class EventDriver extends AbstractDriver
             }
 
             if ($callback instanceof TimerCallback) {
-                $interval = \max(0, $callback->expiration - $now);
+                $interval = \min(\max(0, $callback->expiration - $now), \PHP_INT_MAX / 2);
                 $this->events[$id]->add($interval > 0 ? $interval : 0);
             } elseif ($callback instanceof SignalCallback) {
                 $this->signals[$id] = $this->events[$id];
