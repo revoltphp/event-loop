@@ -27,11 +27,11 @@ final class EvDriver extends AbstractDriver
     /** @var \EvWatcher[] */
     private array $events = [];
 
-    private \Closure $ioCallback;
+    private readonly \Closure $ioCallback;
 
-    private \Closure $timerCallback;
+    private readonly \Closure $timerCallback;
 
-    private \Closure $signalCallback;
+    private readonly \Closure $signalCallback;
 
     /** @var \EvSignal[] */
     private array $signals = [];

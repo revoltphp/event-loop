@@ -901,11 +901,11 @@ abstract class DriverTest extends TestCase
             $increment++;
         });
         $this->loop->disable($callbackId);
-        $this->loop->delay(0.005, \Closure::fromCallable([$this->loop, "stop"]));
+        $this->loop->delay(0.005, $this->loop->stop(...));
         $this->loop->run();
         self::assertSame(0, $increment);
         $this->loop->enable($callbackId);
-        $this->loop->delay(0.005, \Closure::fromCallable([$this->loop, "stop"]));
+        $this->loop->delay(0.005, $this->loop->stop(...));
         $this->loop->run();
         self::assertSame(1, $increment);
     }
@@ -914,7 +914,7 @@ abstract class DriverTest extends TestCase
     {
         $increment = 0;
         $this->start(function (Driver $loop) use (&$increment): void {
-            $loop->defer(\Closure::fromCallable([$loop, "stop"]));
+            $loop->defer($loop->stop(...));
             $loop->run();
 
             $loop->defer(function () use (&$increment, $loop): void {
@@ -979,7 +979,7 @@ abstract class DriverTest extends TestCase
             });
 
             $loop->disable($callbackId);
-            $loop->delay(0.005, \Closure::fromCallable([$loop, "stop"]));
+            $loop->delay(0.005, $loop->stop(...));
 
             $this->assertSame(0, $increment);
         });
@@ -992,7 +992,7 @@ abstract class DriverTest extends TestCase
             $loop->defer(function () use (&$increment): void {
                 $increment++;
             });
-            $loop->defer(\Closure::fromCallable([$loop, "stop"]));
+            $loop->defer($loop->stop(...));
         });
         self::assertSame(1, $increment);
     }
@@ -1007,7 +1007,7 @@ abstract class DriverTest extends TestCase
                     $increment++;
                 });
             });
-            $loop->defer(\Closure::fromCallable([$loop, "stop"]));
+            $loop->defer($loop->stop(...));
         });
         self::assertSame(1, $increment);
     }
@@ -1177,7 +1177,7 @@ abstract class DriverTest extends TestCase
                 $invoked = true;
             });
 
-            $loop->delay(0.005, \Closure::fromCallable([$loop, "stop"]));
+            $loop->delay(0.005, $loop->stop(...));
         });
 
         self::assertTrue($invoked);
@@ -1191,7 +1191,7 @@ abstract class DriverTest extends TestCase
                 $flag = true;
                 $loop->stop();
             });
-            $loop->delay(0.005, \Closure::fromCallable([$loop, "stop"]));
+            $loop->delay(0.005, $loop->stop(...));
         });
         self::assertTrue($flag);
     }
@@ -1204,7 +1204,7 @@ abstract class DriverTest extends TestCase
                 $increment++;
             });
             $loop->disable($callbackId);
-            $loop->delay(0.005, \Closure::fromCallable([$loop, "stop"]));
+            $loop->delay(0.005, $loop->stop(...));
         });
         self::assertSame(0, $increment);
     }
@@ -1234,7 +1234,7 @@ abstract class DriverTest extends TestCase
                 $loop->onWritable(STDOUT, function () {
                     throw new \RuntimeException();
                 });
-                $loop->delay(0.005, \Closure::fromCallable([$loop, "stop"]));
+                $loop->delay(0.005, $loop->stop(...));
             });
         } catch (UncaughtThrowable $e) {
             throw $e->getPrevious();
@@ -1319,7 +1319,7 @@ abstract class DriverTest extends TestCase
                     $this->fail("Timer was executed despite stopped loop");
                 });
             });
-            $loop->defer(\Closure::fromCallable([$loop, "stop"]));
+            $loop->defer($loop->stop(...));
         });
         self::assertGreaterThan(\microtime(1), $t + 0.1);
     }
@@ -1327,7 +1327,7 @@ abstract class DriverTest extends TestCase
     public function testDeferEnabledInNextTick(): void
     {
         $tick = function () {
-            $this->loop->defer(\Closure::fromCallable([$this->loop, "stop"]));
+            $this->loop->defer($this->loop->stop(...));
             $this->loop->run();
         };
 

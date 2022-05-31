@@ -47,7 +47,7 @@ final class FiberLocal
     /**
      * @param \Closure():T $initializer
      */
-    public function __construct(private \Closure $initializer)
+    public function __construct(private readonly \Closure $initializer)
     {
     }
 

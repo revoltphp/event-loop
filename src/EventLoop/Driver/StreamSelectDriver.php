@@ -27,17 +27,17 @@ final class StreamSelectDriver extends AbstractDriver
     /** @var StreamWritableCallback[][] */
     private array $writeCallbacks = [];
 
-    private TimerQueue $timerQueue;
+    private readonly TimerQueue $timerQueue;
 
     /** @var SignalCallback[][] */
     private array $signalCallbacks = [];
 
     /** @var \SplQueue<int> */
-    private \SplQueue $signalQueue;
+    private readonly \SplQueue $signalQueue;
 
     private bool $signalHandling;
 
-    private \Closure $streamSelectErrorHandler;
+    private readonly \Closure $streamSelectErrorHandler;
 
     private bool $streamSelectIgnoreResult = false;
 
@@ -166,12 +166,19 @@ final class StreamSelectDriver extends AbstractDriver
                 $this->timerQueue->insert($callback);
             } elseif ($callback instanceof SignalCallback) {
                 if (!isset($this->signalCallbacks[$callback->signal])) {
-                    if (!@\pcntl_signal($callback->signal, \Closure::fromCallable([$this, 'handleSignal']))) {
-                        $message = "Failed to register signal handler";
-                        if ($error = \error_get_last()) {
-                            $message .= \sprintf("; Errno: %d; %s", $error["type"], $error["message"]);
-                        }
-                        throw new \Error($message);
+                    \set_error_handler(static function (int $errno, string $errstr): bool {
+                        throw new UnsupportedFeatureException(
+                            \sprintf("Failed to register signal handler; Errno: %d; %s", $errno, $errstr)
+                        );
+                    });
+
+                    // Avoid bug in Psalm handling of first-class callables by assigning to a temp variable.
+                    $handler = $this->handleSignal(...);
+
+                    try {
+                        \pcntl_signal($callback->signal, $handler);
+                    } finally {
+                        \restore_error_handler();
                     }
                 }
 
@@ -209,7 +216,12 @@ final class StreamSelectDriver extends AbstractDriver
 
                 if (empty($this->signalCallbacks[$callback->signal])) {
                     unset($this->signalCallbacks[$callback->signal]);
-                    @\pcntl_signal($callback->signal, \SIG_DFL);
+                    \set_error_handler(static fn () => true);
+                    try {
+                        \pcntl_signal($callback->signal, \SIG_DFL);
+                    } finally {
+                        \restore_error_handler();
+                    }
                 }
             }
         } else {

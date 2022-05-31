@@ -25,9 +25,9 @@ final class UvDriver extends AbstractDriver
     private array $callbacks = [];
     /** @var resource[] */
     private array $streams = [];
-    private \Closure $ioCallback;
-    private \Closure $timerCallback;
-    private \Closure $signalCallback;
+    private readonly \Closure $ioCallback;
+    private readonly \Closure $timerCallback;
+    private readonly \Closure $signalCallback;
 
     public function __construct()
     {

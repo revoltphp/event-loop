@@ -25,9 +25,9 @@ final class EventDriver extends AbstractDriver
     private \EventBase $handle;
     /** @var \Event[] */
     private array $events = [];
-    private \Closure $ioCallback;
-    private \Closure $timerCallback;
-    private \Closure $signalCallback;
+    private readonly \Closure $ioCallback;
+    private readonly \Closure $timerCallback;
+    private readonly \Closure $signalCallback;
     private array $signals = [];
 
     public function __construct()

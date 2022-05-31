@@ -13,21 +13,16 @@ abstract class DriverCallback
 
     public bool $referenced = true;
 
-    public \Closure $closure;
-
     public function __construct(
-        public string $id,
-        \Closure $closure
+        public readonly string $id,
+        public readonly \Closure $closure
     ) {
-        $this->closure = $closure;
     }
 
     /**
      * @param string $property
-     *
-     * @psalm-return no-return
      */
-    public function __get(string $property): void
+    public function __get(string $property): never
     {
         throw new \Error("Unknown property '${property}'");
     }
@@ -35,10 +30,8 @@ abstract class DriverCallback
     /**
      * @param string $property
      * @param mixed  $value
-     *
-     * @psalm-return no-return
      */
-    public function __set(string $property, mixed $value): void
+    public function __set(string $property, mixed $value): never
     {
         throw new \Error("Unknown property '${property}'");
     }
