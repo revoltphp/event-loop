@@ -8,7 +8,7 @@ use Revolt\EventLoop\Suspension;
 
 final class TracingDriver implements Driver
 {
-    private Driver $driver;
+    private readonly Driver $driver;
 
     /** @var true[] */
     private array $enabledCallbacks = [];

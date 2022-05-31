@@ -20,31 +20,6 @@ use Revolt\EventLoop\UncaughtThrowable;
  */
 abstract class AbstractDriver implements Driver
 {
-    private static function checkFiberSupport(): void
-    {
-        if (!\class_exists(\Fiber::class, false)) {
-            if (\PHP_VERSION_ID < 80000) {
-                throw new \Error(
-                    "revolt/event-loop requires fibers to be available. " .
-                    "You're currently running PHP " . \PHP_VERSION . " without fiber support. " .
-                    "Please upgrade to PHP 8.1 or upgrade to PHP 8.0 and install ext-fiber from https://github.com/amphp/ext-fiber."
-                );
-            }
-
-            if (\PHP_VERSION_ID < 80100) {
-                throw new \Error(
-                    "revolt/event-loop requires fibers to be available. " .
-                    "You're currently running PHP " . \PHP_VERSION . " without fiber support. " .
-                    "Please upgrade to PHP 8.1 or install ext-fiber from https://github.com/amphp/ext-fiber."
-                );
-            }
-
-            throw new \Error(
-                "revolt/event-loop requires PHP 8.1 or ext-fiber. You are currently running PHP " . \PHP_VERSION . "."
-            );
-        }
-    }
-
     /** @var string Next callback identifier. */
     private string $nextId = "a";
 
@@ -66,17 +41,17 @@ abstract class AbstractDriver implements Driver
     private ?\Closure $errorHandler = null;
     private ?\Closure $interrupt = null;
 
-    private \Closure $interruptCallback;
-    private \Closure $queueCallback;
-    private \Closure $runCallback;
+    private readonly \Closure $interruptCallback;
+    private readonly \Closure $queueCallback;
+    private readonly \Closure $runCallback;
 
     private \stdClass $internalSuspensionMarker;
 
     /** @var \SplQueue<array{\Closure, array}> */
-    private \SplQueue $microtaskQueue;
+    private readonly \SplQueue $microtaskQueue;
 
     /** @var \SplQueue<DriverCallback> */
-    private \SplQueue $callbackQueue;
+    private readonly \SplQueue $callbackQueue;
 
     private bool $idle = false;
     private bool $stopped = false;
@@ -85,8 +60,6 @@ abstract class AbstractDriver implements Driver
 
     public function __construct()
     {
-        self::checkFiberSupport();
-
         $this->suspensions = new \WeakMap();
 
         $this->internalSuspensionMarker = new \stdClass();
@@ -98,8 +71,8 @@ abstract class AbstractDriver implements Driver
         $this->createErrorCallback();
 
         /** @psalm-suppress InvalidArgument */
-        $this->interruptCallback = \Closure::fromCallable([$this, 'setInterrupt']);
-        $this->queueCallback = \Closure::fromCallable([$this, 'queue']);
+        $this->interruptCallback = $this->setInterrupt(...);
+        $this->queueCallback = $this->queue(...);
         $this->runCallback = function () {
             if ($this->fiber->isTerminated()) {
                 $this->createLoopFiber();

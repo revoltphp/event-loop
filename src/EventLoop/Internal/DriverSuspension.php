@@ -15,19 +15,19 @@ final class DriverSuspension implements Suspension
     private ?\Fiber $suspendedFiber = null;
 
     /** @var \WeakReference<\Fiber>|null */
-    private ?\WeakReference $fiberRef;
+    private readonly ?\WeakReference $fiberRef;
 
     private ?\FiberError $fiberError = null;
 
-    private \Closure $run;
+    private readonly \Closure $run;
 
-    private \Closure $queue;
+    private readonly \Closure $queue;
 
-    private \Closure $interrupt;
+    private readonly \Closure $interrupt;
 
     private bool $pending = false;
 
-    private \WeakReference $suspensions;
+    private readonly \WeakReference $suspensions;
 
     /**
      * @param \Closure $run
@@ -59,7 +59,7 @@ final class DriverSuspension implements Suspension
         $fiber = $this->fiberRef?->get();
 
         if ($fiber) {
-            ($this->queue)(\Closure::fromCallable([$fiber, 'resume']), $value);
+            ($this->queue)($fiber->resume(...), $value);
         } else {
             // Suspend event loop fiber to {main}.
             ($this->interrupt)(static fn () => $value);
@@ -139,7 +139,7 @@ final class DriverSuspension implements Suspension
         $fiber = $this->fiberRef?->get();
 
         if ($fiber) {
-            ($this->queue)(\Closure::fromCallable([$fiber, 'throw']), $throwable);
+            ($this->queue)($fiber->throw(...), $throwable);
         } else {
             // Suspend event loop fiber to {main}.
             ($this->interrupt)(static fn () => throw $throwable);

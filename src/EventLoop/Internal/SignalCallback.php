@@ -8,7 +8,7 @@ final class SignalCallback extends DriverCallback
     public function __construct(
         string $id,
         \Closure $closure,
-        public int $signal
+        public readonly int $signal
     ) {
         parent::__construct($id, $closure);
     }

@@ -7,10 +7,10 @@ final class TimerCallback extends DriverCallback
 {
     public function __construct(
         string $id,
-        public float $interval,
+        public readonly float $interval,
         \Closure $callback,
         public float $expiration,
-        public bool $repeat = false
+        public readonly bool $repeat = false
     ) {
         parent::__construct($id, $callback);
     }
