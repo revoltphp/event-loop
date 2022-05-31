@@ -93,7 +93,7 @@ abstract class AbstractDriver implements Driver
         $this->microtaskQueue = new \SplQueue();
         $this->callbackQueue = new \SplQueue();
 
-        $this->createFiber();
+        $this->createLoopFiber();
         $this->createCallbackFiber();
         $this->createErrorCallback();
 
@@ -102,7 +102,7 @@ abstract class AbstractDriver implements Driver
         $this->queueCallback = \Closure::fromCallable([$this, 'queue']);
         $this->runCallback = function () {
             if ($this->fiber->isTerminated()) {
-                $this->createFiber();
+                $this->createLoopFiber();
             }
 
             return $this->fiber->isStarted() ? $this->fiber->resume() : $this->fiber->start();
@@ -120,7 +120,7 @@ abstract class AbstractDriver implements Driver
         }
 
         if ($this->fiber->isTerminated()) {
-            $this->createFiber();
+            $this->createLoopFiber();
         }
 
         /** @noinspection PhpUnhandledExceptionInspection */
@@ -453,6 +453,11 @@ abstract class AbstractDriver implements Driver
             unset($callback, $args);
 
             if ($this->interrupt) {
+                // If this fiber has been replaced, return rather than suspending.
+                if (\Fiber::getCurrent() !== $this->callbackFiber) {
+                    return;
+                }
+
                 /** @noinspection PhpUnhandledExceptionInspection */
                 \Fiber::suspend($this->internalSuspensionMarker);
             }
@@ -546,9 +551,9 @@ abstract class AbstractDriver implements Driver
         \Fiber::suspend($interrupt);
     }
 
-    private function createFiber(): void
+    private function createLoopFiber(): void
     {
-        $this->fiber = new \Fiber(function () {
+        $this->fiber = new \Fiber(function (): void {
             $this->stopped = false;
 
             // Invoke microtasks if we have some
@@ -626,6 +631,11 @@ abstract class AbstractDriver implements Driver
                     unset($callback);
 
                     if ($this->interrupt) {
+                        // If this fiber has been replaced, return rather than suspending.
+                        if (\Fiber::getCurrent() !== $this->callbackFiber) {
+                            return;
+                        }
+
                         /** @noinspection PhpUnhandledExceptionInspection */
                         \Fiber::suspend($this->internalSuspensionMarker);
                     }
