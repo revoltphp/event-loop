@@ -273,6 +273,7 @@ final class StreamSelectDriver extends AbstractDriver
 
             \assert(\is_array($write)); // See https://github.com/vimeo/psalm/issues/3036
 
+            /** @var resource[]|object[]|null $except */
             if ($except) {
                 foreach ($except as $key => $socket) {
                     $write[$key] = $socket;
