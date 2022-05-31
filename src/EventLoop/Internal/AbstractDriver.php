@@ -453,11 +453,6 @@ abstract class AbstractDriver implements Driver
             unset($callback, $args);
 
             if ($this->interrupt) {
-                // If this fiber has been replaced, return rather than suspending.
-                if (\Fiber::getCurrent() !== $this->callbackFiber) {
-                    return;
-                }
-
                 /** @noinspection PhpUnhandledExceptionInspection */
                 \Fiber::suspend($this->internalSuspensionMarker);
             }
@@ -631,11 +626,6 @@ abstract class AbstractDriver implements Driver
                     unset($callback);
 
                     if ($this->interrupt) {
-                        // If this fiber has been replaced, return rather than suspending.
-                        if (\Fiber::getCurrent() !== $this->callbackFiber) {
-                            return;
-                        }
-
                         /** @noinspection PhpUnhandledExceptionInspection */
                         \Fiber::suspend($this->internalSuspensionMarker);
                     }
