@@ -24,7 +24,7 @@ abstract class DriverCallback
      */
     public function __get(string $property): never
     {
-        throw new \Error("Unknown property '${property}'");
+        throw new \Error("Unknown property '{$property}'");
     }
 
     /**
@@ -33,6 +33,6 @@ abstract class DriverCallback
      */
     public function __set(string $property, mixed $value): never
     {
-        throw new \Error("Unknown property '${property}'");
+        throw new \Error("Unknown property '{$property}'");
     }
 }
