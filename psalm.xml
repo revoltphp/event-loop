@@ -67,9 +67,5 @@
         <file name="vendor/jetbrains/phpstorm-stubs/uv/UV.php"/>
         <file name="vendor/jetbrains/phpstorm-stubs/uv/uv_functions.php"/>
         <file name="stubs/uv.php"/>
-        <file name="stubs/Fiber.php"/>
-        <file name="stubs/FiberError.php"/>
-        <file name="stubs/FiberExit.php"/>
-        <file name="stubs/ReflectionFiber.php"/>
     </stubs>
 </psalm>
