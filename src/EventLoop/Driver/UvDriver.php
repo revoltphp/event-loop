@@ -19,11 +19,11 @@ final class UvDriver extends AbstractDriver
 
     /** @var resource|\UVLoop A uv_loop resource created with uv_loop_new() */
     private $handle;
-    /** @var resource[] */
+    /** @var array<string, resource> */
     private array $events = [];
-    /** @var DriverCallback[][] */
+    /** @var array<int, array<array-key, DriverCallback>> */
     private array $callbacks = [];
-    /** @var resource[] */
+    /** @var array<int, resource> */
     private array $streams = [];
     private readonly \Closure $ioCallback;
     private readonly \Closure $timerCallback;

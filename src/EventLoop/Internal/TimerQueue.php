@@ -9,10 +9,10 @@ namespace Revolt\EventLoop\Internal;
  */
 final class TimerQueue
 {
-    /** @var TimerCallback[] */
+    /** @var array<int, TimerCallback> */
     private array $callbacks = [];
 
-    /** @var int[] */
+    /** @var array<string, int> */
     private array $pointers = [];
 
     /**

@@ -28,17 +28,19 @@ abstract class AbstractDriver implements Driver
     private \Fiber $callbackFiber;
     private \Closure $errorCallback;
 
-    /** @var DriverCallback[] */
+    /** @var array<string, DriverCallback> */
     private array $callbacks = [];
 
-    /** @var DriverCallback[] */
+    /** @var array<string, DriverCallback> */
     private array $enableQueue = [];
 
-    /** @var DriverCallback[] */
+    /** @var array<string, DriverCallback> */
     private array $enableDeferQueue = [];
 
-    /** @var null|\Closure(\Throwable) */
+    /** @var null|\Closure(\Throwable):void */
     private ?\Closure $errorHandler = null;
+
+    /** @var null|\Closure():mixed  */
     private ?\Closure $interrupt = null;
 
     private readonly \Closure $interruptCallback;
@@ -501,6 +503,9 @@ abstract class AbstractDriver implements Driver
         }
     }
 
+    /**
+     * @param \Closure():mixed $interrupt
+     */
     private function setInterrupt(\Closure $interrupt): void
     {
         \assert($this->interrupt === null);

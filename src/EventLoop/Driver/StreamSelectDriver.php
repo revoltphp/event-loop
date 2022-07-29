@@ -15,21 +15,21 @@ use Revolt\EventLoop\UnsupportedFeatureException;
 
 final class StreamSelectDriver extends AbstractDriver
 {
-    /** @var resource[]|object[] */
+    /** @var array<int, resource> */
     private array $readStreams = [];
 
-    /** @var StreamReadableCallback[][] */
+    /** @var array<int, array<string, StreamReadableCallback>> */
     private array $readCallbacks = [];
 
-    /** @var resource[]|object[] */
+    /** @var array<int, resource> */
     private array $writeStreams = [];
 
-    /** @var StreamWritableCallback[][] */
+    /** @var array<int, array<string, StreamWritableCallback>> */
     private array $writeCallbacks = [];
 
     private readonly TimerQueue $timerQueue;
 
-    /** @var SignalCallback[][] */
+    /** @var array<int, array<string, SignalCallback>> */
     private array $signalCallbacks = [];
 
     /** @var \SplQueue<int> */
@@ -49,7 +49,7 @@ final class StreamSelectDriver extends AbstractDriver
         $this->timerQueue = new TimerQueue();
         $this->signalHandling = \extension_loaded("pcntl");
 
-        $this->streamSelectErrorHandler = function ($errno, $message) {
+        $this->streamSelectErrorHandler = function (int $errno, string $message): void {
             // Casing changed in PHP 8 from 'unable' to 'Unable'
             if (\stripos($message, "stream_select(): unable to select [4]: ") === 0) { // EINTR
                 $this->streamSelectIgnoreResult = true;
@@ -86,8 +86,6 @@ final class StreamSelectDriver extends AbstractDriver
     }
 
     /**
-     * {@inheritdoc}
-     *
      * @throws UnsupportedFeatureException If the pcntl extension is not available.
      */
     public function onSignal(int $signal, \Closure $closure): string
@@ -99,9 +97,6 @@ final class StreamSelectDriver extends AbstractDriver
         return parent::onSignal($signal, $closure);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getHandle(): mixed
     {
         return null;
@@ -144,9 +139,6 @@ final class StreamSelectDriver extends AbstractDriver
         }
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function activate(array $callbacks): void
     {
         foreach ($callbacks as $callback) {
@@ -191,9 +183,6 @@ final class StreamSelectDriver extends AbstractDriver
         }
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function deactivate(DriverCallback $callback): void
     {
         if ($callback instanceof StreamReadableCallback) {
@@ -232,8 +221,8 @@ final class StreamSelectDriver extends AbstractDriver
     }
 
     /**
-     * @param resource[]|object[] $read
-     * @param resource[]|object[] $write
+     * @param array<int, resource> $read
+     * @param array<int, resource> $write
      */
     private function selectStreams(array $read, array $write, float $timeout): void
     {
@@ -283,9 +272,7 @@ final class StreamSelectDriver extends AbstractDriver
                 }
             }
 
-            \assert(\is_array($write)); // See https://github.com/vimeo/psalm/issues/3036
-
-            /** @var resource[]|object[]|null $except */
+            /** @var array<int, resource>|null $except */
             if ($except) {
                 foreach ($except as $key => $socket) {
                     $write[$key] = $socket;

@@ -73,7 +73,7 @@ final class EventLoop
      * Does NOT create an event callback, thus CAN NOT be marked as disabled or unreferenced.
      * Use {@see EventLoop::defer()} if you need these features.
      *
-     * @param \Closure $closure The callback to queue.
+     * @param \Closure(...):void $closure The callback to queue.
      * @param mixed ...$args The callback arguments.
      */
     public static function queue(\Closure $closure, mixed ...$args): void

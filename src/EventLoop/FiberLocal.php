@@ -35,7 +35,7 @@ final class FiberLocal
         $fiber = \Fiber::getCurrent();
 
         if ($fiber === null) {
-            $fiber = self::$mainFiber ??= new \Fiber(static function () {
+            $fiber = self::$mainFiber ??= new \Fiber(static function (): void {
                 // dummy fiber for main, as we need some object for the WeakMap
             });
         }

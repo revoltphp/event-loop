@@ -19,12 +19,6 @@ final class DriverSuspension implements Suspension
 
     private ?\FiberError $fiberError = null;
 
-    private readonly \Closure $run;
-
-    private readonly \Closure $queue;
-
-    private readonly \Closure $interrupt;
-
     private bool $pending = false;
 
     private readonly \WeakReference $suspensions;
@@ -36,13 +30,14 @@ final class DriverSuspension implements Suspension
      *
      * @internal
      */
-    public function __construct(\Closure $run, \Closure $queue, \Closure $interrupt, \WeakMap $suspensions)
-    {
+    public function __construct(
+        private readonly \Closure $run,
+        private readonly \Closure $queue,
+        private readonly \Closure $interrupt,
+        \WeakMap $suspensions
+    ) {
         $fiber = \Fiber::getCurrent();
 
-        $this->run = $run;
-        $this->queue = $queue;
-        $this->interrupt = $interrupt;
         $this->fiberRef = $fiber ? \WeakReference::create($fiber) : null;
         $this->suspensions = \WeakReference::create($suspensions);
     }

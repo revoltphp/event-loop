@@ -14,7 +14,7 @@ use Revolt\EventLoop\Internal\TimerCallback;
 
 final class EvDriver extends AbstractDriver
 {
-    /** @var \EvSignal[]|null */
+    /** @var array<string, \EvSignal>|null */
     private static ?array $activeSignals = null;
 
     public static function isSupported(): bool
@@ -24,7 +24,7 @@ final class EvDriver extends AbstractDriver
 
     private \EvLoop $handle;
 
-    /** @var \EvWatcher[] */
+    /** @var array<string, \EvWatcher> */
     private array $events = [];
 
     private readonly \Closure $ioCallback;
@@ -33,7 +33,7 @@ final class EvDriver extends AbstractDriver
 
     private readonly \Closure $signalCallback;
 
-    /** @var \EvSignal[] */
+    /** @var array<string, \EvSignal> */
     private array $signals = [];
 
     public function __construct()

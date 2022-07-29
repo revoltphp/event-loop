@@ -37,7 +37,7 @@ final class InvalidCallbackError extends \Error
     /** @var string */
     private readonly string $callbackId;
 
-    /** @var string[] */
+    /** @var array<string, string> */
     private array $info = [];
 
     /**

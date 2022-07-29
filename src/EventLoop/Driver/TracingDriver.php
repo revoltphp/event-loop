@@ -10,16 +10,16 @@ final class TracingDriver implements Driver
 {
     private readonly Driver $driver;
 
-    /** @var true[] */
+    /** @var array<string, true> */
     private array $enabledCallbacks = [];
 
-    /** @var true[] */
+    /** @var array<string, true> */
     private array $unreferencedCallbacks = [];
 
-    /** @var string[] */
+    /** @var array<string, string> */
     private array $creationTraces = [];
 
-    /** @var string[] */
+    /** @var array<string, string> */
     private array $cancelTraces = [];
 
     public function __construct(Driver $driver)
