@@ -418,7 +418,8 @@ abstract class AbstractDriver implements Driver
             [$callback, $args] = $this->microtaskQueue->dequeue();
 
             try {
-                $callback(...$args);
+                // Clear $args to allow garbage collection
+                $callback(...$args, ...($args = []));
             } catch (\Throwable $exception) {
                 $this->error($callback, $exception);
             } finally {

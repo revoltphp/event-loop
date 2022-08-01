@@ -1387,6 +1387,24 @@ abstract class DriverTest extends TestCase
         });
     }
 
+    public function testMicrotaskExecutionDoesNotKeepReferenceToArgs(): void
+    {
+        $this->expectOutputString('123');
+
+        $this->loop->queue(function (object $object): void {
+            print 1;
+            unset($object);
+            print 3;
+        }, new class () {
+            public function __destruct()
+            {
+                print 2;
+            }
+        });
+
+        $this->loop->run();
+    }
+
     public function testMicrotaskThrowingStillExecutesNextMicrotask(): void
     {
         $exception = new \Exception();
