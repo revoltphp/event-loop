@@ -394,7 +394,9 @@ abstract class AbstractDriver implements Driver
     {
         if ($this->errorHandler === null) {
             // Explicitly override the previous interrupt if it exists in this case, hiding the exception is worse
-            $this->interrupt = static fn () => throw UncaughtThrowable::throwingCallback($closure, $exception);
+            $this->interrupt = static fn () => $exception instanceof UncaughtThrowable
+                ? throw $exception
+                : throw UncaughtThrowable::throwingCallback($closure, $exception);
             return;
         }
 
@@ -624,7 +626,9 @@ abstract class AbstractDriver implements Driver
                 $errorHandler($exception);
             } catch (\Throwable $exception) {
                 $this->setInterrupt(
-                    static fn () => throw UncaughtThrowable::throwingErrorHandler($errorHandler, $exception)
+                    static fn () => $exception instanceof UncaughtThrowable
+                        ? throw $exception
+                        : throw UncaughtThrowable::throwingErrorHandler($errorHandler, $exception)
                 );
             }
         };
