@@ -13,6 +13,7 @@ use Revolt\EventLoop\Driver;
 require __DIR__ . '/../vendor/autoload.php';
 
 $args = \getopt('t:l:r:');
+/** @psalm-suppress RiskyCast */
 $t  = (int) \round((\array_key_exists('t', $args) ? (int) $args['t'] : 0));
 if (\array_key_exists('d', $args)) {
     if (\is_string($args['d'])) {
@@ -25,6 +26,8 @@ if (\array_key_exists('d', $args)) {
         }
     }
 }
+
+/** @psalm-suppress RiskyCast */
 $r = (int) \round((\array_key_exists('r', $args) ? (int) $args['r'] : 2));
 
 $runs = 0;
