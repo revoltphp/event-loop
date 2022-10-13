@@ -69,9 +69,36 @@ class EventLoopTest extends TestCase
         self::assertInstanceOf(Driver::class, EventLoop::getDriver());
     }
 
-    public function testGetInfo(): void
+    public function testReflection(): void
     {
-        self::assertSame(EventLoop::getDriver()->getInfo(), EventLoop::getInfo());
+        self::assertSame([], EventLoop::getIdentifiers());
+
+        $id = EventLoop::delay(5, fn () => null);
+
+        self::assertSame([$id], EventLoop::getIdentifiers());
+        self::assertSame(CallbackType::Delay, EventLoop::getType($id));
+        self::assertTrue(EventLoop::isReferenced($id));
+        self::assertTrue(EventLoop::isEnabled($id));
+
+        EventLoop::disable($id);
+        self::assertFalse(EventLoop::isEnabled($id));
+        self::assertTrue(EventLoop::isReferenced($id));
+
+        EventLoop::unreference($id);
+        self::assertFalse(EventLoop::isEnabled($id));
+        self::assertFalse(EventLoop::isReferenced($id));
+
+        EventLoop::enable($id);
+        self::assertTrue(EventLoop::isEnabled($id));
+        self::assertFalse(EventLoop::isReferenced($id));
+
+        EventLoop::reference($id);
+        self::assertTrue(EventLoop::isEnabled($id));
+        self::assertTrue(EventLoop::isReferenced($id));
+
+        EventLoop::cancel($id);
+
+        self::assertSame([], EventLoop::getIdentifiers());
     }
 
     public function testRun(): void

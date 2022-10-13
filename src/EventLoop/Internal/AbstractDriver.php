@@ -2,6 +2,7 @@
 
 namespace Revolt\EventLoop\Internal;
 
+use Revolt\EventLoop\CallbackType;
 use Revolt\EventLoop\Driver;
 use Revolt\EventLoop\FiberLocal;
 use Revolt\EventLoop\InvalidCallbackError;
@@ -303,65 +304,44 @@ abstract class AbstractDriver implements Driver
     public function __debugInfo(): array
     {
         // @codeCoverageIgnoreStart
-        return $this->getInfo();
+        return \array_map(fn (DriverCallback $callback) => [
+            'type' => $this->getType($callback->id),
+            'enabled' => $callback->enabled,
+            'referenced' => $callback->referenced,
+        ], $this->callbacks);
         // @codeCoverageIgnoreEnd
     }
 
-    public function getInfo(): array
+    public function getIdentifiers(): array
     {
-        $counts = [
-            "referenced" => 0,
-            "unreferenced" => 0,
-        ];
+        return \array_keys($this->callbacks);
+    }
 
-        $defer = $delay = $repeat = $onReadable = $onWritable = $onSignal = [
-            "enabled" => 0,
-            "disabled" => 0,
-        ];
+    public function getType(string $callbackId): CallbackType
+    {
+        $callback = $this->callbacks[$callbackId] ?? throw InvalidCallbackError::invalidIdentifier($callbackId);
 
-        foreach ($this->callbacks as $callback) {
-            if ($callback instanceof StreamReadableCallback) {
-                $array = &$onReadable;
-            } elseif ($callback instanceof StreamWritableCallback) {
-                $array = &$onWritable;
-            } elseif ($callback instanceof SignalCallback) {
-                $array = &$onSignal;
-            } elseif ($callback instanceof TimerCallback) {
-                if ($callback->repeat) {
-                    $array = &$repeat;
-                } else {
-                    $array = &$delay;
-                }
-            } elseif ($callback instanceof DeferCallback) {
-                $array = &$defer;
-            } else {
-                // @codeCoverageIgnoreStart
-                throw new \Error("Unknown callback type");
-                // @codeCoverageIgnoreEnd
-            }
+        return match ($callback::class) {
+            DeferCallback::class => CallbackType::Defer,
+            TimerCallback::class => $callback->repeat ? CallbackType::Repeat : CallbackType::Delay,
+            StreamReadableCallback::class => CallbackType::Readable,
+            StreamWritableCallback::class => CallbackType::Writable,
+            SignalCallback::class => CallbackType::Signal,
+        };
+    }
 
-            if ($callback->enabled) {
-                ++$array["enabled"];
+    public function isEnabled(string $callbackId): bool
+    {
+        $callback = $this->callbacks[$callbackId] ?? throw InvalidCallbackError::invalidIdentifier($callbackId);
 
-                if ($callback->referenced) {
-                    ++$counts["referenced"];
-                } else {
-                    ++$counts["unreferenced"];
-                }
-            } else {
-                ++$array["disabled"];
-            }
-        }
+        return $callback->enabled;
+    }
 
-        return [
-            "enabled_watchers" => $counts,
-            "defer" => $defer,
-            "delay" => $delay,
-            "repeat" => $repeat,
-            "on_readable" => $onReadable,
-            "on_writable" => $onWritable,
-            "on_signal" => $onSignal,
-        ];
+    public function isReferenced(string $callbackId): bool
+    {
+        $callback = $this->callbacks[$callbackId] ?? throw InvalidCallbackError::invalidIdentifier($callbackId);
+
+        return $callback->referenced;
     }
 
     /**

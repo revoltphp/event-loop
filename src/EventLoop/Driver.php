@@ -272,31 +272,45 @@ interface Driver
     public function getHandle(): mixed;
 
     /**
-     * Returns the same array of data as getInfo().
+     * Returns all registered non-cancelled callback identifiers.
+     *
+     * @return string[] Callback identifiers.
+     */
+    public function getIdentifiers(): array;
+
+    /**
+     * Returns the type of the callback identified by the given callback identifier.
+     *
+     * @param string $callbackId The callback identifier.
+     *
+     * @return CallbackType The callback type.
+     */
+    public function getType(string $callbackId): CallbackType;
+
+    /**
+     * Returns whether the callback identified by the given callback identifier is currently enabled.
+     *
+     * @param string $callbackId The callback identifier.
+     *
+     * @return bool {@code true} if the callback is currently enabled, otherwise {@code false}.
+     */
+    public function isEnabled(string $callbackId): bool;
+
+    /**
+     * Returns whether the callback identified by the given callback identifier is currently referenced.
+     *
+     * @param string $callbackId The callback identifier.
+     *
+     * @return bool {@code true} if the callback is currently referenced, otherwise {@code false}.
+     */
+    public function isReferenced(string $callbackId): bool;
+
+    /**
+     * Returns some useful information about the event loop.
+     *
+     * If this method isn't implemented, dumping the event loop in a busy application, even indirectly, is a pain.
      *
      * @return array
      */
     public function __debugInfo(): array;
-
-    /**
-     * Retrieve an associative array of information about the event loop driver.
-     *
-     * The returned array MUST contain the following data describing the driver's currently registered callbacks:
-     *
-     *     [
-     *         "defer"            => ["enabled" => int, "disabled" => int],
-     *         "delay"            => ["enabled" => int, "disabled" => int],
-     *         "repeat"           => ["enabled" => int, "disabled" => int],
-     *         "on_readable"      => ["enabled" => int, "disabled" => int],
-     *         "on_writable"      => ["enabled" => int, "disabled" => int],
-     *         "on_signal"        => ["enabled" => int, "disabled" => int],
-     *         "enabled_watchers" => ["referenced" => int, "unreferenced" => int],
-     *     ];
-     *
-     * Implementations MAY optionally add more information in the array but at minimum the above `key => value` format
-     * MUST always be provided.
-     *
-     * @return array Statistics about the loop in the described format.
-     */
-    public function getInfo(): array;
 }

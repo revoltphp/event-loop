@@ -2,6 +2,7 @@
 
 namespace Revolt;
 
+use Revolt\EventLoop\CallbackType;
 use Revolt\EventLoop\Driver;
 use Revolt\EventLoop\DriverFactory;
 use Revolt\EventLoop\Internal\AbstractDriver;
@@ -317,29 +318,49 @@ final class EventLoop
     }
 
     /**
-     * Retrieve an associative array of information about the event loop driver.
+     * Returns all registered non-cancelled callback identifiers.
      *
-     * The returned array MUST contain the following data describing the driver's currently registered callbacks:
-     *
-     *     [
-     *         "defer"            => ["enabled" => int, "disabled" => int],
-     *         "delay"            => ["enabled" => int, "disabled" => int],
-     *         "repeat"           => ["enabled" => int, "disabled" => int],
-     *         "on_readable"      => ["enabled" => int, "disabled" => int],
-     *         "on_writable"      => ["enabled" => int, "disabled" => int],
-     *         "on_signal"        => ["enabled" => int, "disabled" => int],
-     *         "enabled_watchers" => ["referenced" => int, "unreferenced" => int],
-     *         "running"          => bool
-     *     ];
-     *
-     * Implementations MAY optionally add more information in the array but at minimum the above `key => value` format
-     * MUST always be provided.
-     *
-     * @return array Statistics about the loop in the described format.
+     * @return string[] Callback identifiers.
      */
-    public static function getInfo(): array
+    public static function getIdentifiers(): array
     {
-        return self::getDriver()->getInfo();
+        return self::getDriver()->getIdentifiers();
+    }
+
+    /**
+     * Returns the type of the callback identified by the given callback identifier.
+     *
+     * @param string $callbackId The callback identifier.
+     *
+     * @return CallbackType The callback type.
+     */
+    public static function getType(string $callbackId): CallbackType
+    {
+        return self::getDriver()->getType($callbackId);
+    }
+
+    /**
+     * Returns whether the callback identified by the given callback identifier is currently enabled.
+     *
+     * @param string $callbackId The callback identifier.
+     *
+     * @return bool {@code true} if the callback is currently enabled, otherwise {@code false}.
+     */
+    public static function isEnabled(string $callbackId): bool
+    {
+        return self::getDriver()->isEnabled($callbackId);
+    }
+
+    /**
+     * Returns whether the callback identified by the given callback identifier is currently referenced.
+     *
+     * @param string $callbackId The callback identifier.
+     *
+     * @return bool {@code true} if the callback is currently referenced, otherwise {@code false}.
+     */
+    public static function isReferenced(string $callbackId): bool
+    {
+        return self::getDriver()->isReferenced($callbackId);
     }
 
     /**
