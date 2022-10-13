@@ -6,7 +6,7 @@ namespace Revolt\EventLoop\Internal;
 abstract class StreamCallback extends DriverCallback
 {
     /**
-     * @param resource|object $stream
+     * @param resource $stream
      */
     public function __construct(
         string $id,

@@ -46,7 +46,7 @@ final class EvDriver extends AbstractDriver
             self::$activeSignals = &$this->signals;
         }
 
-        $this->ioCallback = function (\EvIO $event): void {
+        $this->ioCallback = function (\EvIo $event): void {
             /** @var StreamCallback $callback */
             $callback = $event->data;
 
