@@ -311,7 +311,7 @@ final class EventLoop
      *
      * @return null|\Closure(\Throwable):void The previous handler, `null` if there was none.
      */
-    public function getErrorHandler(): ?\Closure
+    public static function getErrorHandler(): ?\Closure
     {
         return self::getDriver()->getErrorHandler();
     }
