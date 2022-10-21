@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Revolt\EventLoop\Driver;
 
 use Revolt\EventLoop\Driver;
