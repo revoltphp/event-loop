@@ -1120,6 +1120,29 @@ abstract class DriverTest extends TestCase
         }
     }
 
+    public function testUncaughtThrowableInstanceIsRethrownAsIs(): void
+    {
+        $error = UncaughtThrowable::throwingCallback(static fn () => null, new \Error("Test error"));
+        $this->loop->queue(static fn () => throw $error);
+        try {
+            $this->loop->getSuspension()->suspend();
+        } catch (UncaughtThrowable $t) {
+            self::assertSame($error, $t);
+        }
+    }
+
+    public function testUncaughtThrowableInstanceIsRethrownAsIsFromErrorHandler(): void
+    {
+        $error = UncaughtThrowable::throwingErrorHandler(static fn () => null, new \Error("Test error"));
+        $this->loop->setErrorHandler(static fn () => throw $error);
+        $this->loop->queue(static fn () => throw new \Error());
+        try {
+            $this->loop->getSuspension()->suspend();
+        } catch (UncaughtThrowable $t) {
+            self::assertSame($error, $t);
+        }
+    }
+
     public function testOnSignalCallback(): void
     {
         $this->checkForSignalCapability();
