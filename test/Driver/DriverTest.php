@@ -352,52 +352,68 @@ abstract class DriverTest extends TestCase
 
         // being referenced is the default
         $callbackId1 = $func(...$args);
-        $info = $loop->getInfo();
-        $expected = ["enabled" => 1, "disabled" => 0];
-        self::assertSame($expected, $info[$type]);
-        $expected = ["referenced" => 1, "unreferenced" => 0];
-        self::assertSame($expected, $info["enabled_watchers"]);
+
+        self::assertTrue($loop->isReferenced($callbackId1));
+        self::assertTrue($loop->isEnabled($callbackId1));
 
         // explicitly reference() even though it's the default setting
         $argsCopy = $args;
         $callbackId2 = \call_user_func_array($func, $argsCopy);
         $loop->reference($callbackId2);
         $loop->reference($callbackId2);
-        $info = $loop->getInfo();
-        $expected = ["enabled" => 2, "disabled" => 0];
-        self::assertSame($expected, $info[$type]);
-        $expected = ["referenced" => 2, "unreferenced" => 0];
-        self::assertSame($expected, $info["enabled_watchers"]);
+
+        self::assertTrue($loop->isReferenced($callbackId1));
+        self::assertTrue($loop->isEnabled($callbackId1));
+        self::assertTrue($loop->isReferenced($callbackId2));
+        self::assertTrue($loop->isEnabled($callbackId2));
 
         // disabling a referenced callback should decrement the referenced count
         $loop->disable($callbackId2);
         $loop->disable($callbackId2);
         $loop->disable($callbackId2);
-        $info = $loop->getInfo();
-        $expected = ["referenced" => 1, "unreferenced" => 0];
-        self::assertSame($expected, $info["enabled_watchers"]);
+
+        self::assertTrue($loop->isReferenced($callbackId1));
+        self::assertTrue($loop->isEnabled($callbackId1));
+        self::assertTrue($loop->isReferenced($callbackId2));
+        self::assertFalse($loop->isEnabled($callbackId2));
 
         // enabling a referenced callback should increment the referenced count
         $loop->enable($callbackId2);
         $loop->enable($callbackId2);
-        $info = $loop->getInfo();
-        $expected = ["referenced" => 2, "unreferenced" => 0];
-        self::assertSame($expected, $info["enabled_watchers"]);
+
+        self::assertTrue($loop->isReferenced($callbackId1));
+        self::assertTrue($loop->isEnabled($callbackId1));
+        self::assertTrue($loop->isReferenced($callbackId2));
+        self::assertTrue($loop->isEnabled($callbackId2));
 
         // cancelling a referenced callback should decrement the referenced count
         $loop->cancel($callbackId2);
-        $info = $loop->getInfo();
-        $expected = ["referenced" => 1, "unreferenced" => 0];
-        self::assertSame($expected, $info["enabled_watchers"]);
+
+        self::assertTrue($loop->isReferenced($callbackId1));
+        self::assertTrue($loop->isEnabled($callbackId1));
+
+        self::assertInstanceOf(InvalidCallbackError::class, (function () use ($loop, $callbackId2) {
+            try {
+                $loop->isReferenced($callbackId2);
+            } catch (InvalidCallbackError $e) {
+                return $e;
+            }
+        })());
+
+        self::assertInstanceOf(InvalidCallbackError::class, (function () use ($loop, $callbackId2) {
+            try {
+                $loop->isEnabled($callbackId2);
+            } catch (InvalidCallbackError $e) {
+                return $e;
+            }
+        })());
 
         // unreference() should just increment unreferenced count
         $callbackId2 = $func(...$args);
         $loop->unreference($callbackId2);
-        $info = $loop->getInfo();
-        $expected = ["enabled" => 2, "disabled" => 0];
-        self::assertSame($expected, $info[$type]);
-        $expected = ["referenced" => 1, "unreferenced" => 1];
-        self::assertSame($expected, $info["enabled_watchers"]);
+
+        self::assertFalse($loop->isReferenced($callbackId2));
+        self::assertTrue($loop->isEnabled($callbackId2));
 
         $loop->cancel($callbackId1);
         $loop->cancel($callbackId2);
@@ -419,53 +435,25 @@ abstract class DriverTest extends TestCase
 
         $callbackId = $func(...$args);
         self::assertIsString($callbackId);
-        $info = $loop->getInfo();
-        $expected = ["enabled" => 1, "disabled" => 0];
-        self::assertSame($expected, $info[$type]);
 
         // invoke enable() on active callback to ensure it has no side effects
         $loop->enable($callbackId);
-        $info = $loop->getInfo();
-        $expected = ["enabled" => 1, "disabled" => 0];
-        self::assertSame($expected, $info[$type]);
 
         // invoke disable() twice to ensure it has no side effects
         $loop->disable($callbackId);
         $loop->disable($callbackId);
 
-        $info = $loop->getInfo();
-        $expected = ["enabled" => 0, "disabled" => 1];
-        self::assertSame($expected, $info[$type]);
+        self::assertFalse($loop->isEnabled($callbackId));
 
         $loop->cancel($callbackId);
-        $info = $loop->getInfo();
-        $expected = ["enabled" => 0, "disabled" => 0];
-        self::assertSame($expected, $info[$type]);
+
+        self::assertNotContains($callbackId, $loop->getIdentifiers());
 
         $callbackId = $func(...$args);
-        $info = $loop->getInfo();
-        $expected = ["enabled" => 1, "disabled" => 0];
-        self::assertSame($expected, $info[$type]);
 
-        $loop->disable($callbackId);
-        $info = $loop->getInfo();
-        $expected = ["enabled" => 0, "disabled" => 1];
-        self::assertSame($expected, $info[$type]);
-
-        $loop->enable($callbackId);
-        $info = $loop->getInfo();
-        $expected = ["enabled" => 1, "disabled" => 0];
-        self::assertSame($expected, $info[$type]);
+        self::assertContains($callbackId, $loop->getIdentifiers());
 
         $loop->cancel($callbackId);
-        $info = $loop->getInfo();
-        $expected = ["enabled" => 0, "disabled" => 0];
-        self::assertSame($expected, $info[$type]);
-
-        $loop->disable($callbackId);
-        $info = $loop->getInfo();
-        $expected = ["enabled" => 0, "disabled" => 0];
-        self::assertSame($expected, $info[$type]);
     }
 
     /**

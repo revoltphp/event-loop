@@ -2,6 +2,7 @@
 
 namespace Revolt\EventLoop\Driver;
 
+use Revolt\EventLoop\CallbackType;
 use Revolt\EventLoop\Driver;
 use Revolt\EventLoop\InvalidCallbackError;
 use Revolt\EventLoop\Suspension;
@@ -203,9 +204,24 @@ final class TracingDriver implements Driver
         return \rtrim($dump);
     }
 
-    public function getInfo(): array
+    public function getIdentifiers(): array
     {
-        return $this->driver->getInfo();
+        return $this->driver->getIdentifiers();
+    }
+
+    public function getType(string $callbackId): CallbackType
+    {
+        return $this->driver->getType($callbackId);
+    }
+
+    public function isEnabled(string $callbackId): bool
+    {
+        return $this->driver->isEnabled($callbackId);
+    }
+
+    public function isReferenced(string $callbackId): bool
+    {
+        return $this->driver->isReferenced($callbackId);
     }
 
     public function __debugInfo(): array
