@@ -199,7 +199,7 @@ class EventLoopTest extends TestCase
 
     public function testDoubleResumeWithinFiber(): void
     {
-        $suspension = EventLoop::createSuspension();
+        $suspension = EventLoop::getSuspension();
 
         EventLoop::queue(static function () use ($suspension): void {
             $suspension->resume();
