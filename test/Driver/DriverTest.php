@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Revolt\EventLoop\Driver;
 
 use PHPUnit\Framework\TestCase;
@@ -1323,7 +1325,7 @@ abstract class DriverTest extends TestCase
 
     public function testLoopStopPreventsTimerExecution(): void
     {
-        $t = \microtime(1);
+        $t = \microtime(true);
         $this->start(function (Driver $loop): void {
             $loop->defer(function () use ($loop): void {
                 $loop->delay(1, function (): void {
@@ -1332,7 +1334,7 @@ abstract class DriverTest extends TestCase
             });
             $loop->defer($loop->stop(...));
         });
-        self::assertGreaterThan(\microtime(1), $t + 0.1);
+        self::assertGreaterThan(\microtime(true), $t + 0.1);
     }
 
     public function testDeferEnabledInNextTick(): void

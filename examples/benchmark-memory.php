@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Run the script indefinitely seconds with the loop from the factory and report every 2 seconds:
  * php 95-benchmark-memory.php

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Revolt\EventLoop;
 use Revolt\EventLoop\FiberLocal;
 

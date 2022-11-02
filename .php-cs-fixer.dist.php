@@ -30,6 +30,7 @@ final class Config extends PhpCsFixerConfig
             "array_syntax" => ["syntax" => "short"],
             "cast_spaces" => true,
             "combine_consecutive_unsets" => true,
+            "declare_strict_types" => true,
             "function_to_constant" => true,
             "native_function_invocation" => [
                 'include' => [

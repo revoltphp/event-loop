@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Revolt\EventLoop;
 
 require __DIR__ . '/../vendor/autoload.php';
