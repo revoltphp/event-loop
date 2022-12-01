@@ -53,7 +53,7 @@ final class StreamSelectDriver extends AbstractDriver
 
         $this->streamSelectErrorHandler = function (int $errno, string $message): void {
             // https://github.com/revoltphp/event-loop/issues/67
-            if ((error_reporting() & $errno) == 0) {
+            if ((error_reporting() & $errno) === 0) {
                 return;
             }
             
