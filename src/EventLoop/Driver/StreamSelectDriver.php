@@ -52,6 +52,11 @@ final class StreamSelectDriver extends AbstractDriver
         $this->signalHandling = \extension_loaded("pcntl");
 
         $this->streamSelectErrorHandler = function (int $errno, string $message): void {
+            // https://github.com/revoltphp/event-loop/issues/67
+            if ((error_reporting() & $errno) == 0) {
+                return;
+            }
+            
             // Casing changed in PHP 8 from 'unable' to 'Unable'
             if (\stripos($message, "stream_select(): unable to select [4]: ") === 0) { // EINTR
                 $this->streamSelectIgnoreResult = true;
