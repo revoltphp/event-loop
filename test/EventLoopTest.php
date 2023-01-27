@@ -299,5 +299,12 @@ class EventLoopTest extends TestCase
         } catch (UncaughtThrowable $t) {
             self::assertSame($error, $t->getPrevious());
         }
+
+        try {
+            $suspension->resume(); // Should throw same exception as above.
+            self::fail("Error was not thrown");
+        } catch (UncaughtThrowable $u) {
+            self::assertSame($t, $u);
+        }
     }
 }

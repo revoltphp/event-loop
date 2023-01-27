@@ -19,7 +19,7 @@ final class DriverSuspension implements Suspension
     /** @var \WeakReference<\Fiber>|null */
     private readonly ?\WeakReference $fiberRef;
 
-    private ?\FiberError $fiberError = null;
+    private ?\Throwable $exception = null;
 
     private bool $pending = false;
 
@@ -47,7 +47,7 @@ final class DriverSuspension implements Suspension
     public function resume(mixed $value = null): void
     {
         if (!$this->pending) {
-            throw $this->fiberError ?? new \Error('Must call suspend() before calling resume()');
+            throw $this->exception ?? new \Error('Must call suspend() before calling resume()');
         }
 
         $this->pending = false;
@@ -85,7 +85,7 @@ final class DriverSuspension implements Suspension
                 return \Fiber::suspend();
             } catch (\FiberError $exception) {
                 $this->pending = false;
-                $this->fiberError = $exception;
+                $this->exception = $exception;
 
                 throw $exception;
             } finally {
@@ -99,7 +99,14 @@ final class DriverSuspension implements Suspension
         /** @psalm-suppress RedundantCondition $this->pending should be changed when resumed. */
         if ($this->pending) {
             $this->pending = false;
-            $result && $result(); // Unwrap any uncaught exceptions from the event loop
+
+            try {
+                $result && $result(); // Unwrap any uncaught exceptions from the event loop
+            } catch (\Throwable $exception) {
+                $this->exception = $exception;
+
+                throw $exception;
+            }
 
             $info = '';
             $suspensions = $this->suspensions->get();
@@ -127,7 +134,7 @@ final class DriverSuspension implements Suspension
     public function throw(\Throwable $throwable): void
     {
         if (!$this->pending) {
-            throw $this->fiberError ?? new \Error('Must call suspend() before calling throw()');
+            throw $this->exception ?? new \Error('Must call suspend() before calling throw()');
         }
 
         $this->pending = false;
