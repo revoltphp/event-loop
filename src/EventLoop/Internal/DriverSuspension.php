@@ -76,6 +76,7 @@ final class DriverSuspension implements Suspension
         }
 
         $this->pending = true;
+        $this->exception = null;
 
         // Awaiting from within a fiber.
         if ($fiber) {
