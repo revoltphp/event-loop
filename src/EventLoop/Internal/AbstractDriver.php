@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Revolt\EventLoop\Internal;
 
 use Revolt\EventLoop\CallbackType;
+use Revolt\EventLoop\DefaultFiberFactory;
 use Revolt\EventLoop\Driver;
+use Revolt\EventLoop\FiberFactory;
 use Revolt\EventLoop\FiberLocal;
 use Revolt\EventLoop\InvalidCallbackError;
 use Revolt\EventLoop\Suspension;
@@ -58,13 +60,17 @@ abstract class AbstractDriver implements Driver
     /** @var \SplQueue<DriverCallback> */
     private readonly \SplQueue $callbackQueue;
 
+    private readonly FiberFactory $fiberFactory;
+
     private bool $idle = false;
     private bool $stopped = false;
 
     private \WeakMap $suspensions;
 
-    public function __construct()
+    public function __construct(?FiberFactory $fiberFactory = null)
     {
+        $this->fiberFactory = $fiberFactory ?? new DefaultFiberFactory();
+
         $this->suspensions = new \WeakMap();
 
         $this->internalSuspensionMarker = new \stdClass();
@@ -382,7 +388,7 @@ abstract class AbstractDriver implements Driver
             return;
         }
 
-        $fiber = new \Fiber($this->errorCallback);
+        $fiber = $this->fiberFactory->create($this->errorCallback);
 
         /** @noinspection PhpUnhandledExceptionInspection */
         $fiber->start($this->errorHandler, $exception);
@@ -511,7 +517,7 @@ abstract class AbstractDriver implements Driver
 
     private function createLoopFiber(): void
     {
-        $this->fiber = new \Fiber(function (): void {
+        $this->fiber = $this->fiberFactory->create(function (): void {
             $this->stopped = false;
 
             // Invoke microtasks if we have some
@@ -537,7 +543,7 @@ abstract class AbstractDriver implements Driver
 
     private function createCallbackFiber(): void
     {
-        $this->callbackFiber = new \Fiber(function (): void {
+        $this->callbackFiber = $this->fiberFactory->create(function (): void {
             do {
                 $this->invokeMicrotasks();
 

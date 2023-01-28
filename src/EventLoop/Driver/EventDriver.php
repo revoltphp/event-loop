@@ -6,6 +6,7 @@ declare(strict_types=1);
 
 namespace Revolt\EventLoop\Driver;
 
+use Revolt\EventLoop\FiberFactory;
 use Revolt\EventLoop\Internal\AbstractDriver;
 use Revolt\EventLoop\Internal\DriverCallback;
 use Revolt\EventLoop\Internal\SignalCallback;
@@ -34,9 +35,9 @@ final class EventDriver extends AbstractDriver
     /** @var array<string, \Event> */
     private array $signals = [];
 
-    public function __construct()
+    public function __construct(?FiberFactory $fiberFactory = null)
     {
-        parent::__construct();
+        parent::__construct($fiberFactory);
 
         /** @psalm-suppress TooFewArguments https://github.com/JetBrains/phpstorm-stubs/pull/763 */
         $this->handle = new \EventBase();
