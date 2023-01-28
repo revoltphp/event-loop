@@ -19,7 +19,7 @@ final class DriverSuspension implements Suspension
     /** @var \WeakReference<\Fiber>|null */
     private readonly ?\WeakReference $fiberRef;
 
-    private ?\Throwable $exception = null;
+    private ?\Throwable $throwable = null;
 
     private bool $pending = false;
 
@@ -47,7 +47,7 @@ final class DriverSuspension implements Suspension
     public function resume(mixed $value = null): void
     {
         if (!$this->pending) {
-            throw $this->exception ?? new \Error('Must call suspend() before calling resume()');
+            throw $this->throwable ?? new \Error('Must call suspend() before calling resume()');
         }
 
         $this->pending = false;
@@ -76,7 +76,7 @@ final class DriverSuspension implements Suspension
         }
 
         $this->pending = true;
-        $this->exception = null;
+        $this->throwable = null;
 
         // Awaiting from within a fiber.
         if ($fiber) {
@@ -84,11 +84,11 @@ final class DriverSuspension implements Suspension
 
             try {
                 return \Fiber::suspend();
-            } catch (\FiberError $exception) {
+            } catch (\FiberError $error) {
                 $this->pending = false;
-                $this->exception = $exception;
+                $this->throwable = $error;
 
-                throw $exception;
+                throw $error;
             } finally {
                 $this->suspendedFiber = null;
             }
@@ -103,10 +103,10 @@ final class DriverSuspension implements Suspension
 
             try {
                 $result && $result(); // Unwrap any uncaught exceptions from the event loop
-            } catch (\Throwable $exception) {
-                $this->exception = $exception;
+            } catch (\Throwable $throwable) {
+                $this->throwable = $throwable;
 
-                throw $exception;
+                throw $throwable;
             }
 
             $info = '';
@@ -135,7 +135,7 @@ final class DriverSuspension implements Suspension
     public function throw(\Throwable $throwable): void
     {
         if (!$this->pending) {
-            throw $this->exception ?? new \Error('Must call suspend() before calling throw()');
+            throw $this->throwable ?? new \Error('Must call suspend() before calling throw()');
         }
 
         $this->pending = false;
