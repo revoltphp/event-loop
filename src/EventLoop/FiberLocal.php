@@ -37,7 +37,8 @@ final class FiberLocal
         $fiber = \Fiber::getCurrent();
 
         if ($fiber === null) {
-            $fiber = self::$dummyMain ??= new class {};
+            $fiber = self::$dummyMain ??= new class () {
+            };
         }
 
         $localStorage = self::$localStorage ??= new \WeakMap();

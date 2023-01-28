@@ -12,7 +12,7 @@ class TracingFiberFactoryTest extends StreamSelectDriverTest
     private static TracingFiberFactory $factory;
     public function getFactory(): callable
     {
-        self::$factory ??= new TracingFiberFactory;
+        self::$factory ??= new TracingFiberFactory();
         return static function (): StreamSelectDriver {
             return new StreamSelectDriver(self::$factory);
         };
