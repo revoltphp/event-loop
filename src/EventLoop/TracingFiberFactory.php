@@ -51,7 +51,7 @@ final class TracingFiberFactory implements FiberFactory, Countable, IteratorAggr
     }
 
     /**
-     * Iterate over all currently running fibers.
+     * Iterate over all fibers currently in scope.
      *
      * @return Traversable<\Fiber, null>
      */
