@@ -379,6 +379,7 @@ abstract class AbstractDriver implements Driver
             $this->interrupt = static fn () => $exception instanceof UncaughtThrowable
                 ? throw $exception
                 : throw UncaughtThrowable::throwingCallback($closure, $exception);
+            unset($this->suspensions[$this]); // Remove suspension for {main}
             return;
         }
 
@@ -608,11 +609,10 @@ abstract class AbstractDriver implements Driver
             try {
                 $errorHandler($exception);
             } catch (\Throwable $exception) {
-                $this->setInterrupt(
-                    static fn () => $exception instanceof UncaughtThrowable
-                        ? throw $exception
-                        : throw UncaughtThrowable::throwingErrorHandler($errorHandler, $exception)
-                );
+                $this->interrupt = static fn () => $exception instanceof UncaughtThrowable
+                    ? throw $exception
+                    : throw UncaughtThrowable::throwingErrorHandler($errorHandler, $exception);
+                unset($this->suspensions[$this]); // Remove suspension for {main}
             }
         };
     }

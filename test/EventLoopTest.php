@@ -306,5 +306,17 @@ class EventLoopTest extends TestCase
         } catch (UncaughtThrowable $u) {
             self::assertSame($t, $u);
         }
+
+        try {
+            $suspension->resume(); // Calling resume on the same suspension should throw UncaughtThrowable.
+            self::fail("Error was not thrown");
+        } catch (UncaughtThrowable $t) {
+            self::assertSame($t, $u);
+        }
+
+        // Creating a new Suspension and re-entering the event loop (e.g. in a shutdown function) should work.
+        $suspension = EventLoop::getSuspension();
+        EventLoop::queue($suspension->resume(...));
+        $suspension->suspend();
     }
 }
