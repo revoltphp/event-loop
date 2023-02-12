@@ -128,7 +128,7 @@ final class DriverSuspension implements Suspension
                 }
             }
 
-            throw new \Error('Event loop terminated without resuming the current suspension:' . $info);
+            throw $this->error = new \Error('Event loop terminated without resuming the current suspension:' . $info);
         }
 
         return $result();
