@@ -301,17 +301,10 @@ class EventLoopTest extends TestCase
         }
 
         try {
-            $suspension->resume(); // Should throw same exception as above.
+            $suspension->resume(); // Calling resume on the same suspension should throw an Error.
             self::fail("Error was not thrown");
-        } catch (UncaughtThrowable $u) {
-            self::assertSame($t, $u);
-        }
-
-        try {
-            $suspension->resume(); // Calling resume on the same suspension should throw UncaughtThrowable.
-            self::fail("Error was not thrown");
-        } catch (UncaughtThrowable $t) {
-            self::assertSame($t, $u);
+        } catch (\Error $e) {
+            self::assertStringContainsString('resumed after an uncaught exception', $e->getMessage());
         }
 
         // Creating a new Suspension and re-entering the event loop (e.g. in a shutdown function) should work.
