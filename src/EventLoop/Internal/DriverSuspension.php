@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Revolt\EventLoop\Internal;
 
 use Revolt\EventLoop\Suspension;
-use Revolt\EventLoop\UncaughtThrowable;
 
 /**
  * @internal
