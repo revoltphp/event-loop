@@ -60,6 +60,10 @@ class StreamSelectDriverTest extends DriverTest
 
     public function testTooLargeFileDescriptorSet(): void
     {
+        if (\stripos(PHP_OS, 'win') === 0) {
+            // win FD_SETSIZE not 1024
+            self::markTestSkipped('Skip on Windows');
+        }
         $sockets = [];
         $domain = \stripos(PHP_OS, 'win') === 0 ? STREAM_PF_INET : STREAM_PF_UNIX;
 
