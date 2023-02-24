@@ -64,11 +64,11 @@ class StreamSelectDriverTest extends DriverTest
             // win FD_SETSIZE not 1024
             self::markTestSkipped('Skip on Windows');
         }
+
         $sockets = [];
-        $domain = \stripos(PHP_OS, 'win') === 0 ? STREAM_PF_INET : STREAM_PF_UNIX;
 
         for ($i = 0; $i < 1001; $i++) {
-            $sockets[] = \stream_socket_pair($domain, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
+            $sockets[] = \stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
         }
 
         $this->expectException(\Exception::class);
