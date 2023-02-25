@@ -111,7 +111,7 @@ final class DriverSuspension implements Suspension
                         if ($fiber === null) {
                             continue;
                         }
-    
+
                         $reflectionFiber = new \ReflectionFiber($fiber);
                         $info .= "\n\n" . $this->formatStacktrace($reflectionFiber->getTrace(\DEBUG_BACKTRACE_IGNORE_ARGS));
                     }
