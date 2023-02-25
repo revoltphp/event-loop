@@ -104,17 +104,17 @@ final class DriverSuspension implements Suspension
             $info = '';
             $suspensions = $this->suspensions->get();
             if ($suspensions) {
-                \gc_collect_cycles();
-
-                /** @var self $suspension */
-                foreach ($suspensions as $suspension) {
-                    $fiber = $suspension->fiberRef?->get();
-                    if ($fiber === null) {
-                        continue;
+                foreach ($suspensions as $suspensionRef) {
+                    /** @var self $suspension */
+                    if ($suspension = $suspensionRef->get()) {
+                        $fiber = $suspension->fiberRef?->get();
+                        if ($fiber === null) {
+                            continue;
+                        }
+    
+                        $reflectionFiber = new \ReflectionFiber($fiber);
+                        $info .= "\n\n" . $this->formatStacktrace($reflectionFiber->getTrace(\DEBUG_BACKTRACE_IGNORE_ARGS));
                     }
-
-                    $reflectionFiber = new \ReflectionFiber($fiber);
-                    $info .= "\n\n" . $this->formatStacktrace($reflectionFiber->getTrace(\DEBUG_BACKTRACE_IGNORE_ARGS));
                 }
             }
 
