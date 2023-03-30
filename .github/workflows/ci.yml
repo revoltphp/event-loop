@@ -14,6 +14,11 @@ jobs:
           - operating-system: 'ubuntu-latest'
             php-version: '8.1'
             composer-flags: '--ignore-platform-req=php'
+            phpunit-flags: '-d disable_functions=pcntl_signal_dispatch'
+          - operating-system: 'ubuntu-latest'
+            php-version: '8.1'
+            composer-flags: '--ignore-platform-req=php'
+            phpunit-flags: '-d disable_functions=pcntl_signal_dispatch'
 
     name: PHP ${{ matrix.php-version }} ${{ matrix.job-description }}
 
@@ -66,7 +71,7 @@ jobs:
             composer info -D
 
       - name: Run tests
-        run: vendor/bin/phpunit ${{ matrix.phpunit-flags }}
+        run: php ${{ matrix.phpunit-flags }} vendor/bin/phpunit
 
       - name: Run Psalm
         run: vendor/bin/psalm.phar --show-info=true
