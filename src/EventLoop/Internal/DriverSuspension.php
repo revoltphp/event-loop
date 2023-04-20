@@ -23,8 +23,6 @@ final class DriverSuspension implements Suspension
 
     private bool $pending = false;
 
-    private readonly \WeakReference $suspensions;
-
     /**
      * @param \Closure $run
      * @param \Closure $queue
@@ -36,12 +34,10 @@ final class DriverSuspension implements Suspension
         private readonly \Closure $run,
         private readonly \Closure $queue,
         private readonly \Closure $interrupt,
-        \WeakMap $suspensions
     ) {
         $fiber = \Fiber::getCurrent();
 
         $this->fiberRef = $fiber ? \WeakReference::create($fiber) : null;
-        $this->suspensions = \WeakReference::create($suspensions);
     }
 
     public function resume(mixed $value = null): void
@@ -101,24 +97,7 @@ final class DriverSuspension implements Suspension
             $this->pending = false;
             $result && $result(); // Unwrap any uncaught exceptions from the event loop
 
-            $info = '';
-            $suspensions = $this->suspensions->get();
-            if ($suspensions) {
-                \gc_collect_cycles();
-
-                /** @var self $suspension */
-                foreach ($suspensions as $suspension) {
-                    $fiber = $suspension->fiberRef?->get();
-                    if ($fiber === null) {
-                        continue;
-                    }
-
-                    $reflectionFiber = new \ReflectionFiber($fiber);
-                    $info .= "\n\n" . $this->formatStacktrace($reflectionFiber->getTrace(\DEBUG_BACKTRACE_IGNORE_ARGS));
-                }
-            }
-
-            throw new \Error('Event loop terminated without resuming the current suspension:' . $info);
+            throw new \Error('Event loop terminated without resuming the current suspension');
         }
 
         return $result();
