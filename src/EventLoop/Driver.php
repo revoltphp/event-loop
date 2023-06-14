@@ -165,8 +165,10 @@ interface Driver
      * The created callback MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
+     * The third parameter of the callback MAY be contain an OS-specific siginfo structure, null otherwise.
+     *
      * @param int $signal The signal number to monitor.
-     * @param \Closure(string, int):void $closure The callback to execute.
+     * @param \Closure(string, int, mixed):void $closure The callback to execute.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      *

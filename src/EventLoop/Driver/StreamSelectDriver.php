@@ -34,7 +34,7 @@ final class StreamSelectDriver extends AbstractDriver
     /** @var array<int, array<string, SignalCallback>> */
     private array $signalCallbacks = [];
 
-    /** @var \SplQueue<int> */
+    /** @var \SplQueue<list{int, mixed}> */
     private readonly \SplQueue $signalQueue;
 
     private bool $signalHandling;
@@ -120,9 +120,21 @@ final class StreamSelectDriver extends AbstractDriver
             \pcntl_signal_dispatch();
 
             while (!$this->signalQueue->isEmpty()) {
-                $signal = $this->signalQueue->dequeue();
+                [$signal, $siginfo] = $this->signalQueue->dequeue();
 
                 foreach ($this->signalCallbacks[$signal] as $callback) {
+                    if ($siginfo !== null) {
+                        $callbackNew = new SignalCallback(
+                            $callback->id,
+                            $callback->closure,
+                            $callback->signal,
+                            $siginfo
+                        );
+                        $callbackNew->invokable = &$callback->invokable;
+                        $callbackNew->referenced = &$callback->referenced;
+                        $callbackNew->enabled = &$callback->enabled;
+                        $callback = $callbackNew;
+                    }
                     $this->enqueueCallback($callback);
                 }
 
@@ -304,7 +316,7 @@ final class StreamSelectDriver extends AbstractDriver
         }
 
         if ($timeout > 0) { // Sleep until next timer expires.
-            /** @psalm-var positive-int $timeout */
+            /** @psalm-suppress ArgumentTypeCoercion $timeout is always > 0, even if there is no psalm type to represent a positive float. */
             \usleep((int) ($timeout * 1_000_000));
         }
     }
@@ -325,9 +337,9 @@ final class StreamSelectDriver extends AbstractDriver
         return $expiration > 0 ? $expiration : 0.0;
     }
 
-    private function handleSignal(int $signal): void
+    private function handleSignal(int $signal, mixed $siginfo): void
     {
         // Queue signals, so we don't suspend inside pcntl_signal_dispatch, which disables signals while it runs
-        $this->signalQueue->enqueue($signal);
+        $this->signalQueue->enqueue([$signal, $siginfo]);
     }
 }

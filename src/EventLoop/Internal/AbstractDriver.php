@@ -186,7 +186,7 @@ abstract class AbstractDriver implements Driver
 
     public function onSignal(int $signal, \Closure $closure): string
     {
-        $signalCallback = new SignalCallback($this->nextId++, $closure, $signal);
+        $signalCallback = new SignalCallback($this->nextId++, $closure, $signal, null);
 
         $this->callbacks[$signalCallback->id] = $signalCallback;
         $this->enableQueue[$signalCallback->id] = $signalCallback;
@@ -517,6 +517,7 @@ abstract class AbstractDriver implements Driver
             // Invoke microtasks if we have some
             $this->invokeCallbacks();
 
+            /** @var bool $this->stopped */
             while (!$this->stopped) {
                 if ($this->interrupt) {
                     $this->invokeInterrupt();
@@ -572,7 +573,8 @@ abstract class AbstractDriver implements Driver
                             ),
                             $callback instanceof SignalCallback => ($callback->closure)(
                                 $callback->id,
-                                $callback->signal
+                                $callback->signal,
+                                $callback->siginfo
                             ),
                             default => ($callback->closure)($callback->id),
                         };

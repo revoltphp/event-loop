@@ -39,7 +39,12 @@ class StreamSelectDriverTest extends DriverTest
 
         try {
             $this->start(function (Driver $loop) use (&$invoked, &$callbackId) {
-                $callbackId = $loop->onSignal(SIGUSR1, function () use (&$invoked) {
+                $callbackId = $loop->onSignal(SIGUSR1, function ($cId, $sig, $siginfo) use (&$callbackId, &$invoked) {
+                    $this->assertEquals($callbackId, $cId);
+                    $this->assertEquals(SIGUSR1, $sig);
+                    $this->assertEquals(SIGUSR1, $siginfo['signo']);
+                    $this->assertEquals(\getmypid(), $siginfo['pid']);
+                    $this->assertEquals(\getmyuid(), $siginfo['uid']);
                     $invoked = true;
                 });
 
