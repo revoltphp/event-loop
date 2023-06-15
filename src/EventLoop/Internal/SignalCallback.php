@@ -11,7 +11,7 @@ final class SignalCallback extends DriverCallback
         string $id,
         \Closure $closure,
         public readonly int $signal,
-        public readonly mixed $siginfo
+        public mixed $siginfo
     ) {
         parent::__construct($id, $closure);
     }

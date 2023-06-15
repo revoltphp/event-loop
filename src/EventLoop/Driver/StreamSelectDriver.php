@@ -123,18 +123,7 @@ final class StreamSelectDriver extends AbstractDriver
                 [$signal, $siginfo] = $this->signalQueue->dequeue();
 
                 foreach ($this->signalCallbacks[$signal] as $callback) {
-                    if ($siginfo !== null) {
-                        $callbackNew = new SignalCallback(
-                            $callback->id,
-                            $callback->closure,
-                            $callback->signal,
-                            $siginfo
-                        );
-                        $callbackNew->invokable = &$callback->invokable;
-                        $callbackNew->referenced = &$callback->referenced;
-                        $callbackNew->enabled = &$callback->enabled;
-                        $callback = $callbackNew;
-                    }
+                    $callback->siginfo = $siginfo;
                     $this->enqueueCallback($callback);
                 }
 
