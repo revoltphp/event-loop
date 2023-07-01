@@ -97,7 +97,15 @@ final class DriverSuspension implements Suspension
             $this->pending = false;
             $result && $result(); // Unwrap any uncaught exceptions from the event loop
 
-            throw new \Error('Event loop terminated without resuming the current suspension');
+            $message = 'Event loop terminated without resuming the current suspension';
+
+            $fiber = $this->fiberRef?->get();
+            if ($fiber) {
+                $reflectionFiber = new \ReflectionFiber($fiber);
+                $message .= "\n\n" . $this->formatStacktrace($reflectionFiber->getTrace(\DEBUG_BACKTRACE_IGNORE_ARGS));
+            }
+
+            throw new \Error($message);
         }
 
         return $result();
