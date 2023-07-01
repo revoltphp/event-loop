@@ -23,25 +23,15 @@ final class DriverSuspension implements Suspension
 
     private bool $pending = false;
 
-    private readonly \WeakReference $suspensions;
-
-    /**
-     * @param \Closure $run
-     * @param \Closure $queue
-     * @param \Closure $interrupt
-     *
-     * @internal
-     */
     public function __construct(
         private readonly \Closure $run,
         private readonly \Closure $queue,
         private readonly \Closure $interrupt,
-        \WeakMap $suspensions
+        private readonly \WeakMap $suspensions,
     ) {
         $fiber = \Fiber::getCurrent();
 
         $this->fiberRef = $fiber ? \WeakReference::create($fiber) : null;
-        $this->suspensions = \WeakReference::create($suspensions);
     }
 
     public function resume(mixed $value = null): void
@@ -102,19 +92,16 @@ final class DriverSuspension implements Suspension
             $result && $result(); // Unwrap any uncaught exceptions from the event loop
 
             $info = '';
-            $suspensions = $this->suspensions->get();
-            if ($suspensions) {
-                foreach ($suspensions as $suspensionRef) {
-                    /** @var self $suspension */
-                    if ($suspension = $suspensionRef->get()) {
-                        $fiber = $suspension->fiberRef?->get();
-                        if ($fiber === null) {
-                            continue;
-                        }
-
-                        $reflectionFiber = new \ReflectionFiber($fiber);
-                        $info .= "\n\n" . $this->formatStacktrace($reflectionFiber->getTrace(\DEBUG_BACKTRACE_IGNORE_ARGS));
+            foreach ($this->suspensions as $suspensionRef) {
+                if ($suspension = $suspensionRef->get()) {
+                    \assert($suspension instanceof self);
+                    $fiber = $suspension->fiberRef?->get();
+                    if ($fiber === null) {
+                        continue;
                     }
+
+                    $reflectionFiber = new \ReflectionFiber($fiber);
+                    $info .= "\n\n" . $this->formatStacktrace($reflectionFiber->getTrace(\DEBUG_BACKTRACE_IGNORE_ARGS));
                 }
             }
 
