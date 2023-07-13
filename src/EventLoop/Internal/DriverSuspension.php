@@ -118,7 +118,7 @@ final class DriverSuspension implements Suspension
                 }
             }
 
-            throw new \Error('Event loop terminated without resuming the current suspension (fiber deadlock):' . $info);
+            throw new \Error('Event loop terminated without resuming the current suspension (the cause is either a fiber deadlock, or an incorrectly unreferenced/canceled watcher):' . $info);
         }
 
         return $result();
