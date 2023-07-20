@@ -91,6 +91,8 @@ final class DriverSuspension implements Suspension
             $this->pending = false;
             $result && $result(); // Unwrap any uncaught exceptions from the event loop
 
+            \gc_collect_cycles(); // Collect any circular references before dumping pending suspensions.
+
             $info = '';
             foreach ($this->suspensions as $suspensionRef) {
                 if ($suspension = $suspensionRef->get()) {
