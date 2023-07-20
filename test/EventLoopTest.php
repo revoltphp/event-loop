@@ -269,8 +269,7 @@ class EventLoopTest extends TestCase
 
         \gc_collect_cycles();
 
-        // This documents an expected failure, should actually be true, but suspensions have to be resumed currently.
-        self::assertNull($finally);
+        self::assertTrue($finally);
     }
 
     public function testSuspensionWithinQueue(): void

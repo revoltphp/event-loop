@@ -285,12 +285,21 @@ abstract class AbstractDriver implements Driver
         \assert($fiber !== $this->fiber);
 
         // Use current object in case of {main}
-        return $this->suspensions[$fiber ?? $this] ??= new DriverSuspension(
+        $suspension = ($this->suspensions[$fiber ?? $this] ?? null)?->get();
+        if ($suspension) {
+            return $suspension;
+        }
+
+        $suspension = new DriverSuspension(
             $this->runCallback,
             $this->queueCallback,
             $this->interruptCallback,
-            $this->suspensions
+            $this->suspensions,
         );
+
+        $this->suspensions[$fiber ?? $this] = \WeakReference::create($suspension);
+
+        return $suspension;
     }
 
     public function setErrorHandler(?\Closure $errorHandler): void

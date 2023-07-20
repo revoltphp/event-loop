@@ -23,25 +23,15 @@ final class DriverSuspension implements Suspension
 
     private bool $pending = false;
 
-    private readonly \WeakReference $suspensions;
-
-    /**
-     * @param \Closure $run
-     * @param \Closure $queue
-     * @param \Closure $interrupt
-     *
-     * @internal
-     */
     public function __construct(
         private readonly \Closure $run,
         private readonly \Closure $queue,
         private readonly \Closure $interrupt,
-        \WeakMap $suspensions
+        private readonly \WeakMap $suspensions,
     ) {
         $fiber = \Fiber::getCurrent();
 
         $this->fiberRef = $fiber ? \WeakReference::create($fiber) : null;
-        $this->suspensions = \WeakReference::create($suspensions);
     }
 
     public function resume(mixed $value = null): void
@@ -101,13 +91,12 @@ final class DriverSuspension implements Suspension
             $this->pending = false;
             $result && $result(); // Unwrap any uncaught exceptions from the event loop
 
-            $info = '';
-            $suspensions = $this->suspensions->get();
-            if ($suspensions) {
-                \gc_collect_cycles();
+            \gc_collect_cycles(); // Collect any circular references before dumping pending suspensions.
 
-                /** @var self $suspension */
-                foreach ($suspensions as $suspension) {
+            $info = '';
+            foreach ($this->suspensions as $suspensionRef) {
+                if ($suspension = $suspensionRef->get()) {
+                    \assert($suspension instanceof self);
                     $fiber = $suspension->fiberRef?->get();
                     if ($fiber === null) {
                         continue;
