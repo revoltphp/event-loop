@@ -201,10 +201,8 @@ final class EventLoop
      * The created callback MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
      * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
      *
-     * The third parameter of the callback MAY be contain an OS-specific siginfo structure, null otherwise.
-     *
      * @param int $signal The signal number to monitor.
-     * @param \Closure(string, int, mixed):void $closure The callback to execute.
+     * @param \Closure(string, int):void $closure The callback to execute.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      *
@@ -213,6 +211,32 @@ final class EventLoop
     public static function onSignal(int $signal, \Closure $closure): string
     {
         return self::getDriver()->onSignal($signal, $closure);
+    }
+
+    /**
+     * Execute a callback when a signal is received, also processing eventual OS-specific signal info.
+     *
+     * Warning: Installing the same signal on different instances of this interface is deemed undefined behavior.
+     * Implementations MAY try to detect this, if possible, but are not required to. This is due to technical
+     * limitations of the signals being registered globally per process.
+     *
+     * Multiple callbacks on the same signal MAY be executed in any order.
+     *
+     * The created callback MUST immediately be marked as enabled, but only be activated (i.e. callback can be called)
+     * right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
+     *
+     * The third parameter of the callback MAY contain an OS-specific siginfo structure, or null otherwise.
+     *
+     * @param int $signal The signal number to monitor.
+     * @param \Closure(string, int, mixed):void $closure The callback to execute.
+     *
+     * @return string A unique identifier that can be used to cancel, enable or disable the callback.
+     *
+     * @throws UnsupportedFeatureException If signal handling with signal information is not supported.
+     */
+    public static function onSignalWithInfo(int $signal, \Closure $closure): string
+    {
+        return self::getDriver()->onSignalWithInfo($signal, $closure);
     }
 
     /**

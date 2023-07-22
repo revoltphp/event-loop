@@ -186,7 +186,17 @@ abstract class AbstractDriver implements Driver
 
     public function onSignal(int $signal, \Closure $closure): string
     {
-        $signalCallback = new SignalCallback($this->nextId++, $closure, $signal, null);
+        $signalCallback = new SignalCallback($this->nextId++, $closure, $signal);
+
+        $this->callbacks[$signalCallback->id] = $signalCallback;
+        $this->enableQueue[$signalCallback->id] = $signalCallback;
+
+        return $signalCallback->id;
+    }
+
+    public function onSignalWithInfo(int $signal, \Closure $closure): string
+    {
+        $signalCallback = new SignalCallbackExtra($this->nextId++, $closure, $signal, null);
 
         $this->callbacks[$signalCallback->id] = $signalCallback;
         $this->enableQueue[$signalCallback->id] = $signalCallback;
@@ -572,6 +582,10 @@ abstract class AbstractDriver implements Driver
                                 $callback->stream
                             ),
                             $callback instanceof SignalCallback => ($callback->closure)(
+                                $callback->id,
+                                $callback->signal
+                            ),
+                            $callback instanceof SignalCallbackExtra => ($callback->closure)(
                                 $callback->id,
                                 $callback->signal,
                                 $callback->siginfo

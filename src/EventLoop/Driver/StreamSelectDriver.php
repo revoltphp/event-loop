@@ -9,6 +9,7 @@ namespace Revolt\EventLoop\Driver;
 use Revolt\EventLoop\Internal\AbstractDriver;
 use Revolt\EventLoop\Internal\DriverCallback;
 use Revolt\EventLoop\Internal\SignalCallback;
+use Revolt\EventLoop\Internal\SignalCallbackExtra;
 use Revolt\EventLoop\Internal\StreamReadableCallback;
 use Revolt\EventLoop\Internal\StreamWritableCallback;
 use Revolt\EventLoop\Internal\TimerCallback;
@@ -101,6 +102,18 @@ final class StreamSelectDriver extends AbstractDriver
         return parent::onSignal($signal, $closure);
     }
 
+    /**
+     * @throws UnsupportedFeatureException If the pcntl extension is not available.
+     */
+    public function onSignalWithInfo(int $signal, \Closure $closure): string
+    {
+        if (!$this->signalHandling) {
+            throw new UnsupportedFeatureException("Signal handling requires the pcntl extension");
+        }
+
+        return parent::onSignalWithInfo($signal, $closure);
+    }
+
     public function getHandle(): mixed
     {
         return null;
@@ -123,7 +136,9 @@ final class StreamSelectDriver extends AbstractDriver
                 [$signal, $siginfo] = $this->signalQueue->dequeue();
 
                 foreach ($this->signalCallbacks[$signal] as $callback) {
-                    $callback->siginfo = $siginfo;
+                    if ($callback instanceof SignalCallbackExtra) {
+                        $callback->siginfo = $siginfo;
+                    }
                     $this->enqueueCallback($callback);
                 }
 
@@ -161,7 +176,7 @@ final class StreamSelectDriver extends AbstractDriver
                 $this->writeStreams[$streamId] = $callback->stream;
             } elseif ($callback instanceof TimerCallback) {
                 $this->timerQueue->insert($callback);
-            } elseif ($callback instanceof SignalCallback) {
+            } elseif ($callback instanceof SignalCallback || $callback instanceof SignalCallbackExtra) {
                 if (!isset($this->signalCallbacks[$callback->signal])) {
                     \set_error_handler(static function (int $errno, string $errstr): bool {
                         throw new UnsupportedFeatureException(
@@ -204,7 +219,7 @@ final class StreamSelectDriver extends AbstractDriver
             }
         } elseif ($callback instanceof TimerCallback) {
             $this->timerQueue->remove($callback);
-        } elseif ($callback instanceof SignalCallback) {
+        } elseif ($callback instanceof SignalCallback || $callback instanceof SignalCallbackExtra) {
             if (isset($this->signalCallbacks[$callback->signal])) {
                 unset($this->signalCallbacks[$callback->signal][$callback->id]);
 
