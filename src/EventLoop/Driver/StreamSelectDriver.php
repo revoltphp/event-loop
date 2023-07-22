@@ -32,7 +32,7 @@ final class StreamSelectDriver extends AbstractDriver
 
     private readonly TimerQueue $timerQueue;
 
-    /** @var array<int, array<string, SignalCallback>> */
+    /** @var array<int, array<string, SignalCallback|SignalCallbackExtra>> */
     private array $signalCallbacks = [];
 
     /** @var \SplQueue<list{int, mixed}> */
