@@ -13,7 +13,6 @@ use Revolt\EventLoop\Internal\StreamCallback;
 use Revolt\EventLoop\Internal\StreamReadableCallback;
 use Revolt\EventLoop\Internal\StreamWritableCallback;
 use Revolt\EventLoop\Internal\TimerCallback;
-use Revolt\EventLoop\UnsupportedFeatureException;
 
 final class EvDriver extends AbstractDriver
 {
@@ -69,14 +68,6 @@ final class EvDriver extends AbstractDriver
 
             $this->enqueueCallback($callback);
         };
-    }
-
-    /**
-     * @throws UnsupportedFeatureException Signal info handling is not supported with the Ev driver, please use onSignal instead.
-     */
-    public function onSignalWithInfo(int $signal, \Closure $closure): string
-    {
-        throw new UnsupportedFeatureException("Signal info handling is not supported with the Ev driver, please use onSignal instead.");
     }
 
     /**
