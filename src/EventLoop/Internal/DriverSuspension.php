@@ -1,4 +1,4 @@
-<?php
+<?php /** @noinspection PhpPropertyOnlyWrittenInspection */
 
 declare(strict_types=1);
 
@@ -46,7 +46,12 @@ final class DriverSuspension implements Suspension
         $fiber = $this->fiberRef?->get();
 
         if ($fiber) {
-            ($this->queue)($fiber->resume(...), $value);
+            ($this->queue)(static function () use ($fiber, $value): void {
+                // The fiber may be destroyed with suspension as part of the GC cycle collector.
+                if (!$fiber->isTerminated()) {
+                    $fiber->resume($value);
+                }
+            });
         } else {
             // Suspend event loop fiber to {main}.
             ($this->interrupt)(static fn () => $value);
@@ -125,7 +130,12 @@ final class DriverSuspension implements Suspension
         $fiber = $this->fiberRef?->get();
 
         if ($fiber) {
-            ($this->queue)($fiber->throw(...), $throwable);
+            ($this->queue)(static function () use ($fiber, $throwable): void {
+                // The fiber may be destroyed with suspension as part of the GC cycle collector.
+                if (!$fiber->isTerminated()) {
+                    $fiber->throw($throwable);
+                }
+            });
         } else {
             // Suspend event loop fiber to {main}.
             ($this->interrupt)(static fn () => throw $throwable);
