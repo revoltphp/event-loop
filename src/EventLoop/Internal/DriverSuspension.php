@@ -1,4 +1,6 @@
-<?php /** @noinspection PhpPropertyOnlyWrittenInspection */
+<?php
+
+/** @noinspection PhpPropertyOnlyWrittenInspection */
 
 declare(strict_types=1);
 
