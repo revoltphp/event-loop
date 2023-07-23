@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Revolt\EventLoop;
 
+use Ev;
 use PHPUnit\Framework\TestCase;
 use Revolt\EventLoop;
+use Symfony\Contracts\EventDispatcher\Event;
 
 class EventLoopTest extends TestCase
 {
@@ -298,5 +300,45 @@ class EventLoopTest extends TestCase
         } catch (UncaughtThrowable $t) {
             self::assertSame($error, $t->getPrevious());
         }
+    }
+
+    public function testFiberDestroyedWhileSuspended(): void
+    {
+        $outer = new class (new class ($this) {
+            private ?Suspension $suspension = null;
+
+            public function __construct(public object $outer)
+            {
+            }
+
+            public function suspend(): void {
+                $this->suspension = EventLoop::getSuspension();
+                $this->suspension->suspend();
+            }
+
+            public function __destruct()
+            {
+                echo 'object destroyed';
+                $suspension = $this->suspension;
+                $this->suspension = null;
+                EventLoop::defer(static fn () => $suspension?->resume());
+            }
+        }) {
+            public function __construct(public object $inner)
+            {
+            }
+        };
+
+        $inner = $outer->inner;
+        unset($outer);
+
+        EventLoop::queue(static fn () => $inner->suspend());
+        unset($inner);
+
+        EventLoop::queue(\gc_collect_cycles(...));
+
+        $this->expectOutputString('object destroyed');
+
+        EventLoop::run();
     }
 }
