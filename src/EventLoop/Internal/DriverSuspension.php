@@ -79,15 +79,17 @@ final class DriverSuspension implements Suspension
             $this->suspendedFiber = $fiber;
 
             try {
-                return \Fiber::suspend();
+                $value = \Fiber::suspend();
+                $this->suspendedFiber = null;
             } catch (\FiberError $exception) {
                 $this->pending = false;
+                $this->suspendedFiber = null;
                 $this->fiberError = $exception;
 
                 throw $exception;
-            } finally {
-                $this->suspendedFiber = null;
             }
+
+            return $value;
         }
 
         // Awaiting from {main}.
