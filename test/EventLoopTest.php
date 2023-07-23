@@ -311,7 +311,8 @@ class EventLoopTest extends TestCase
             {
             }
 
-            public function suspend(): void {
+            public function suspend(): void
+            {
                 $this->suspension = EventLoop::getSuspension();
                 $this->suspension->suspend();
             }
