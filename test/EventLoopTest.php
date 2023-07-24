@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace Revolt\EventLoop;
 
-use Ev;
 use PHPUnit\Framework\TestCase;
 use Revolt\EventLoop;
-use Symfony\Contracts\EventDispatcher\Event;
 
 class EventLoopTest extends TestCase
 {
