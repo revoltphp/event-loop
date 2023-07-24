@@ -249,7 +249,7 @@ final class TracingDriver implements Driver
     /**
      * Formats a stacktrace obtained via `debug_backtrace()`.
      *
-     * @param list<array{args?: list<mixed>, class?: class-string, file: string, function: string, line: int, object?: object, type?: string}> $trace
+     * @param list<array{args?: list<mixed>, class?: class-string, file?: string, function: string, line?: int, object?: object, type?: string}> $trace
      *     Output of `debug_backtrace()`.
      *
      * @return string Formatted stacktrace.
@@ -259,7 +259,7 @@ final class TracingDriver implements Driver
         return \implode("\n", \array_map(static function ($e, $i) {
             $line = "#{$i} ";
 
-            if (isset($e["file"])) {
+            if (isset($e["file"]) && isset($e['line'])) {
                 $line .= "{$e['file']}:{$e['line']} ";
             }
 
