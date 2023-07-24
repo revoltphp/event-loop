@@ -89,6 +89,9 @@ final class DriverSuspension implements Suspension
                 throw $exception;
             }
 
+            // Setting $this->suspendedFiber = null in finally will set the fiber to null if a fiber is destroyed
+            // as part of a cycle collection, causing an error if the suspension is subsequently resumed.
+
             return $value;
         }
 
