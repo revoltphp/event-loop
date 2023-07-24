@@ -194,7 +194,7 @@ abstract class AbstractDriver implements Driver
         return $signalCallback->id;
     }
 
-    public function onSignalWithInfo(int $signal, \Closure $closure): string
+    protected function onSignalWithInfo(int $signal, \Closure $closure): string
     {
         $signalCallback = new SignalCallbackExtra($this->nextId++, $closure, $signal, null);
 
