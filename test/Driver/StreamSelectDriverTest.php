@@ -38,8 +38,13 @@ class StreamSelectDriverTest extends DriverTest
         \pcntl_async_signals(true);
 
         try {
-            $this->start(function (Driver $loop) use (&$invoked, &$callbackId) {
-                $callbackId = $loop->onSignal(SIGUSR1, function () use (&$invoked) {
+            $this->start(function (StreamSelectDriver $loop) use (&$invoked, &$callbackId) {
+                $callbackId = $loop->onSignalWithInfo(SIGUSR1, function ($cId, $sig, $siginfo) use (&$callbackId, &$invoked) {
+                    $this->assertEquals($callbackId, $cId);
+                    $this->assertEquals(SIGUSR1, $sig);
+                    $this->assertEquals(SIGUSR1, $siginfo['signo']);
+                    $this->assertEquals(\getmypid(), $siginfo['pid']);
+                    $this->assertEquals(\getmyuid(), $siginfo['uid']);
                     $invoked = true;
                 });
 
@@ -121,7 +126,7 @@ class StreamSelectDriverTest extends DriverTest
 
         $sockets = \stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
 
-        $this->start(function (Driver $loop) use ($sockets, &$signalCallbackId) {
+        $this->start(function (StreamSelectDriver $loop) use ($sockets, &$signalCallbackId) {
             $socketCallbackIds = [
                 $loop->onReadable($sockets[0], function () {
                     // nothing

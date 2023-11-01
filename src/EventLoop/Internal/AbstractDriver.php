@@ -201,6 +201,16 @@ abstract class AbstractDriver implements Driver
         return $signalCallback->id;
     }
 
+    protected function onSignalWithInfo(int $signal, \Closure $closure): string
+    {
+        $signalCallback = new SignalCallbackExtra($this->nextId++, $closure, $signal, null);
+
+        $this->callbacks[$signalCallback->id] = $signalCallback;
+        $this->enableQueue[$signalCallback->id] = $signalCallback;
+
+        return $signalCallback->id;
+    }
+
     public function enable(string $callbackId): string
     {
         if (!isset($this->callbacks[$callbackId])) {
@@ -533,6 +543,7 @@ abstract class AbstractDriver implements Driver
             // Invoke microtasks if we have some
             $this->invokeCallbacks();
 
+            /** @var bool $this->stopped */
             while (!$this->stopped) {
                 if ($this->interrupt) {
                     $this->invokeInterrupt();
@@ -589,6 +600,11 @@ abstract class AbstractDriver implements Driver
                             $callback instanceof SignalCallback => ($callback->closure)(
                                 $callback->id,
                                 $callback->signal
+                            ),
+                            $callback instanceof SignalCallbackExtra => ($callback->closure)(
+                                $callback->id,
+                                $callback->signal,
+                                $callback->siginfo
                             ),
                             default => ($callback->closure)($callback->id),
                         };

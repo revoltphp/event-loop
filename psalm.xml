@@ -28,6 +28,13 @@
             </errorLevel>
         </StringIncrement>
 
+        <UnsupportedPropertyReferenceUsage>
+            <errorLevel type="suppress">
+                <directory name="examples"/>
+                <directory name="src"/>
+            </errorLevel>
+        </UnsupportedPropertyReferenceUsage>
+
         <RedundantConditionGivenDocblockType>
             <errorLevel type="suppress">
                 <directory name="src"/>
