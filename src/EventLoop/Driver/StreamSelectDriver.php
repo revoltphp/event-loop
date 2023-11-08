@@ -49,7 +49,9 @@ final class StreamSelectDriver extends AbstractDriver
 
         $this->signalQueue = new \SplQueue();
         $this->timerQueue = new TimerQueue();
-        $this->signalHandling = \extension_loaded("pcntl");
+        $this->signalHandling = \extension_loaded("pcntl")
+            && \function_exists('pcntl_signal_dispatch')
+            && \function_exists('pcntl_signal');
 
         $this->streamSelectErrorHandler = function (int $errno, string $message): void {
             // Casing changed in PHP 8 from 'unable' to 'Unable'

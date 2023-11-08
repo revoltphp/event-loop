@@ -43,7 +43,7 @@ abstract class AbstractDriver implements Driver
     /** @var null|\Closure(\Throwable):void */
     private ?\Closure $errorHandler = null;
 
-    /** @var null|\Closure():mixed  */
+    /** @var null|\Closure():mixed */
     private ?\Closure $interrupt = null;
 
     private readonly \Closure $interruptCallback;
@@ -65,6 +65,13 @@ abstract class AbstractDriver implements Driver
 
     public function __construct()
     {
+        if (\PHP_VERSION_ID < 80117 || \PHP_VERSION_ID >= 80200 && \PHP_VERSION_ID < 80204) {
+            // PHP GC is broken on early 8.1 and 8.2 versions, see https://github.com/php/php-src/issues/10496
+            if (!\getenv('REVOLT_DRIVER_SUPPRESS_ISSUE_10496')) {
+                throw new \Error('Your version of PHP is affected by serious garbage collector bugs related to fibers. Please upgrade to a newer version of PHP, i.e. >= 8.1.17 or => 8.2.4');
+            }
+        }
+
         $this->suspensions = new \WeakMap();
 
         $this->internalSuspensionMarker = new \stdClass();
@@ -285,12 +292,21 @@ abstract class AbstractDriver implements Driver
         \assert($fiber !== $this->fiber);
 
         // Use current object in case of {main}
-        return $this->suspensions[$fiber ?? $this] ??= new DriverSuspension(
+        $suspension = ($this->suspensions[$fiber ?? $this] ?? null)?->get();
+        if ($suspension) {
+            return $suspension;
+        }
+
+        $suspension = new DriverSuspension(
             $this->runCallback,
             $this->queueCallback,
             $this->interruptCallback,
-            $this->suspensions
+            $this->suspensions,
         );
+
+        $this->suspensions[$fiber ?? $this] = \WeakReference::create($suspension);
+
+        return $suspension;
     }
 
     public function setErrorHandler(?\Closure $errorHandler): void

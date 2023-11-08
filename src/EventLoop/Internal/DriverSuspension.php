@@ -1,5 +1,7 @@
 <?php
 
+/** @noinspection PhpPropertyOnlyWrittenInspection */
+
 declare(strict_types=1);
 
 namespace Revolt\EventLoop\Internal;
@@ -23,25 +25,15 @@ final class DriverSuspension implements Suspension
 
     private bool $pending = false;
 
-    private readonly \WeakReference $suspensions;
-
-    /**
-     * @param \Closure $run
-     * @param \Closure $queue
-     * @param \Closure $interrupt
-     *
-     * @internal
-     */
     public function __construct(
         private readonly \Closure $run,
         private readonly \Closure $queue,
         private readonly \Closure $interrupt,
-        \WeakMap $suspensions
+        private readonly \WeakMap $suspensions,
     ) {
         $fiber = \Fiber::getCurrent();
 
         $this->fiberRef = $fiber ? \WeakReference::create($fiber) : null;
-        $this->suspensions = \WeakReference::create($suspensions);
     }
 
     public function resume(mixed $value = null): void
@@ -56,7 +48,12 @@ final class DriverSuspension implements Suspension
         $fiber = $this->fiberRef?->get();
 
         if ($fiber) {
-            ($this->queue)($fiber->resume(...), $value);
+            ($this->queue)(static function () use ($fiber, $value): void {
+                // The fiber may be destroyed with suspension as part of the GC cycle collector.
+                if (!$fiber->isTerminated()) {
+                    $fiber->resume($value);
+                }
+            });
         } else {
             // Suspend event loop fiber to {main}.
             ($this->interrupt)(static fn () => $value);
@@ -83,15 +80,20 @@ final class DriverSuspension implements Suspension
             $this->suspendedFiber = $fiber;
 
             try {
-                return \Fiber::suspend();
+                $value = \Fiber::suspend();
+                $this->suspendedFiber = null;
             } catch (\FiberError $error) {
                 $this->pending = false;
+                $this->suspendedFiber = null;
                 $this->error = $error;
 
                 throw $error;
-            } finally {
-                $this->suspendedFiber = null;
             }
+
+            // Setting $this->suspendedFiber = null in finally will set the fiber to null if a fiber is destroyed
+            // as part of a cycle collection, causing an error if the suspension is subsequently resumed.
+
+            return $value;
         }
 
         // Awaiting from {main}.
@@ -111,13 +113,12 @@ final class DriverSuspension implements Suspension
                 throw $throwable;
             }
 
-            $info = '';
-            $suspensions = $this->suspensions->get();
-            if ($suspensions) {
-                \gc_collect_cycles();
+            \gc_collect_cycles(); // Collect any circular references before dumping pending suspensions.
 
-                /** @var self $suspension */
-                foreach ($suspensions as $suspension) {
+            $info = '';
+            foreach ($this->suspensions as $suspensionRef) {
+                if ($suspension = $suspensionRef->get()) {
+                    \assert($suspension instanceof self);
                     $fiber = $suspension->fiberRef?->get();
                     if ($fiber === null) {
                         continue;
@@ -128,7 +129,7 @@ final class DriverSuspension implements Suspension
                 }
             }
 
-            throw $this->error = new \Error('Event loop terminated without resuming the current suspension:' . $info);
+            throw $this->error = new \Error('Event loop terminated without resuming the current suspension (the cause is either a fiber deadlock, or an incorrectly unreferenced/canceled watcher):' . $info);
         }
 
         return $result();
@@ -146,7 +147,12 @@ final class DriverSuspension implements Suspension
         $fiber = $this->fiberRef?->get();
 
         if ($fiber) {
-            ($this->queue)($fiber->throw(...), $throwable);
+            ($this->queue)(static function () use ($fiber, $throwable): void {
+                // The fiber may be destroyed with suspension as part of the GC cycle collector.
+                if (!$fiber->isTerminated()) {
+                    $fiber->throw($throwable);
+                }
+            });
         } else {
             // Suspend event loop fiber to {main}.
             ($this->interrupt)(static fn () => throw $throwable);

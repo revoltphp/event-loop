@@ -13,10 +13,12 @@ jobs:
         include:
           - operating-system: 'ubuntu-latest'
             php-version: '8.1'
-            composer-flags: '--ignore-platform-req=php'
+            composer-flags: '--ignore-platform-req=php+'
+          - operating-system: 'ubuntu-latest'
+            php-version: 8.2
+            composer-flags: '--ignore-platform-req=php+'
 
     name: PHP ${{ matrix.php-version }} ${{ matrix.job-description }}
-
     runs-on: ${{ matrix.operating-system }}
 
     steps:
@@ -66,7 +68,10 @@ jobs:
             composer info -D
 
       - name: Run tests
-        run: vendor/bin/phpunit ${{ matrix.phpunit-flags }}
+        run: php vendor/bin/phpunit
+
+      - name: Run tests without pcntl
+        run: php -d disable_functions=pcntl_signal_dispatch vendor/bin/phpunit
 
       - name: Run Psalm
         run: vendor/bin/psalm.phar --show-info=true

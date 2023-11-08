@@ -269,8 +269,7 @@ class EventLoopTest extends TestCase
 
         \gc_collect_cycles();
 
-        // This documents an expected failure, should actually be true, but suspensions have to be resumed currently.
-        self::assertNull($finally);
+        self::assertTrue($finally);
     }
 
     public function testSuspensionWithinQueue(): void
@@ -311,5 +310,46 @@ class EventLoopTest extends TestCase
         $suspension = EventLoop::getSuspension();
         EventLoop::queue($suspension->resume(...));
         $suspension->suspend();
+    }
+
+    public function testFiberDestroyedWhileSuspended(): void
+    {
+        $outer = new class (new class ($this) {
+            private ?Suspension $suspension = null;
+
+            public function __construct(public object $outer)
+            {
+            }
+
+            public function suspend(): void
+            {
+                $this->suspension = EventLoop::getSuspension();
+                $this->suspension->suspend();
+            }
+
+            public function __destruct()
+            {
+                echo 'object destroyed';
+                $suspension = $this->suspension;
+                $this->suspension = null;
+                EventLoop::defer(static fn () => $suspension?->resume());
+            }
+        }) {
+            public function __construct(public object $inner)
+            {
+            }
+        };
+
+        $inner = $outer->inner;
+        unset($outer);
+
+        EventLoop::queue(static fn () => $inner->suspend());
+        unset($inner);
+
+        EventLoop::queue(\gc_collect_cycles(...));
+
+        $this->expectOutputString('object destroyed');
+
+        EventLoop::run();
     }
 }
