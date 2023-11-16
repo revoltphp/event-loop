@@ -71,8 +71,9 @@ final class DriverSuspension implements Suspension
     {
         // Throw exception when trying to use old dead {main} suspension
         if ($this->deadMain) {
-            \assert($this->error !== null);
-            throw $this->error;
+            throw new \Error(
+                'Suspension cannot be suspended after an uncaught exception is thrown from the event loop',
+            );
         }
         if ($this->pending) {
             throw new \Error('Must call resume() or throw() before calling suspend() again');
@@ -116,15 +117,7 @@ final class DriverSuspension implements Suspension
             // This is now a dead {main} suspension.
             $this->deadMain = true;
 
-            try {
-                $result && $result(); // Unwrap any uncaught exceptions from the event loop
-            } catch (\Throwable $throwable) {
-                $this->error = new \Error(
-                    'Suspension cannot be suspended after an uncaught exception is thrown from the event loop',
-                );
-
-                throw $throwable;
-            }
+            $result && $result(); // Unwrap any uncaught exceptions from the event loop
 
             \gc_collect_cycles(); // Collect any circular references before dumping pending suspensions.
 
@@ -142,7 +135,7 @@ final class DriverSuspension implements Suspension
                 }
             }
 
-            throw $this->error = new \Error('Event loop terminated without resuming the current suspension (the cause is either a fiber deadlock, or an incorrectly unreferenced/canceled watcher):' . $info);
+            throw new \Error('Event loop terminated without resuming the current suspension (the cause is either a fiber deadlock, or an incorrectly unreferenced/canceled watcher):' . $info);
         }
 
         return $result();
