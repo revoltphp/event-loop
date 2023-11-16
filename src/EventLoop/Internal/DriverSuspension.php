@@ -25,6 +25,8 @@ final class DriverSuspension implements Suspension
 
     private bool $pending = false;
 
+    private bool $deadMain = false;
+
     public function __construct(
         private readonly \Closure $run,
         private readonly \Closure $queue,
@@ -38,6 +40,11 @@ final class DriverSuspension implements Suspension
 
     public function resume(mixed $value = null): void
     {
+        // Ignore spurious resumes to old dead {main} suspension
+        if ($this->deadMain) {
+            return;
+        }
+
         if (!$this->pending) {
             throw $this->error ?? new \Error('Must call suspend() before calling resume()');
         }
@@ -62,6 +69,10 @@ final class DriverSuspension implements Suspension
 
     public function suspend(): mixed
     {
+        // Throw exception when trying to use old dead {main} suspension
+        if ($this->deadMain) {
+            throw $this->error;
+        }
         if ($this->pending) {
             throw new \Error('Must call resume() or throw() before calling suspend() again');
         }
@@ -101,13 +112,14 @@ final class DriverSuspension implements Suspension
 
         /** @psalm-suppress RedundantCondition $this->pending should be changed when resumed. */
         if ($this->pending) {
-            $this->pending = false;
+            // This is now a dead {main} suspension.
+            $this->deadMain = true;
 
             try {
                 $result && $result(); // Unwrap any uncaught exceptions from the event loop
             } catch (\Throwable $throwable) {
                 $this->error = new \Error(
-                    'Suspension cannot be resumed after an uncaught exception is thrown from the event loop',
+                    'Suspension cannot be suspended after an uncaught exception is thrown from the event loop',
                 );
 
                 throw $throwable;
@@ -137,6 +149,11 @@ final class DriverSuspension implements Suspension
 
     public function throw(\Throwable $throwable): void
     {
+        // Ignore spurious resumes to old dead {main} suspension
+        if ($this->deadMain) {
+            return;
+        }
+
         if (!$this->pending) {
             throw $this->error ?? new \Error('Must call suspend() before calling throw()');
         }
