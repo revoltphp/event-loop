@@ -71,6 +71,7 @@ final class DriverSuspension implements Suspension
     {
         // Throw exception when trying to use old dead {main} suspension
         if ($this->deadMain) {
+            \assert($this->error !== null);
             throw $this->error;
         }
         if ($this->pending) {

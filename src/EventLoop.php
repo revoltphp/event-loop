@@ -346,7 +346,7 @@ final class EventLoop
      *
      * @param string $callbackId The callback identifier.
      *
-     * @return bool {@code true} if the callback is currently enabled, otherwise {@code false}.
+     * @return bool `true` if the callback is currently enabled, otherwise `false`.
      */
     public static function isEnabled(string $callbackId): bool
     {
@@ -358,7 +358,7 @@ final class EventLoop
      *
      * @param string $callbackId The callback identifier.
      *
-     * @return bool {@code true} if the callback is currently referenced, otherwise {@code false}.
+     * @return bool `true` if the callback is currently referenced, otherwise `false`.
      */
     public static function isReferenced(string $callbackId): bool
     {
