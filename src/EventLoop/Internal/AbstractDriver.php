@@ -534,6 +534,7 @@ abstract class AbstractDriver implements Driver
             // Invoke microtasks if we have some
             $this->invokeCallbacks();
 
+            /** @psalm-suppress RedundantCondition $this->stopped may be changed by $this->invokeCallbacks(). */
             while (!$this->stopped) {
                 if ($this->interrupt) {
                     $this->invokeInterrupt();

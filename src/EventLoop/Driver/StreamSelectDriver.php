@@ -304,7 +304,7 @@ final class StreamSelectDriver extends AbstractDriver
         }
 
         if ($timeout > 0) { // Sleep until next timer expires.
-            /** @psalm-var positive-int $timeout */
+            /** @psalm-suppress ArgumentTypeCoercion $timeout is positive here. */
             \usleep((int) ($timeout * 1_000_000));
         }
     }
