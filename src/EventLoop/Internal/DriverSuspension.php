@@ -25,6 +25,8 @@ final class DriverSuspension implements Suspension
 
     private bool $pending = false;
 
+    private bool $deadMain = false;
+
     public function __construct(
         private readonly \Closure $run,
         private readonly \Closure $queue,
@@ -38,6 +40,11 @@ final class DriverSuspension implements Suspension
 
     public function resume(mixed $value = null): void
     {
+        // Ignore spurious resumes to old dead {main} suspension
+        if ($this->deadMain) {
+            return;
+        }
+
         if (!$this->pending) {
             throw $this->error ?? new \Error('Must call suspend() before calling resume()');
         }
@@ -62,6 +69,12 @@ final class DriverSuspension implements Suspension
 
     public function suspend(): mixed
     {
+        // Throw exception when trying to use old dead {main} suspension
+        if ($this->deadMain) {
+            throw new \Error(
+                'Suspension cannot be suspended after an uncaught exception is thrown from the event loop',
+            );
+        }
         if ($this->pending) {
             throw new \Error('Must call resume() or throw() before calling suspend() again');
         }
@@ -101,17 +114,10 @@ final class DriverSuspension implements Suspension
 
         /** @psalm-suppress RedundantCondition $this->pending should be changed when resumed. */
         if ($this->pending) {
-            $this->pending = false;
+            // This is now a dead {main} suspension.
+            $this->deadMain = true;
 
-            try {
-                $result && $result(); // Unwrap any uncaught exceptions from the event loop
-            } catch (\Throwable $throwable) {
-                $this->error = new \Error(
-                    'Suspension cannot be resumed after an uncaught exception is thrown from the event loop',
-                );
-
-                throw $throwable;
-            }
+            $result && $result(); // Unwrap any uncaught exceptions from the event loop
 
             \gc_collect_cycles(); // Collect any circular references before dumping pending suspensions.
 
@@ -129,7 +135,7 @@ final class DriverSuspension implements Suspension
                 }
             }
 
-            throw $this->error = new \Error('Event loop terminated without resuming the current suspension (the cause is either a fiber deadlock, or an incorrectly unreferenced/canceled watcher):' . $info);
+            throw new \Error('Event loop terminated without resuming the current suspension (the cause is either a fiber deadlock, or an incorrectly unreferenced/canceled watcher):' . $info);
         }
 
         return $result();
@@ -137,6 +143,11 @@ final class DriverSuspension implements Suspension
 
     public function throw(\Throwable $throwable): void
     {
+        // Ignore spurious resumes to old dead {main} suspension
+        if ($this->deadMain) {
+            return;
+        }
+
         if (!$this->pending) {
             throw $this->error ?? new \Error('Must call suspend() before calling throw()');
         }

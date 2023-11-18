@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<files psalm-version="5.15.0@5c774aca4746caf3d239d9c8cadb9f882ca29352">
+  <file src="src/EventLoop/Driver/EvDriver.php">
+    <UnsupportedPropertyReferenceUsage>
+      <code><![CDATA[self::$activeSignals = &$this->signals]]></code>
+      <code><![CDATA[self::$activeSignals = &$this->signals]]></code>
+    </UnsupportedPropertyReferenceUsage>
+  </file>
+  <file src="src/EventLoop/Driver/EventDriver.php">
+    <UnsupportedPropertyReferenceUsage>
+      <code><![CDATA[self::$activeSignals = &$this->signals]]></code>
+      <code><![CDATA[self::$activeSignals = &$this->signals]]></code>
+    </UnsupportedPropertyReferenceUsage>
+  </file>
+  <file src="src/EventLoop/Driver/StreamSelectDriver.php">
+    <RedundantCast>
+      <code>(int) ($timeout * 1_000_000)</code>
+    </RedundantCast>
+  </file>
+  <file src="src/EventLoop/Driver/TracingDriver.php">
+    <InvalidArgument>
+      <code>\debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS)</code>
+      <code>\debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS)</code>
+      <code>\debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS)</code>
+      <code>\debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS)</code>
+      <code>\debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS)</code>
+      <code>\debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS)</code>
+      <code>\debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS)</code>
+    </InvalidArgument>
+  </file>
+  <file src="src/EventLoop/Driver/UvDriver.php">
+    <UndefinedFunction>
+      <code><![CDATA[\uv_poll_init_socket($this->handle, $callback->stream)]]></code>
+      <code><![CDATA[\uv_signal_init($this->handle)]]></code>
+      <code><![CDATA[\uv_signal_start($event, $this->signalCallback, $callback->signal)]]></code>
+    </UndefinedFunction>
+  </file>
+  <file src="src/EventLoop/Internal/AbstractDriver.php">
+    <RedundantCondition>
+      <code><![CDATA[!$this->stopped]]></code>
+    </RedundantCondition>
+  </file>
+</files>
