@@ -75,6 +75,7 @@ final class DriverSuspension implements Suspension
                 'Suspension cannot be suspended after an uncaught exception is thrown from the event loop',
             );
         }
+
         if ($this->pending) {
             throw new \Error('Must call resume() or throw() before calling suspend() again');
         }
