@@ -59,6 +59,12 @@
                 <file name="src/EventLoop/Driver/UvDriver.php"/>
             </errorLevel>
         </PossiblyInvalidArgument>
+
+        <UnsupportedPropertyReferenceUsage>
+            <errorLevel type="suppress">
+                <directory name="src"/>
+            </errorLevel>
+        </UnsupportedPropertyReferenceUsage>
     </issueHandlers>
 
     <stubs>

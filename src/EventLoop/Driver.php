@@ -294,7 +294,7 @@ interface Driver
      *
      * @param string $callbackId The callback identifier.
      *
-     * @return bool {@code true} if the callback is currently enabled, otherwise {@code false}.
+     * @return bool `true` if the callback is currently enabled, otherwise `false`.
      */
     public function isEnabled(string $callbackId): bool;
 
@@ -303,7 +303,7 @@ interface Driver
      *
      * @param string $callbackId The callback identifier.
      *
-     * @return bool {@code true} if the callback is currently referenced, otherwise {@code false}.
+     * @return bool `true` if the callback is currently referenced, otherwise `false`.
      */
     public function isReferenced(string $callbackId): bool;
 
