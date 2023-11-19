@@ -326,7 +326,7 @@ abstract class DriverTest extends TestCase
 
         $invoked = false;
         $this->start(function (Driver $loop) use (&$invoked, $type, $args): void {
-            $func = [$loop, $type];
+            $func = $loop->{$type}(...);
             $callbackId = $func(...$args);
             $loop->disable($callbackId);
             $loop->defer(function () use (&$invoked, $loop, $callbackId): void {
@@ -347,7 +347,7 @@ abstract class DriverTest extends TestCase
 
         $loop = $this->loop;
 
-        $func = [$loop, $type];
+        $func = $loop->{$type}(...);
         if (\str_starts_with($type, "on")) {
             $type = "on_" . \lcfirst(\substr($type, 2));
         }
@@ -430,7 +430,7 @@ abstract class DriverTest extends TestCase
 
         $loop = $this->loop;
 
-        $func = [$loop, $type];
+        $func = $loop->{$type}(...);
         if (\str_starts_with($type, "on")) {
             $type = "on_" . \lcfirst(\substr($type, 2));
         }
@@ -472,32 +472,37 @@ abstract class DriverTest extends TestCase
             self::markTestSkipped('Skip on Windows for now, investigate');
         }
 
-        $runs = 2000;
-
         if ($type === "onSignal") {
             $this->checkForSignalCapability();
         }
 
-        $this->start(function (Driver $loop) use ($type, $args, $runs) {
+        $this->start(function (Driver $loop) use ($type, $args): void {
+            $runs = 2000;
+
             $initialMem = \memory_get_usage();
             $cb = static function ($runs) use ($loop, $type, $args): void {
-                $func = [$loop, $type];
+                $func = $loop->{$type}(...);
                 for ($callbacks = [], $i = 0; $i < $runs; $i++) {
                     $callbacks[] = $func(...$args);
                 }
+
                 foreach ($callbacks as $callback) {
                     $loop->cancel($callback);
                 }
+
                 for ($callbacks = [], $i = 0; $i < $runs; $i++) {
                     $callbacks[] = $func(...$args);
                 }
+
                 foreach ($callbacks as $callback) {
                     $loop->disable($callback);
                     $loop->cancel($callback);
                 }
+
                 for ($callbacks = [], $i = 0; $i < $runs; $i++) {
                     $callbacks[] = $func(...$args);
                 }
+
                 if ($type === "repeat") {
                     $loop->delay(0.007, function () use ($loop, $callbacks): void {
                         foreach ($callbacks as $callback) {
@@ -511,9 +516,11 @@ abstract class DriverTest extends TestCase
                         }
                     });
                 }
+
                 $loop->run();
-                if ($type === "defer") {
-                    $loop->defer($fn = static function () use (&$fn, $loop, $runs): void {
+
+                match ($type) {
+                    "defer" => $loop->defer($fn = static function () use (&$fn, $loop, $runs): void {
                         static $i = null;
 
                         $i = $i ?? $runs;
@@ -521,11 +528,8 @@ abstract class DriverTest extends TestCase
                         if ($i--) {
                             $loop->defer($fn);
                         }
-                    });
-                    $loop->run();
-                }
-                if ($type === "delay") {
-                    $loop->delay(0, $fn = static function () use (&$fn, $loop, $runs): void {
+                    }),
+                    "delay" => $loop->delay(0, $fn = static function () use (&$fn, $loop, $runs): void {
                         static $i = null;
 
                         $i = $i ?? $runs;
@@ -533,11 +537,8 @@ abstract class DriverTest extends TestCase
                         if ($i--) {
                             $loop->delay(0, $fn);
                         }
-                    });
-                    $loop->run();
-                }
-                if ($type === "repeat") {
-                    $loop->repeat(0, $fn = static function ($callbackId) use (&$fn, $loop, $runs): void {
+                    }),
+                    "repeat" => $loop->repeat(0, $fn = static function ($callbackId) use (&$fn, $loop, $runs): void {
                         static $i = null;
 
                         $i = $i ?? $runs;
@@ -546,11 +547,8 @@ abstract class DriverTest extends TestCase
                         if ($i--) {
                             $loop->repeat(0, $fn);
                         }
-                    });
-                    $loop->run();
-                }
-                if ($type === "onWritable") {
-                    $loop->defer(static function ($callbackId) use ($loop, $runs): void {
+                    }),
+                    "onReadable", "onWritable" => $loop->defer(static function ($callbackId) use ($loop, $runs): void {
                         $fn = static function ($callbackId, $socket) use (&$fn, $loop, $runs): void {
                             static $i = null;
 
@@ -577,35 +575,38 @@ abstract class DriverTest extends TestCase
                         };
 
                         $fn($callbackId, null);
-                    });
-                    $loop->run();
-                }
-                if ($type === "onSignal") {
-                    $sendSignal = static function (): void {
-                        \posix_kill(\getmypid(), \SIGUSR1);
-                    };
-                    $loop->onSignal(
-                        \SIGUSR1,
-                        $fn = static function ($callbackId) use (&$fn, $loop, $sendSignal, $runs): void {
-                            static $i = null;
+                    }),
+                    "onSignal" => $loop->defer(function () use ($loop, $runs): void {
+                        $sendSignal = static function (): void {
+                            \posix_kill(\getmypid(), \SIGUSR1);
+                        };
+                        $loop->onSignal(
+                            \SIGUSR1,
+                            $fn = static function ($callbackId) use (&$fn, $loop, $sendSignal, $runs): void {
+                                static $i = null;
 
-                            $i = $i ?? $runs;
+                                $i = $i ?? $runs;
 
-                            if ($i--) {
-                                $loop->onSignal(\SIGUSR1, $fn);
-                                $loop->delay(0, $sendSignal);
+                                if ($i--) {
+                                    $loop->onSignal(\SIGUSR1, $fn);
+                                    $loop->delay(0, $sendSignal);
+                                }
+                                $loop->cancel($callbackId);
                             }
-                            $loop->cancel($callbackId);
-                        }
-                    );
-                    $loop->delay(0, $sendSignal);
-                    $loop->run();
-                }
+                        );
+                        $loop->delay(0, $sendSignal);
+                    }),
+                };
+
+                $loop->run();
             };
+
             $closureMem = \memory_get_usage() - $initialMem;
             $cb($runs); /* just to set up eventual structures inside loop without counting towards memory comparison */
+
             \gc_collect_cycles();
             $initialMem = \memory_get_usage() - $closureMem;
+
             $cb($runs);
             unset($cb);
 
