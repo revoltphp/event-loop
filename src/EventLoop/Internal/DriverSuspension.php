@@ -21,9 +21,11 @@ final class DriverSuspension implements Suspension
     /** @var \WeakReference<\Fiber>|null */
     private readonly ?\WeakReference $fiberRef;
 
-    private ?\FiberError $fiberError = null;
+    private ?\Error $error = null;
 
     private bool $pending = false;
+
+    private bool $deadMain = false;
 
     public function __construct(
         private readonly \Closure $run,
@@ -38,8 +40,13 @@ final class DriverSuspension implements Suspension
 
     public function resume(mixed $value = null): void
     {
+        // Ignore spurious resumes to old dead {main} suspension
+        if ($this->deadMain) {
+            return;
+        }
+
         if (!$this->pending) {
-            throw $this->fiberError ?? new \Error('Must call suspend() before calling resume()');
+            throw $this->error ?? new \Error('Must call suspend() before calling resume()');
         }
 
         $this->pending = false;
@@ -62,6 +69,13 @@ final class DriverSuspension implements Suspension
 
     public function suspend(): mixed
     {
+        // Throw exception when trying to use old dead {main} suspension
+        if ($this->deadMain) {
+            throw new \Error(
+                'Suspension cannot be suspended after an uncaught exception is thrown from the event loop',
+            );
+        }
+
         if ($this->pending) {
             throw new \Error('Must call resume() or throw() before calling suspend() again');
         }
@@ -73,6 +87,7 @@ final class DriverSuspension implements Suspension
         }
 
         $this->pending = true;
+        $this->error = null;
 
         // Awaiting from within a fiber.
         if ($fiber) {
@@ -81,12 +96,12 @@ final class DriverSuspension implements Suspension
             try {
                 $value = \Fiber::suspend();
                 $this->suspendedFiber = null;
-            } catch (\FiberError $exception) {
+            } catch (\FiberError $error) {
                 $this->pending = false;
                 $this->suspendedFiber = null;
-                $this->fiberError = $exception;
+                $this->error = $error;
 
-                throw $exception;
+                throw $error;
             }
 
             // Setting $this->suspendedFiber = null in finally will set the fiber to null if a fiber is destroyed
@@ -100,7 +115,9 @@ final class DriverSuspension implements Suspension
 
         /** @psalm-suppress RedundantCondition $this->pending should be changed when resumed. */
         if ($this->pending) {
-            $this->pending = false;
+            // This is now a dead {main} suspension.
+            $this->deadMain = true;
+
             $result && $result(); // Unwrap any uncaught exceptions from the event loop
 
             \gc_collect_cycles(); // Collect any circular references before dumping pending suspensions.
@@ -127,8 +144,13 @@ final class DriverSuspension implements Suspension
 
     public function throw(\Throwable $throwable): void
     {
+        // Ignore spurious resumes to old dead {main} suspension
+        if ($this->deadMain) {
+            return;
+        }
+
         if (!$this->pending) {
-            throw $this->fiberError ?? new \Error('Must call suspend() before calling throw()');
+            throw $this->error ?? new \Error('Must call suspend() before calling throw()');
         }
 
         $this->pending = false;
