@@ -61,6 +61,7 @@ abstract class AbstractDriver implements Driver
     private bool $idle = false;
     private bool $stopped = false;
 
+    /** @var \WeakMap<object, \WeakReference<DriverSuspension>> */
     private \WeakMap $suspensions;
 
     public function __construct()
@@ -291,8 +292,10 @@ abstract class AbstractDriver implements Driver
         // User callbacks are always executed outside the event loop fiber, so this should always be false.
         \assert($fiber !== $this->fiber);
 
-        // Use current object in case of {main}
-        $suspension = ($this->suspensions[$fiber ?? $this] ?? null)?->get();
+        // Use queue closure in case of {main}, which can be unset by DriverSuspension after an uncaught exception.
+        $key = $fiber ?? $this->queueCallback;
+
+        $suspension = ($this->suspensions[$key] ?? null)?->get();
         if ($suspension) {
             return $suspension;
         }
@@ -304,7 +307,7 @@ abstract class AbstractDriver implements Driver
             $this->suspensions,
         );
 
-        $this->suspensions[$fiber ?? $this] = \WeakReference::create($suspension);
+        $this->suspensions[$key] = \WeakReference::create($suspension);
 
         return $suspension;
     }
@@ -395,7 +398,6 @@ abstract class AbstractDriver implements Driver
             $this->interrupt = static fn () => $exception instanceof UncaughtThrowable
                 ? throw $exception
                 : throw UncaughtThrowable::throwingCallback($closure, $exception);
-            unset($this->suspensions[$this]); // Remove suspension for {main}
             return;
         }
 
@@ -629,7 +631,6 @@ abstract class AbstractDriver implements Driver
                 $this->interrupt = static fn () => $exception instanceof UncaughtThrowable
                     ? throw $exception
                     : throw UncaughtThrowable::throwingErrorHandler($errorHandler, $exception);
-                unset($this->suspensions[$this]); // Remove suspension for {main}
             }
         };
     }

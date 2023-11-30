@@ -27,6 +27,9 @@ final class DriverSuspension implements Suspension
 
     private bool $deadMain = false;
 
+    /**
+     * @param \WeakMap<object, \WeakReference<DriverSuspension>> $suspensions
+     */
     public function __construct(
         private readonly \Closure $run,
         private readonly \Closure $queue,
@@ -117,6 +120,9 @@ final class DriverSuspension implements Suspension
         if ($this->pending) {
             // This is now a dead {main} suspension.
             $this->deadMain = true;
+
+            // Unset suspension for {main} using queue closure.
+            unset($this->suspensions[$this->queue]);
 
             $result && $result(); // Unwrap any uncaught exceptions from the event loop
 
