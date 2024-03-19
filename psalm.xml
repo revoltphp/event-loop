@@ -65,6 +65,12 @@
                 <directory name="src"/>
             </errorLevel>
         </UnsupportedPropertyReferenceUsage>
+
+        <PossiblyInvalidArgument>
+            <errorLevel type="suppress">
+                <directory name="examples" />
+            </errorLevel>
+        </PossiblyInvalidArgument>
     </issueHandlers>
 
     <stubs>

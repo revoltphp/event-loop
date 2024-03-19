@@ -68,6 +68,7 @@ abstract class AbstractDriver implements Driver
     {
         if (\PHP_VERSION_ID < 80117 || \PHP_VERSION_ID >= 80200 && \PHP_VERSION_ID < 80204) {
             // PHP GC is broken on early 8.1 and 8.2 versions, see https://github.com/php/php-src/issues/10496
+            /** @psalm-suppress RiskyTruthyFalsyComparison */
             if (!\getenv('REVOLT_DRIVER_SUPPRESS_ISSUE_10496')) {
                 throw new \Error('Your version of PHP is affected by serious garbage collector bugs related to fibers. Please upgrade to a newer version of PHP, i.e. >= 8.1.17 or => 8.2.4');
             }

@@ -24,7 +24,7 @@ EventLoop::onWritable(STDOUT, function ($watcher, $stdout) use (&$data) {
     $r = \fwrite($stdout, $data);
 
     // nothing could be written despite being writable => closed
-    if ($r === 0) {
+    if ($r === 0 || $r === false) {
         EventLoop::cancel($watcher);
         \stream_set_blocking($stdout, true);
         \fclose($stdout);

@@ -277,7 +277,7 @@ final class StreamSelectDriver extends AbstractDriver
             }
 
             /** @var array<int, resource>|null $except */
-            if ($except) {
+            if ($except !== null) {
                 foreach ($except as $key => $socket) {
                     $write[$key] = $socket;
                 }

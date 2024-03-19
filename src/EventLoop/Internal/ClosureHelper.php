@@ -18,7 +18,7 @@ final class ClosureHelper
                 $description = $scopeClass->name . '::' . $description;
             }
 
-            if ($reflection->getFileName() && $reflection->getStartLine()) {
+            if ($reflection->getFileName() !== false && $reflection->getStartLine()) {
                 $description .= " defined in " . $reflection->getFileName() . ':' . $reflection->getStartLine();
             }
 
