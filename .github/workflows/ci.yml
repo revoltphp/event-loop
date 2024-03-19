@@ -23,6 +23,7 @@ jobs:
           - operating-system: 'ubuntu-latest'
             php-version: 8.4
             composer-flags: '--ignore-platform-req=php+'
+            psalm: none
 
     name: PHP ${{ matrix.php-version }} ${{ matrix.job-description }}
     runs-on: ${{ matrix.operating-system }}
@@ -81,6 +82,7 @@ jobs:
 
       - name: Run Psalm
         run: vendor/bin/psalm.phar --show-info=true
+        if: matrix.psalm != 'none'
 
       - name: Run style fixer
         env:
