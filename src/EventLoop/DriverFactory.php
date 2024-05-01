@@ -42,6 +42,7 @@ final class DriverFactory
             return new StreamSelectDriver();
         })();
 
+        /** @psalm-suppress RiskyTruthyFalsyComparison */
         if (\getenv("REVOLT_DRIVER_DEBUG_TRACE")) {
             return new TracingDriver($driver);
         }
@@ -56,6 +57,7 @@ final class DriverFactory
     {
         $driver = \getenv("REVOLT_DRIVER");
 
+        /** @psalm-suppress RiskyTruthyFalsyComparison */
         if (!$driver) {
             return null;
         }

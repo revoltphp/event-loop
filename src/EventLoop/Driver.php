@@ -23,7 +23,7 @@ interface Driver
      * exception is thrown that cannot be handled. Exceptions that cannot be handled are exceptions thrown from an
      * error handler or exceptions that would be passed to an error handler but none exists to handle them.
      *
-     * @throw \Error Thrown if the event loop is already running.
+     * @throws \Error Thrown if the event loop is already running.
      */
     public function run(): void;
 
@@ -294,7 +294,7 @@ interface Driver
      *
      * @param string $callbackId The callback identifier.
      *
-     * @return bool {@code true} if the callback is currently enabled, otherwise {@code false}.
+     * @return bool `true` if the callback is currently enabled, otherwise `false`.
      */
     public function isEnabled(string $callbackId): bool;
 
@@ -303,7 +303,7 @@ interface Driver
      *
      * @param string $callbackId The callback identifier.
      *
-     * @return bool {@code true} if the callback is currently referenced, otherwise {@code false}.
+     * @return bool `true` if the callback is currently referenced, otherwise `false`.
      */
     public function isReferenced(string $callbackId): bool;
 

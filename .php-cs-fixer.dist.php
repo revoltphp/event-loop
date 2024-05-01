@@ -28,6 +28,7 @@ final class Config extends PhpCsFixerConfig
                 "allow_single_line_closure" => true,
             ],
             "array_syntax" => ["syntax" => "short"],
+            "blank_lines_before_namespace" => true,
             "cast_spaces" => true,
             "combine_consecutive_unsets" => true,
             "declare_strict_types" => true,
@@ -73,7 +74,6 @@ final class Config extends PhpCsFixerConfig
             "psr_autoloading" => ['dir' => $this->src],
             "return_type_declaration" => ["space_before" => "none"],
             "short_scalar_cast" => true,
-            "single_blank_line_before_namespace" => true,
             "line_ending" => true,
         ];
     }

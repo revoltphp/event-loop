@@ -50,7 +50,9 @@ final class StreamSelectDriver extends AbstractDriver
 
         $this->signalQueue = new \SplQueue();
         $this->timerQueue = new TimerQueue();
-        $this->signalHandling = \extension_loaded("pcntl");
+        $this->signalHandling = \extension_loaded("pcntl")
+            && \function_exists('pcntl_signal_dispatch')
+            && \function_exists('pcntl_signal');
 
         $this->streamSelectErrorHandler = function (int $errno, string $message): void {
             // Casing changed in PHP 8 from 'unable' to 'Unable'
@@ -276,7 +278,7 @@ final class StreamSelectDriver extends AbstractDriver
             }
 
             /** @var array<int, resource>|null $except */
-            if ($except) {
+            if ($except !== null) {
                 foreach ($except as $key => $socket) {
                     $write[$key] = $socket;
                 }
@@ -303,7 +305,7 @@ final class StreamSelectDriver extends AbstractDriver
         }
 
         if ($timeout > 0) { // Sleep until next timer expires.
-            /** @psalm-var positive-int $timeout */
+            /** @psalm-suppress ArgumentTypeCoercion $timeout is positive here. */
             \usleep((int) ($timeout * 1_000_000));
         }
     }

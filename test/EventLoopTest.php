@@ -269,8 +269,7 @@ class EventLoopTest extends TestCase
 
         \gc_collect_cycles();
 
-        // This documents an expected failure, should actually be true, but suspensions have to be resumed currently.
-        self::assertNull($finally);
+        self::assertTrue($finally);
     }
 
     public function testSuspensionWithinQueue(): void
@@ -299,5 +298,90 @@ class EventLoopTest extends TestCase
         } catch (UncaughtThrowable $t) {
             self::assertSame($error, $t->getPrevious());
         }
+
+        $suspension->resume(); // Calling resume on the same suspension should not throw an Error.
+        $suspension->throw(new \RuntimeException()); // Calling throw on the same suspension should not throw an Error.
+
+        try {
+            $suspension->suspend(); // Calling suspend on the same suspension should throw an Error.
+            self::fail("Error was not thrown");
+        } catch (\Error $e) {
+            self::assertStringContainsString('suspended after an uncaught exception', $e->getMessage());
+        }
+
+        // Creating a new Suspension and re-entering the event loop (e.g. in a shutdown function) should work.
+        $suspension = EventLoop::getSuspension();
+        EventLoop::queue($suspension->resume(...));
+        $suspension->suspend();
+    }
+
+    public function testSuspensionThrowingErrorViaInterrupt2(): void
+    {
+        $suspension = EventLoop::getSuspension();
+        $error = new \Error("Test error");
+        EventLoop::queue(static fn () => throw $error);
+        EventLoop::queue($suspension->resume(...), 123);
+        try {
+            $suspension->suspend();
+            self::fail("Error was not thrown");
+        } catch (UncaughtThrowable $t) {
+            self::assertSame($error, $t->getPrevious());
+        }
+
+        $suspension->resume(); // Calling resume on the same suspension should not throw an Error.
+        $suspension->throw(new \RuntimeException()); // Calling throw on the same suspension should not throw an Error.
+
+        try {
+            $suspension->suspend(); // Calling suspend on the same suspension should throw an Error.
+            self::fail("Error was not thrown");
+        } catch (\Error $e) {
+            self::assertStringContainsString('suspended after an uncaught exception', $e->getMessage());
+        }
+
+        // Creating a new Suspension and re-entering the event loop (e.g. in a shutdown function) should work.
+        $suspension = EventLoop::getSuspension();
+        EventLoop::queue($suspension->resume(...), 321);
+        $this->assertEquals(321, $suspension->suspend());
+    }
+
+    public function testFiberDestroyedWhileSuspended(): void
+    {
+        $outer = new class (new class ($this) {
+            private ?Suspension $suspension = null;
+
+            public function __construct(public object $outer)
+            {
+            }
+
+            public function suspend(): void
+            {
+                $this->suspension = EventLoop::getSuspension();
+                $this->suspension->suspend();
+            }
+
+            public function __destruct()
+            {
+                echo 'object destroyed';
+                $suspension = $this->suspension;
+                $this->suspension = null;
+                EventLoop::defer(static fn () => $suspension?->resume());
+            }
+        }) {
+            public function __construct(public object $inner)
+            {
+            }
+        };
+
+        $inner = $outer->inner;
+        unset($outer);
+
+        EventLoop::queue(static fn () => $inner->suspend());
+        unset($inner);
+
+        EventLoop::queue(\gc_collect_cycles(...));
+
+        $this->expectOutputString('object destroyed');
+
+        EventLoop::run();
     }
 }

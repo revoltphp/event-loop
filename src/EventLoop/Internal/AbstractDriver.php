@@ -45,7 +45,7 @@ abstract class AbstractDriver implements Driver
     /** @var null|\Closure(\Throwable):void */
     private ?\Closure $errorHandler = null;
 
-    /** @var null|\Closure():mixed  */
+    /** @var null|\Closure():mixed */
     private ?\Closure $interrupt = null;
 
     private readonly \Closure $interruptCallback;
@@ -65,10 +65,18 @@ abstract class AbstractDriver implements Driver
     private bool $idle = false;
     private bool $stopped = false;
 
+    /** @var \WeakMap<object, \WeakReference<DriverSuspension>> */
     private \WeakMap $suspensions;
 
     public function __construct(?FiberFactory $fiberFactory = null)
     {
+        if (\PHP_VERSION_ID < 80117 || \PHP_VERSION_ID >= 80200 && \PHP_VERSION_ID < 80204) {
+            // PHP GC is broken on early 8.1 and 8.2 versions, see https://github.com/php/php-src/issues/10496
+            /** @psalm-suppress RiskyTruthyFalsyComparison */
+            if (!\getenv('REVOLT_DRIVER_SUPPRESS_ISSUE_10496')) {
+                throw new \Error('Your version of PHP is affected by serious garbage collector bugs related to fibers. Please upgrade to a newer version of PHP, i.e. >= 8.1.17 or => 8.2.4');
+            }
+        }
         $this->fiberFactory = $fiberFactory ?? new DefaultFiberFactory();
 
         $this->suspensions = new \WeakMap();
@@ -290,13 +298,24 @@ abstract class AbstractDriver implements Driver
         // User callbacks are always executed outside the event loop fiber, so this should always be false.
         \assert($fiber !== $this->fiber);
 
-        // Use current object in case of {main}
-        return $this->suspensions[$fiber ?? $this] ??= new DriverSuspension(
+        // Use queue closure in case of {main}, which can be unset by DriverSuspension after an uncaught exception.
+        $key = $fiber ?? $this->queueCallback;
+
+        $suspension = ($this->suspensions[$key] ?? null)?->get();
+        if ($suspension) {
+            return $suspension;
+        }
+
+        $suspension = new DriverSuspension(
             $this->runCallback,
             $this->queueCallback,
             $this->interruptCallback,
-            $this->suspensions
+            $this->suspensions,
         );
+
+        $this->suspensions[$key] = \WeakReference::create($suspension);
+
+        return $suspension;
     }
 
     public function setErrorHandler(?\Closure $errorHandler): void
@@ -523,6 +542,7 @@ abstract class AbstractDriver implements Driver
             // Invoke microtasks if we have some
             $this->invokeCallbacks();
 
+            /** @psalm-suppress RedundantCondition $this->stopped may be changed by $this->invokeCallbacks(). */
             while (!$this->stopped) {
                 if ($this->interrupt) {
                     $this->invokeInterrupt();
@@ -614,11 +634,9 @@ abstract class AbstractDriver implements Driver
             try {
                 $errorHandler($exception);
             } catch (\Throwable $exception) {
-                $this->setInterrupt(
-                    static fn () => $exception instanceof UncaughtThrowable
-                        ? throw $exception
-                        : throw UncaughtThrowable::throwingErrorHandler($errorHandler, $exception)
-                );
+                $this->interrupt = static fn () => $exception instanceof UncaughtThrowable
+                    ? throw $exception
+                    : throw UncaughtThrowable::throwingErrorHandler($errorHandler, $exception);
             }
         };
     }
