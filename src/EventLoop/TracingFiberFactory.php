@@ -18,10 +18,11 @@ final class TracingFiberFactory implements FiberFactory, Countable, IteratorAggr
     /**
      * @var \WeakMap<\Fiber, null>
      */
-    private \WeakMap $map;
+    private readonly \WeakMap $map;
 
-    public function __construct()
-    {
+    public function __construct(
+        private readonly FiberFactory $fiberFactory = new DefaultFiberFactory()
+    ) {
         /** @var \WeakMap<\Fiber, null> */
         $this->map = new \WeakMap();
     }
@@ -35,7 +36,7 @@ final class TracingFiberFactory implements FiberFactory, Countable, IteratorAggr
      */
     public function create(callable $callback): \Fiber
     {
-        $f = new \Fiber($callback);
+        $f = $this->fiberFactory->create($callback);
         $this->map[$f] = null;
         return $f;
     }
