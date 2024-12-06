@@ -48,7 +48,7 @@ abstract class AbstractDriver implements Driver
 
     private readonly \Closure $interruptCallback;
     private readonly \Closure $queueCallback;
-    /** @var \Closure(): ((\Closure(): mixed)|bool|null) */
+    /** @var \Closure(): ((\Closure(): mixed)|bool) */
     private readonly \Closure $runCallback;
 
     private readonly \stdClass $internalSuspensionMarker;
@@ -89,13 +89,13 @@ abstract class AbstractDriver implements Driver
         $this->interruptCallback = $this->setInterrupt(...);
         $this->queueCallback = $this->queue(...);
         $this->runCallback =
-            /** @return (\Closure(): mixed)|bool|null */
-            function (): \Closure|bool|null {
+            /** @return (\Closure(): mixed)|bool */
+            function (): \Closure|bool {
                 if ($this->fiber->isTerminated()) {
                     $this->createLoopFiber();
                 }
 
-                return $this->fiber->isStarted() ? $this->fiber->resume() : $this->fiber->start();
+                return ($this->fiber->isStarted() ? $this->fiber->resume() : $this->fiber->start()) ?? $this->fiber->getReturn();
             };
     }
 
@@ -493,9 +493,11 @@ abstract class AbstractDriver implements Driver
         $this->dispatch($blocking);
     }
 
-    private function invokeCallbacks(): void
+    private function invokeCallbacks(): bool
     {
+        $didWork = false;
         while (!$this->microtaskQueue->isEmpty() || !$this->callbackQueue->isEmpty()) {
+            $didWork = true;
             /** @noinspection PhpUnhandledExceptionInspection */
             $yielded = $this->callbackFiber->isStarted()
                 ? $this->callbackFiber->resume()
@@ -509,6 +511,7 @@ abstract class AbstractDriver implements Driver
                 $this->invokeInterrupt();
             }
         }
+        return $didWork;
     }
 
     /**
@@ -534,28 +537,31 @@ abstract class AbstractDriver implements Driver
 
     private function createLoopFiber(): void
     {
-        $this->fiber = new \Fiber(function (): void {
+        $this->fiber = new \Fiber(function (): bool {
             $this->stopped = false;
 
             // Invoke microtasks if we have some
-            $this->invokeCallbacks();
+            $didWork = $this->invokeCallbacks();
 
             /** @psalm-suppress RedundantCondition $this->stopped may be changed by $this->invokeCallbacks(). */
             while (!$this->stopped) {
                 if ($this->interrupt) {
+                    $didWork = true;
                     $this->invokeInterrupt();
                 }
 
                 if ($this->isEmpty()) {
-                    return;
+                    return $didWork;
                 }
 
                 $previousIdle = $this->idle;
                 $this->idle = true;
 
                 $this->tick($previousIdle);
-                $this->invokeCallbacks();
+                $didWork = $this->invokeCallbacks();
             }
+
+            return $didWork;
         });
     }
 

@@ -28,7 +28,7 @@ final class DriverSuspension implements Suspension
     private bool $deadMain = false;
 
     /**
-     * @param \Closure(): ((\Closure(): mixed)|bool|null) $run
+     * @param \Closure(): ((\Closure(): mixed)|bool) $run
      * @param \WeakMap<object, \WeakReference<DriverSuspension>> $suspensions
      */
     public function __construct(
@@ -117,8 +117,11 @@ final class DriverSuspension implements Suspension
         // Awaiting from {main}.
         $result = ($this->run)();
 
-        while ($this->pending && $result === false) {
-
+        if ($this->pending && \is_bool($result)) {
+            do {
+                while (\gc_collect_cycles());
+                $result = ($this->run)();
+            } while ($this->pending && $result === true);
         }
 
         /** @psalm-suppress RedundantCondition $this->pending should be changed when resumed. */
