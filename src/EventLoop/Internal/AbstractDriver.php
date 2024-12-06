@@ -48,7 +48,7 @@ abstract class AbstractDriver implements Driver
 
     private readonly \Closure $interruptCallback;
     private readonly \Closure $queueCallback;
-    /** @var \Closure(): (?\Closure(): mixed) */
+    /** @var \Closure(): ((\Closure(): mixed)|bool|null) */
     private readonly \Closure $runCallback;
 
     private readonly \stdClass $internalSuspensionMarker;
@@ -89,13 +89,12 @@ abstract class AbstractDriver implements Driver
         $this->interruptCallback = $this->setInterrupt(...);
         $this->queueCallback = $this->queue(...);
         $this->runCallback =
-            /** @return ?\Closure(): mixed */
-            function (): ?\Closure {
+            /** @return (\Closure(): mixed)|bool|null */
+            function (): \Closure|bool|null {
                 if ($this->fiber->isTerminated()) {
                     $this->createLoopFiber();
                 }
 
-                // Returns a callback that returns the value of the {main} fiber, or null in case of deadlock.
                 return $this->fiber->isStarted() ? $this->fiber->resume() : $this->fiber->start();
             };
     }
@@ -537,32 +536,26 @@ abstract class AbstractDriver implements Driver
     {
         $this->fiber = new \Fiber(function (): void {
             $this->stopped = false;
-            do {
-                // Invoke microtasks if we have some
-                $this->invokeCallbacks();
 
-                /** @psalm-suppress RedundantCondition $this->stopped may be changed by $this->invokeCallbacks(). */
-                while (!$this->stopped) {
-                    if ($this->interrupt) {
-                        $this->invokeInterrupt();
-                    }
+            // Invoke microtasks if we have some
+            $this->invokeCallbacks();
 
-                    if ($this->isEmpty()) {
-                        while (\gc_collect_cycles());
-                        if (!$this->microtaskQueue->isEmpty() || !$this->callbackQueue->isEmpty() || $this->interrupt) {
-                            continue 2;
-                        }
-                        return;
-                    }
-
-                    $previousIdle = $this->idle;
-                    $this->idle = true;
-
-                    $this->tick($previousIdle);
-                    $this->invokeCallbacks();
+            /** @psalm-suppress RedundantCondition $this->stopped may be changed by $this->invokeCallbacks(). */
+            while (!$this->stopped) {
+                if ($this->interrupt) {
+                    $this->invokeInterrupt();
                 }
-                return;
-            } while (true);
+
+                if ($this->isEmpty()) {
+                    return;
+                }
+
+                $previousIdle = $this->idle;
+                $this->idle = true;
+
+                $this->tick($previousIdle);
+                $this->invokeCallbacks();
+            }
         });
     }
 
