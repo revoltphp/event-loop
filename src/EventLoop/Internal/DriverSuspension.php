@@ -117,10 +117,12 @@ final class DriverSuspension implements Suspension
         // Awaiting from {main}.
         $result = ($this->run)();
 
+        /** @var bool $this->pending */
         if ($this->pending && \is_bool($result)) {
             do {
                 while (\gc_collect_cycles());
                 $result = ($this->run)();
+                /** @var bool $this->pending */
             } while ($this->pending && $result === true);
         }
 
@@ -132,7 +134,9 @@ final class DriverSuspension implements Suspension
             // Unset suspension for {main} using queue closure.
             unset($this->suspensions[$this->queue]);
 
-            $result && $result(); // Unwrap any uncaught exceptions from the event loop
+            if ($result instanceof \Closure) {
+                $result();
+            } // Unwrap any uncaught exceptions from the event loop
 
             \gc_collect_cycles(); // Collect any circular references before dumping pending suspensions.
 
@@ -153,7 +157,7 @@ final class DriverSuspension implements Suspension
             throw new \Error('Event loop terminated without resuming the current suspension (the cause is either a fiber deadlock, or an incorrectly unreferenced/canceled watcher):' . $info);
         }
 
-        \assert($result !== null);
+        \assert($result instanceof \Closure);
         return $result();
     }
 
