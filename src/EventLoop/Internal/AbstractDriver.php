@@ -558,7 +558,7 @@ abstract class AbstractDriver implements Driver
                 $this->idle = true;
 
                 $this->tick($previousIdle);
-                $didWork = $this->invokeCallbacks();
+                $didWork = $this->invokeCallbacks() || $didWork;
             }
 
             return $didWork;
