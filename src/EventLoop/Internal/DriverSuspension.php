@@ -28,6 +28,7 @@ final class DriverSuspension implements Suspension
     private bool $deadMain = false;
 
     /**
+     * @param \Closure(): (?\Closure(): mixed) $run
      * @param \WeakMap<object, \WeakReference<DriverSuspension>> $suspensions
      */
     public function __construct(
@@ -145,6 +146,7 @@ final class DriverSuspension implements Suspension
             throw new \Error('Event loop terminated without resuming the current suspension (the cause is either a fiber deadlock, or an incorrectly unreferenced/canceled watcher):' . $info);
         }
 
+        \assert($result !== null);
         return $result();
     }
 

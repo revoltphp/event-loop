@@ -9,6 +9,130 @@ use Revolt\EventLoop;
 
 class EventLoopTest extends TestCase
 {
+    public function testSuspensionResumptionWithQueueInGarbageCollection(): void
+    {
+        $suspension = EventLoop::getSuspension();
+
+        $class = new class ($suspension) {
+            public function __construct(public Suspension $suspension)
+            {
+            }
+            public function __destruct()
+            {
+                $this->suspension->resume(true);
+            }
+        };
+        $cycle = [$class, &$cycle];
+        unset($class, $cycle);
+
+        $ended = $suspension->suspend();
+
+        $this->assertTrue($ended);
+    }
+
+    public function testEventLoopResumptionWithQueueInGarbageCollection(): void
+    {
+        $suspension = EventLoop::getSuspension();
+
+        $class = new class ($suspension) {
+            public function __construct(public Suspension $suspension)
+            {
+            }
+            public function __destruct()
+            {
+                EventLoop::queue($this->suspension->resume(...), true);
+            }
+        };
+        $cycle = [$class, &$cycle];
+        unset($class, $cycle);
+
+        $ended = $suspension->suspend();
+
+        $this->assertTrue($ended);
+    }
+
+
+    public function testSuspensionResumptionWithQueueInGarbageCollectionNested(): void
+    {
+        $suspension = EventLoop::getSuspension();
+
+        $resumer = new class ($suspension) {
+            public function __construct(public Suspension $suspension)
+            {
+            }
+            public function __destruct()
+            {
+                $this->suspension->resume(true);
+            }
+        };
+
+        $class = new class ($resumer) {
+            public static ?object $staticReference = null;
+            public function __construct(object $resumer)
+            {
+                self::$staticReference = $resumer;
+            }
+            public function __destruct()
+            {
+                EventLoop::queue(function () {
+                    $class = self::$staticReference;
+                    $cycle = [$class, &$cycle];
+                    unset($class, $cycle);
+
+                    self::$staticReference = null;
+                });
+            }
+        };
+        $cycle = [$class, &$cycle];
+        unset($class, $resumer, $cycle);
+
+
+        $ended = $suspension->suspend();
+
+        $this->assertTrue($ended);
+    }
+
+    public function testEventLoopResumptionWithQueueInGarbageCollectionNested(): void
+    {
+        $suspension = EventLoop::getSuspension();
+
+        $resumer = new class ($suspension) {
+            public function __construct(public Suspension $suspension)
+            {
+            }
+            public function __destruct()
+            {
+                EventLoop::queue($this->suspension->resume(...), true);
+            }
+        };
+
+        $class = new class ($resumer) {
+            public static ?object $staticReference = null;
+            public function __construct(object $resumer)
+            {
+                self::$staticReference = $resumer;
+            }
+            public function __destruct()
+            {
+                EventLoop::queue(function () {
+                    $class = self::$staticReference;
+                    $cycle = [$class, &$cycle];
+                    unset($class, $cycle);
+
+                    self::$staticReference = null;
+                });
+            }
+        };
+        $cycle = [$class, &$cycle];
+        unset($class, $resumer, $cycle);
+
+
+        $ended = $suspension->suspend();
+
+        $this->assertTrue($ended);
+    }
+
+
     public function testDelayWithNegativeDelay(): void
     {
         $this->expectException(\Error::class);
