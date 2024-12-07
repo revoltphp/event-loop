@@ -48,6 +48,8 @@ abstract class AbstractDriver implements Driver
 
     private readonly \Closure $interruptCallback;
     private readonly \Closure $queueCallback;
+
+    /** @var \Closure():(null|\Closure(): mixed) */
     private readonly \Closure $runCallback;
 
     private readonly \stdClass $internalSuspensionMarker;
@@ -87,12 +89,24 @@ abstract class AbstractDriver implements Driver
         /** @psalm-suppress InvalidArgument */
         $this->interruptCallback = $this->setInterrupt(...);
         $this->queueCallback = $this->queue(...);
-        $this->runCallback = function () {
-            if ($this->fiber->isTerminated()) {
-                $this->createLoopFiber();
-            }
+        $this->runCallback = function (): ?\Closure {
+            do {
+                $garbageCollected = false;
+                if ($this->fiber->isTerminated()) {
+                    $this->createLoopFiber();
+                }
 
-            return $this->fiber->isStarted() ? $this->fiber->resume() : $this->fiber->start();
+                $result = $this->fiber->isStarted() ? $this->fiber->resume() : $this->fiber->start();
+                if ($result) {
+                    return $result;
+                }
+
+                while (\gc_collect_cycles()) {
+                    $garbageCollected = true;
+                }
+            } while ($garbageCollected);
+
+            return null;
         };
     }
 
