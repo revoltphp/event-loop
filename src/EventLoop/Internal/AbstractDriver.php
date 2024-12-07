@@ -91,7 +91,6 @@ abstract class AbstractDriver implements Driver
         $this->queueCallback = $this->queue(...);
         $this->runCallback = function (): ?\Closure {
             do {
-                $garbageCollected = false;
                 if ($this->fiber->isTerminated()) {
                     $this->createLoopFiber();
                 }
@@ -100,11 +99,7 @@ abstract class AbstractDriver implements Driver
                 if ($result) { // Null indicates the loop fiber terminated without suspending.
                     return $result;
                 }
-
-                while (\gc_collect_cycles()) {
-                    $garbageCollected = true;
-                }
-            } while ($garbageCollected && !$this->stopped);
+            } while (!$this->stopped && \gc_collect_cycles());
 
             return null;
         };
@@ -120,17 +115,14 @@ abstract class AbstractDriver implements Driver
             throw new \Error(\sprintf("Can't call %s() within a fiber (i.e., outside of {main})", __METHOD__));
         }
 
-        if ($this->fiber->isTerminated()) {
-            $this->createLoopFiber();
-        }
-
-        /** @noinspection PhpUnhandledExceptionInspection */
-        $lambda = $this->fiber->isStarted() ? $this->fiber->resume() : $this->fiber->start();
+        $lambda = ($this->runCallback)();
 
         if ($lambda) {
             $lambda();
 
-            throw new \Error('Interrupt from event loop must throw an exception: ' . ClosureHelper::getDescription($lambda));
+            throw new \Error(
+                'Interrupt from event loop must throw an exception: ' . ClosureHelper::getDescription($lambda)
+            );
         }
     }
 
