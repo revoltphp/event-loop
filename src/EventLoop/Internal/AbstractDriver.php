@@ -104,7 +104,7 @@ abstract class AbstractDriver implements Driver
                 while (\gc_collect_cycles()) {
                     $garbageCollected = true;
                 }
-            } while ($garbageCollected);
+            } while ($garbageCollected && !$this->stopped);
 
             return null;
         };
