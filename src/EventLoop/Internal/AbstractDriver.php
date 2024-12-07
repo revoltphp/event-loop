@@ -97,7 +97,7 @@ abstract class AbstractDriver implements Driver
                 }
 
                 $result = $this->fiber->isStarted() ? $this->fiber->resume() : $this->fiber->start();
-                if ($result) {
+                if ($result) { // Null indicates the loop fiber terminated without suspending.
                     return $result;
                 }
 
