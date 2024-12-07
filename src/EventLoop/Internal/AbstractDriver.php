@@ -641,9 +641,10 @@ abstract class AbstractDriver implements Driver
                     $exception = Fiber::suspend($this->internalSuspensionMarker);
                     ($this->errorHandler)($exception);
                 } catch (\Throwable $exception) {
+                    $errorHandler = $this->errorHandler;
                     $this->interrupt = static fn () => $exception instanceof UncaughtThrowable
                         ? throw $exception
-                        : throw UncaughtThrowable::throwingErrorHandler($this->errorHandler, $exception);
+                        : throw UncaughtThrowable::throwingErrorHandler($errorHandler, $exception);
                 }
             } while (true);
         });
