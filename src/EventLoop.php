@@ -28,8 +28,12 @@ final class EventLoop
     public static function setDriver(Driver $driver): void
     {
         /** @psalm-suppress RedundantPropertyInitializationCheck, RedundantCondition */
-        if (isset(self::$driver) && self::$driver->isRunning()) {
-            throw new \Error("Can't swap the event loop driver while the driver is running");
+        if (isset(self::$driver)) {
+            if (self::$driver->isRunning()) {
+                throw new \Error("Can't swap the event loop driver while the driver is running");
+            }
+        } else {
+            \register_shutdown_function(self::onShutdown(...), 0);
         }
 
         try {
@@ -64,6 +68,27 @@ final class EventLoop
             \gc_collect_cycles();
         } finally {
             self::$driver = $driver;
+        }
+    }
+
+    private static function onShutdown(int $invocationCount): void
+    {
+        $driver = self::getDriver();
+
+        $pending = false;
+        foreach ($driver->getIdentifiers() as $identifier) {
+            if ($driver->isEnabled($identifier) && $driver->isReferenced($identifier)) {
+                $pending = true;
+                break;
+            }
+        }
+
+        if ($pending) {
+            $driver->run();
+        }
+
+        if (!$invocationCount++ || $pending) {
+            \register_shutdown_function(self::onShutdown(...), $invocationCount);
         }
     }
 
