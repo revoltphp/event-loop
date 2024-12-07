@@ -73,6 +73,8 @@ final class EventLoop
 
     private static function onShutdown(int $invocationCount): void
     {
+        \gc_collect_cycles();
+
         $driver = self::getDriver();
 
         $pending = false;
