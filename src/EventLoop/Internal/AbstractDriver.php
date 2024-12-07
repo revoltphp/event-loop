@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Revolt\EventLoop\Internal;
 
+use Fiber;
 use Revolt\EventLoop\CallbackType;
 use Revolt\EventLoop\DefaultFiberFactory;
 use Revolt\EventLoop\Driver;
@@ -31,7 +32,7 @@ abstract class AbstractDriver implements Driver
     private \Fiber $fiber;
 
     private \Fiber $callbackFiber;
-    private \Closure $errorCallback;
+    private \Fiber $errorFiber;
 
     /** @var array<string, DriverCallback> */
     private array $callbacks = [];
@@ -87,7 +88,7 @@ abstract class AbstractDriver implements Driver
 
         $this->createLoopFiber();
         $this->createCallbackFiber();
-        $this->createErrorCallback();
+        $this->createErrorFiber();
 
         /** @psalm-suppress InvalidArgument */
         $this->interruptCallback = $this->setInterrupt(...);
@@ -407,10 +408,14 @@ abstract class AbstractDriver implements Driver
             return;
         }
 
-        $fiber = $this->fiberFactory->create($this->errorCallback);
+        if ($this->errorFiber->isTerminated()) {
+            $this->createErrorFiber();
+        }
 
         /** @noinspection PhpUnhandledExceptionInspection */
-        $fiber->start($this->errorHandler, $exception);
+        if ($this->errorFiber->resume($exception) !== $this->internalSuspensionMarker) {
+            $this->createErrorFiber();
+        }
     }
 
     /**
@@ -628,16 +633,20 @@ abstract class AbstractDriver implements Driver
         });
     }
 
-    private function createErrorCallback(): void
+    private function createErrorFiber(): void
     {
-        $this->errorCallback = function (\Closure $errorHandler, \Throwable $exception): void {
-            try {
-                $errorHandler($exception);
-            } catch (\Throwable $exception) {
-                $this->interrupt = static fn () => $exception instanceof UncaughtThrowable
-                    ? throw $exception
-                    : throw UncaughtThrowable::throwingErrorHandler($errorHandler, $exception);
-            }
-        };
+        $this->errorFiber = new \Fiber(function (): void {
+            do {
+                try {
+                    $exception = Fiber::suspend($this->internalSuspensionMarker);
+                    ($this->errorHandler)($exception);
+                } catch (\Throwable $exception) {
+                    $this->interrupt = static fn () => $exception instanceof UncaughtThrowable
+                        ? throw $exception
+                        : throw UncaughtThrowable::throwingErrorHandler($this->errorHandler, $exception);
+                }
+            } while (true);
+        });
+        $this->errorFiber->start();
     }
 }
