@@ -639,7 +639,6 @@ abstract class AbstractDriver implements Driver
         $this->errorFiber = new \Fiber(function (\Throwable $exception): void {
             do {
                 try {
-                    $exception ??= Fiber::suspend($this->internalSuspensionMarker);
                     ($this->errorHandler)($exception);
                 } catch (\Throwable $exception) {
                     $errorHandler = $this->errorHandler;
@@ -647,7 +646,7 @@ abstract class AbstractDriver implements Driver
                         ? throw $exception
                         : throw UncaughtThrowable::throwingErrorHandler($errorHandler, $exception);
                 }
-                $exception = null;
+                $exception = Fiber::suspend($this->internalSuspensionMarker);
             } while (true);
         });
     }
