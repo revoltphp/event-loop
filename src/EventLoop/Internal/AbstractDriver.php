@@ -91,6 +91,10 @@ abstract class AbstractDriver implements Driver
         $this->queueCallback = $this->queue(...);
         $this->runCallback = function (): ?\Closure {
             do {
+                if ($this->stopped) {
+                    return null;
+                }
+
                 if ($this->fiber->isTerminated()) {
                     $this->createLoopFiber();
                 }
