@@ -414,7 +414,7 @@ abstract class AbstractDriver implements Driver
         /** @noinspection PhpUnhandledExceptionInspection */
         $yielded = $this->errorFiber->isStarted() ? $this->errorFiber->resume($exception) : $this->errorFiber->start($exception);
 
-        if ($$yielded !== $this->internalSuspensionMarker) {
+        if ($yielded !== $this->internalSuspensionMarker) {
             $this->createErrorFiber();
         }
     }
