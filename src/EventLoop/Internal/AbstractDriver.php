@@ -411,9 +411,10 @@ abstract class AbstractDriver implements Driver
         if ($this->errorFiber->isTerminated()) {
             $this->createErrorFiber();
         }
-
         /** @noinspection PhpUnhandledExceptionInspection */
-        if ($this->errorFiber->resume($exception) !== $this->internalSuspensionMarker) {
+        $yielded = $this->errorFiber->isStarted() ? $this->errorFiber->resume($exception) : $this->errorFiber->start($exception);
+
+        if ($$yielded !== $this->internalSuspensionMarker) {
             $this->createErrorFiber();
         }
     }
@@ -635,10 +636,10 @@ abstract class AbstractDriver implements Driver
 
     private function createErrorFiber(): void
     {
-        $this->errorFiber = new \Fiber(function (): void {
+        $this->errorFiber = new \Fiber(function (\Throwable $exception): void {
             do {
                 try {
-                    $exception = Fiber::suspend($this->internalSuspensionMarker);
+                    $exception ??= Fiber::suspend($this->internalSuspensionMarker);
                     ($this->errorHandler)($exception);
                 } catch (\Throwable $exception) {
                     $errorHandler = $this->errorHandler;
@@ -646,8 +647,8 @@ abstract class AbstractDriver implements Driver
                         ? throw $exception
                         : throw UncaughtThrowable::throwingErrorHandler($errorHandler, $exception);
                 }
+                $exception = null;
             } while (true);
         });
-        $this->errorFiber->start();
     }
 }
