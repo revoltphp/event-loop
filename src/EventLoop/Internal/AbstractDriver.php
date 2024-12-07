@@ -639,9 +639,11 @@ abstract class AbstractDriver implements Driver
         $this->errorFiber = new \Fiber(function (\Throwable $exception): void {
             do {
                 try {
+                    assert($this->errorHandler !== null);
                     ($this->errorHandler)($exception);
                 } catch (\Throwable $exception) {
                     $errorHandler = $this->errorHandler;
+                    assert($errorHandler !== null);
                     $this->interrupt = static fn () => $exception instanceof UncaughtThrowable
                         ? throw $exception
                         : throw UncaughtThrowable::throwingErrorHandler($errorHandler, $exception);

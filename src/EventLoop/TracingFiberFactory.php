@@ -37,6 +37,7 @@ final class TracingFiberFactory implements FiberFactory, Countable, IteratorAggr
     public function create(callable $callback): \Fiber
     {
         $f = $this->fiberFactory->create($callback);
+        /** @psalm-suppress InaccessibleProperty */
         $this->map[$f] = null;
         return $f;
     }
