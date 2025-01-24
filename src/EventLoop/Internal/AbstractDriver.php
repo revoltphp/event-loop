@@ -91,10 +91,6 @@ abstract class AbstractDriver implements Driver
         $this->queueCallback = $this->queue(...);
         $this->runCallback = function (): ?\Closure {
             do {
-                if ($this->stopped) {
-                    return null;
-                }
-
                 if ($this->fiber->isTerminated()) {
                     $this->createLoopFiber();
                 }
@@ -103,7 +99,7 @@ abstract class AbstractDriver implements Driver
                 if ($result) { // Null indicates the loop fiber terminated without suspending.
                     return $result;
                 }
-            } while (!$this->stopped && \gc_collect_cycles());
+            } while (\gc_collect_cycles() && !$this->stopped);
 
             return null;
         };
