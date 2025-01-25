@@ -17,8 +17,6 @@ use Revolt\EventLoop\UncaughtThrowable;
  * Callbacks (enabled or new callbacks) MUST immediately be marked as enabled, but only be activated (i.e. callbacks can
  * be called) right before the next tick. Callbacks MUST NOT be called in the tick they were enabled.
  *
- * All registered callbacks MUST NOT be called from a file with strict types enabled (`declare(strict_types=1)`).
- *
  * @internal
  */
 abstract class AbstractDriver implements Driver
