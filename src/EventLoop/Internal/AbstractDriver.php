@@ -48,6 +48,8 @@ abstract class AbstractDriver implements Driver
 
     private readonly \Closure $interruptCallback;
     private readonly \Closure $queueCallback;
+
+    /** @var \Closure():(null|\Closure(): mixed) */
     private readonly \Closure $runCallback;
 
     private readonly \stdClass $internalSuspensionMarker;
@@ -87,12 +89,19 @@ abstract class AbstractDriver implements Driver
         /** @psalm-suppress InvalidArgument */
         $this->interruptCallback = $this->setInterrupt(...);
         $this->queueCallback = $this->queue(...);
-        $this->runCallback = function () {
-            if ($this->fiber->isTerminated()) {
-                $this->createLoopFiber();
-            }
+        $this->runCallback = function (): ?\Closure {
+            do {
+                if ($this->fiber->isTerminated()) {
+                    $this->createLoopFiber();
+                }
 
-            return $this->fiber->isStarted() ? $this->fiber->resume() : $this->fiber->start();
+                $result = $this->fiber->isStarted() ? $this->fiber->resume() : $this->fiber->start();
+                if ($result) { // Null indicates the loop fiber terminated without suspending.
+                    return $result;
+                }
+            } while (\gc_collect_cycles() && !$this->stopped);
+
+            return null;
         };
     }
 
@@ -106,17 +115,14 @@ abstract class AbstractDriver implements Driver
             throw new \Error(\sprintf("Can't call %s() within a fiber (i.e., outside of {main})", __METHOD__));
         }
 
-        if ($this->fiber->isTerminated()) {
-            $this->createLoopFiber();
-        }
-
-        /** @noinspection PhpUnhandledExceptionInspection */
-        $lambda = $this->fiber->isStarted() ? $this->fiber->resume() : $this->fiber->start();
+        $lambda = ($this->runCallback)();
 
         if ($lambda) {
             $lambda();
 
-            throw new \Error('Interrupt from event loop must throw an exception: ' . ClosureHelper::getDescription($lambda));
+            throw new \Error(
+                'Interrupt from event loop must throw an exception: ' . ClosureHelper::getDescription($lambda)
+            );
         }
     }
 
