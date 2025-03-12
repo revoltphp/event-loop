@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Revolt\EventLoop\Internal;
 
+use ReflectionProperty;
+use Revolt\EventLoop;
 use Revolt\EventLoop\CallbackType;
 use Revolt\EventLoop\Driver;
 use Revolt\EventLoop\FiberLocal;
@@ -101,6 +103,16 @@ abstract class AbstractDriver implements Driver
 
             return null;
         };
+    }
+
+    public function __destruct()
+    {
+        // Unset event loop singleton to avoid reusing a dead event loop instance during garbage collection.
+        // Using reflection to avoid exposing public (even @internal methods).
+        $refl = new ReflectionProperty(EventLoop::class, 'driver');
+        if ($refl->getValue() === $this) {
+            $refl->setValue(null, null);
+        }
     }
 
     public function run(): void

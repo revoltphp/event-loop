@@ -20,7 +20,7 @@ use Revolt\EventLoop\UnsupportedFeatureException;
  */
 final class EventLoop
 {
-    private static Driver $driver;
+    private static ?Driver $driver = null;
 
     /**
      * Sets the driver to be used as the event loop.
@@ -53,6 +53,11 @@ final class EventLoop
                 public function getHandle(): mixed
                 {
                     return null;
+                }
+
+                public function __destruct()
+                {
+                    // do nothing
                 }
 
                 protected function now(): float

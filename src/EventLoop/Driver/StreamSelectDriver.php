@@ -87,6 +87,8 @@ final class StreamSelectDriver extends AbstractDriver
                 $this->deactivate($signalCallback);
             }
         }
+
+        parent::__destruct();
     }
 
     /**

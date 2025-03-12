@@ -93,6 +93,8 @@ final class EventDriver extends AbstractDriver
             $this->handle->free();
             unset($this->handle);
         }
+
+        parent::__destruct();
     }
 
     /**
