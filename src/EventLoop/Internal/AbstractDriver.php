@@ -645,7 +645,7 @@ abstract class AbstractDriver implements Driver
         $callbackId = $this->nextId;
 
         if (\PHP_VERSION_ID >= 80300) {
-            $this->nextId = str_increment($this->nextId);
+            $this->nextId = \str_increment($this->nextId);
         } else {
             $this->nextId++;
         }
