@@ -141,7 +141,7 @@ abstract class AbstractDriver implements Driver
 
     public function defer(\Closure $closure): string
     {
-        $deferCallback = new DeferCallback($this->nextId++, $closure);
+        $deferCallback = new DeferCallback($this->callbackId(), $closure);
 
         $this->callbacks[$deferCallback->id] = $deferCallback;
         $this->enableDeferQueue[$deferCallback->id] = $deferCallback;
@@ -155,7 +155,7 @@ abstract class AbstractDriver implements Driver
             throw new \Error("Delay must be greater than or equal to zero");
         }
 
-        $timerCallback = new TimerCallback($this->nextId++, $delay, $closure, $this->now() + $delay);
+        $timerCallback = new TimerCallback($this->callbackId(), $delay, $closure, $this->now() + $delay);
 
         $this->callbacks[$timerCallback->id] = $timerCallback;
         $this->enableQueue[$timerCallback->id] = $timerCallback;
@@ -169,7 +169,7 @@ abstract class AbstractDriver implements Driver
             throw new \Error("Interval must be greater than or equal to zero");
         }
 
-        $timerCallback = new TimerCallback($this->nextId++, $interval, $closure, $this->now() + $interval, true);
+        $timerCallback = new TimerCallback($this->callbackId(), $interval, $closure, $this->now() + $interval, true);
 
         $this->callbacks[$timerCallback->id] = $timerCallback;
         $this->enableQueue[$timerCallback->id] = $timerCallback;
@@ -179,7 +179,7 @@ abstract class AbstractDriver implements Driver
 
     public function onReadable(mixed $stream, \Closure $closure): string
     {
-        $streamCallback = new StreamReadableCallback($this->nextId++, $closure, $stream);
+        $streamCallback = new StreamReadableCallback($this->callbackId(), $closure, $stream);
 
         $this->callbacks[$streamCallback->id] = $streamCallback;
         $this->enableQueue[$streamCallback->id] = $streamCallback;
@@ -189,7 +189,7 @@ abstract class AbstractDriver implements Driver
 
     public function onWritable($stream, \Closure $closure): string
     {
-        $streamCallback = new StreamWritableCallback($this->nextId++, $closure, $stream);
+        $streamCallback = new StreamWritableCallback($this->callbackId(), $closure, $stream);
 
         $this->callbacks[$streamCallback->id] = $streamCallback;
         $this->enableQueue[$streamCallback->id] = $streamCallback;
@@ -199,7 +199,7 @@ abstract class AbstractDriver implements Driver
 
     public function onSignal(int $signal, \Closure $closure): string
     {
-        $signalCallback = new SignalCallback($this->nextId++, $closure, $signal);
+        $signalCallback = new SignalCallback($this->callbackId(), $closure, $signal);
 
         $this->callbacks[$signalCallback->id] = $signalCallback;
         $this->enableQueue[$signalCallback->id] = $signalCallback;
@@ -638,6 +638,20 @@ abstract class AbstractDriver implements Driver
                     : throw UncaughtThrowable::throwingErrorHandler($errorHandler, $exception);
             }
         };
+    }
+
+    private function callbackId(): string
+    {
+        $callbackId = $this->nextId;
+
+        if (\PHP_VERSION_ID >= 80300) {
+            /** @psalm-suppress UndefinedFunction */
+            $this->nextId = \str_increment($this->nextId);
+        } else {
+            $this->nextId++;
+        }
+
+        return $callbackId;
     }
 
     final public function __serialize(): never
