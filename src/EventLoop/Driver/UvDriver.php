@@ -38,7 +38,7 @@ final class UvDriver extends AbstractDriver
         $this->handle = \uv_loop_new();
 
         $this->ioCallback = function ($event, $status, $events, $resource): void {
-            $callbacks = $this->uvCallbacks[(int) $event];
+            $callbacks = $this->uvCallbacks[spl_object_id($event)];
 
             // Invoke the callback on errors, as this matches behavior with other loop back-ends.
             // Re-enable callback as libuv disables the callback on non-zero status.
@@ -66,7 +66,7 @@ final class UvDriver extends AbstractDriver
         };
 
         $this->timerCallback = function ($event): void {
-            $callback = $this->uvCallbacks[(int) $event][0];
+            $callback = $this->uvCallbacks[spl_object_id($event)][0];
 
             \assert($callback instanceof TimerCallback);
 
@@ -74,7 +74,7 @@ final class UvDriver extends AbstractDriver
         };
 
         $this->signalCallback = function ($event): void {
-            $callback = $this->uvCallbacks[(int) $event][0];
+            $callback = $this->uvCallbacks[spl_object_id($event)][0];
 
             $this->enqueueCallback($callback);
         };
@@ -92,7 +92,7 @@ final class UvDriver extends AbstractDriver
         }
 
         $event = $this->events[$callbackId];
-        $eventId = (int) $event;
+        $eventId = spl_object_id($event);
 
         if (isset($this->uvCallbacks[$eventId][0])) { // All except IO callbacks.
             unset($this->uvCallbacks[$eventId]);
@@ -159,7 +159,7 @@ final class UvDriver extends AbstractDriver
                     $event = $this->streams[$streamId] = \uv_poll_init_socket($this->handle, $callback->stream);
                 }
 
-                $eventId = (int) $event;
+                $eventId = spl_object_id($event);
                 $this->events[$id] = $event;
                 $this->uvCallbacks[$eventId][$id] = $callback;
 
@@ -177,7 +177,7 @@ final class UvDriver extends AbstractDriver
                     $event = $this->events[$id] = \uv_timer_init($this->handle);
                 }
 
-                $this->uvCallbacks[(int) $event] = [$callback];
+                $this->uvCallbacks[spl_object_id($event)] = [$callback];
 
                 \uv_timer_start(
                     $event,
@@ -193,7 +193,7 @@ final class UvDriver extends AbstractDriver
                     $event = $this->events[$id] = \uv_signal_init($this->handle);
                 }
 
-                $this->uvCallbacks[(int) $event] = [$callback];
+                $this->uvCallbacks[spl_object_id($event)] = [$callback];
 
                 /** @psalm-suppress TooManyArguments */
                 \uv_signal_start($event, $this->signalCallback, $callback->signal);
@@ -224,7 +224,7 @@ final class UvDriver extends AbstractDriver
 
         if ($callback instanceof StreamCallback) {
             $flags = 0;
-            foreach ($this->uvCallbacks[(int) $event] as $w) {
+            foreach ($this->uvCallbacks[spl_object_id($event)] as $w) {
                 \assert($w instanceof StreamCallback);
 
                 $flags |= $w->invokable ? ($this->getStreamCallbackFlags($w)) : 0;
