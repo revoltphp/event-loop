@@ -24,6 +24,10 @@ jobs:
             php-version: 8.4
             composer-flags: '--ignore-platform-req=php+'
             psalm: none
+          - operating-system: 'ubuntu-latest'
+            php-version: 8.5
+            composer-flags: '--ignore-platform-req=php+'
+            psalm: none
 
     name: PHP ${{ matrix.php-version }} ${{ matrix.job-description }}
     runs-on: ${{ matrix.operating-system }}
