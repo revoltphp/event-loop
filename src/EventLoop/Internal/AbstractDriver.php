@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Revolt\EventLoop\Internal;
 
+use Fiber;
 use Revolt\EventLoop\CallbackType;
+use Revolt\EventLoop\DefaultFiberFactory;
 use Revolt\EventLoop\Driver;
+use Revolt\EventLoop\FiberFactory;
 use Revolt\EventLoop\FiberLocal;
 use Revolt\EventLoop\InvalidCallbackError;
 use Revolt\EventLoop\Suspension;
@@ -27,7 +30,7 @@ abstract class AbstractDriver implements Driver
     private \Fiber $fiber;
 
     private \Fiber $callbackFiber;
-    private \Closure $errorCallback;
+    private \Fiber $errorFiber;
 
     /** @var array<string, DriverCallback> */
     private array $callbacks = [];
@@ -58,13 +61,15 @@ abstract class AbstractDriver implements Driver
     /** @var \SplQueue<DriverCallback> */
     private readonly \SplQueue $callbackQueue;
 
+    private readonly FiberFactory $fiberFactory;
+
     private bool $idle = false;
     private bool $stopped = false;
 
     /** @var \WeakMap<object, \WeakReference<DriverSuspension>> */
     private \WeakMap $suspensions;
 
-    public function __construct()
+    public function __construct(?FiberFactory $fiberFactory = null)
     {
         if (\PHP_VERSION_ID < 80117 || \PHP_VERSION_ID >= 80200 && \PHP_VERSION_ID < 80204) {
             // PHP GC is broken on early 8.1 and 8.2 versions, see https://github.com/php/php-src/issues/10496
@@ -73,6 +78,7 @@ abstract class AbstractDriver implements Driver
                 throw new \Error('Your version of PHP is affected by serious garbage collector bugs related to fibers. Please upgrade to a newer version of PHP, i.e. >= 8.1.17 or => 8.2.4');
             }
         }
+        $this->fiberFactory = $fiberFactory ?? new DefaultFiberFactory();
 
         $this->suspensions = new \WeakMap();
 
@@ -82,7 +88,7 @@ abstract class AbstractDriver implements Driver
 
         $this->createLoopFiber();
         $this->createCallbackFiber();
-        $this->createErrorCallback();
+        $this->createErrorFiber();
 
         /** @psalm-suppress InvalidArgument */
         $this->interruptCallback = $this->setInterrupt(...);
@@ -406,10 +412,15 @@ abstract class AbstractDriver implements Driver
             return;
         }
 
-        $fiber = new \Fiber($this->errorCallback);
-
+        if ($this->errorFiber->isTerminated()) {
+            $this->createErrorFiber();
+        }
         /** @noinspection PhpUnhandledExceptionInspection */
-        $fiber->start($this->errorHandler, $exception);
+        $yielded = $this->errorFiber->isStarted() ? $this->errorFiber->resume($exception) : $this->errorFiber->start($exception);
+
+        if ($yielded !== $this->internalSuspensionMarker) {
+            $this->createErrorFiber();
+        }
     }
 
     /**
@@ -535,7 +546,7 @@ abstract class AbstractDriver implements Driver
 
     private function createLoopFiber(): void
     {
-        $this->fiber = new \Fiber(function (): void {
+        $this->fiber = $this->fiberFactory->create(function (): void {
             $this->stopped = false;
 
             // Invoke microtasks if we have some
@@ -562,7 +573,7 @@ abstract class AbstractDriver implements Driver
 
     private function createCallbackFiber(): void
     {
-        $this->callbackFiber = new \Fiber(function (): void {
+        $this->callbackFiber = $this->fiberFactory->create(function (): void {
             do {
                 $this->invokeMicrotasks();
 
@@ -627,17 +638,23 @@ abstract class AbstractDriver implements Driver
         });
     }
 
-    private function createErrorCallback(): void
+    private function createErrorFiber(): void
     {
-        $this->errorCallback = function (\Closure $errorHandler, \Throwable $exception): void {
-            try {
-                $errorHandler($exception);
-            } catch (\Throwable $exception) {
-                $this->interrupt = static fn () => $exception instanceof UncaughtThrowable
-                    ? throw $exception
-                    : throw UncaughtThrowable::throwingErrorHandler($errorHandler, $exception);
-            }
-        };
+        $this->errorFiber = new \Fiber(function (\Throwable $exception): void {
+            do {
+                try {
+                    \assert($this->errorHandler !== null);
+                    ($this->errorHandler)($exception);
+                } catch (\Throwable $exception) {
+                    $errorHandler = $this->errorHandler;
+                    \assert($errorHandler !== null);
+                    $this->interrupt = static fn () => $exception instanceof UncaughtThrowable
+                        ? throw $exception
+                        : throw UncaughtThrowable::throwingErrorHandler($errorHandler, $exception);
+                }
+                $exception = Fiber::suspend($this->internalSuspensionMarker);
+            } while (true);
+        });
     }
 
     private function callbackId(): string

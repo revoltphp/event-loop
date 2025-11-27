@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Revolt\EventLoop\Driver;
 
+use Revolt\EventLoop\FiberFactory;
 use Revolt\EventLoop\Internal\AbstractDriver;
 use Revolt\EventLoop\Internal\DriverCallback;
 use Revolt\EventLoop\Internal\SignalCallback;
@@ -31,9 +32,9 @@ final class UvDriver extends AbstractDriver
     private readonly \Closure $timerCallback;
     private readonly \Closure $signalCallback;
 
-    public function __construct()
+    public function __construct(?FiberFactory $fiberFactory = null)
     {
-        parent::__construct();
+        parent::__construct($fiberFactory);
 
         $this->handle = \uv_loop_new();
 
