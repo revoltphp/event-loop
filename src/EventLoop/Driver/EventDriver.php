@@ -91,7 +91,8 @@ final class EventDriver extends AbstractDriver
         /** @psalm-suppress RedundantPropertyInitializationCheck */
         if (isset($this->handle)) {
             $this->handle->free();
-            unset($this->handle);
+            /** @psalm-suppress TooFewArguments https://github.com/JetBrains/phpstorm-stubs/pull/763 */
+            $this->handle = new \EventBase();
         }
     }
 

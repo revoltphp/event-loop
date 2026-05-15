@@ -91,6 +91,7 @@ final class EvDriver extends AbstractDriver
         // We need to clear all references to events manually, see
         // https://bitbucket.org/osmanov/pecl-ev/issues/31/segfault-in-ev_timer_stop
         $this->events = [];
+        $this->handle = new \EvLoop();
     }
 
     /**

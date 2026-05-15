@@ -110,6 +110,14 @@ final class UvDriver extends AbstractDriver
         unset($this->events[$callbackId]);
     }
 
+    public function __destruct()
+    {
+        $this->events = [];
+        $this->uvCallbacks = [];
+        $this->streams = [];
+        $this->handle = \uv_loop_new();
+    }
+
     /**
      * @return \UVLoop|resource
      */
