@@ -47,7 +47,9 @@ class TimerQueueTest extends TestCase
         $id = 'a';
         $callbacks = [];
         foreach ($values as $value) {
-            $callback = new TimerCallback($id++, $value, static function () {
+            $myId = $id;
+            $id = str_increment($id);
+            $callback = new TimerCallback($myId, $value, static function () {
             }, $value);
             $callbacks[] = $callback;
         }
