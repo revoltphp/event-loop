@@ -1,5 +1,13 @@
 --TEST--
 Issue #105: Ensure the callback fiber is always alive as long as the event loop lives (stream_select driver)
+--SKIPIF--
+<?php
+
+if (PHP_VERSION_ID < 80400) {
+    echo 'skip PHP 8.4+ required';
+}
+
+?>
 --FILE--
 <?php
 

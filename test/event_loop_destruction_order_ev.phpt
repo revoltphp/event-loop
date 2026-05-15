@@ -3,6 +3,10 @@ Issue #105: Ensure the callback fiber is always alive as long as the event loop 
 --SKIPIF--
 <?php
 
+if (PHP_VERSION_ID < 80400) {
+    echo 'skip PHP 8.4+ required';
+}
+
 if (!\extension_loaded('ev')) {
     echo 'skip ev extension required';
 }
