@@ -24,6 +24,10 @@ jobs:
             php-version: 8.4
             composer-flags: '--ignore-platform-req=php+'
             psalm: none
+          - operating-system: 'ubuntu-latest'
+            php-version: 8.5
+            composer-flags: '--ignore-platform-req=php+'
+            psalm: none
 
     name: PHP ${{ matrix.php-version }} ${{ matrix.job-description }}
     runs-on: ${{ matrix.operating-system }}
@@ -35,7 +39,7 @@ jobs:
           git config --global core.eol lf
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install OS dependencies
         run: |
@@ -53,7 +57,7 @@ jobs:
         run: echo "::set-output name=dir::$(composer config cache-dir)"
 
       - name: Cache dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
           key: composer-${{ runner.os }}-${{ matrix.php-version }}-${{ hashFiles('**/composer.*') }}-${{ matrix.composer-flags }}
@@ -64,15 +68,10 @@ jobs:
             composer-
 
       - name: Install dependencies
-        uses: nick-invision/retry@v2
-        with:
-          timeout_minutes: 5
-          max_attempts: 5
-          retry_wait_seconds: 30
-          command: |
-            composer update --optimize-autoloader --no-interaction --no-progress ${{ matrix.composer-flags }}
-            php -v
-            composer info -D
+        run: |
+          composer update --optimize-autoloader --no-interaction --no-progress ${{ matrix.composer-flags }}
+          php -v
+          composer info -D
 
       - name: Run tests
         run: php vendor/bin/phpunit

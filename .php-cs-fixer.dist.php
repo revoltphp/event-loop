@@ -40,6 +40,7 @@ final class Config extends PhpCsFixerConfig
                     'pcntl_signal_dispatch',
                     'pcntl_signal',
                     'posix_kill',
+                    'str_increment',
                     'uv_loop_new',
                     'uv_poll_start',
                     'uv_poll_stop',
