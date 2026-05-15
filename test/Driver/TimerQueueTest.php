@@ -48,7 +48,14 @@ class TimerQueueTest extends TestCase
         $callbacks = [];
         foreach ($values as $value) {
             $myId = $id;
-            $id = \str_increment($id);
+
+            if (\PHP_VERSION_ID >= 80300) {
+                /** @psalm-suppress UndefinedFunction */
+                $id = \str_increment($id);
+            } else {
+                $id++;
+            }
+
             $callback = new TimerCallback($myId, $value, static function () {
             }, $value);
             $callbacks[] = $callback;
