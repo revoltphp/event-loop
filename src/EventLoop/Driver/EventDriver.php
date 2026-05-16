@@ -91,6 +91,9 @@ final class EventDriver extends AbstractDriver
         /** @psalm-suppress RedundantPropertyInitializationCheck */
         if (isset($this->handle)) {
             $this->handle->free();
+
+            // Reinitialize the loop handle due to indeterminate destruct order.
+            // See https://github.com/revoltphp/event-loop/issues/105
             /** @psalm-suppress TooFewArguments https://github.com/JetBrains/phpstorm-stubs/pull/763 */
             $this->handle = new \EventBase();
         }

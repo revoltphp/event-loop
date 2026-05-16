@@ -115,6 +115,9 @@ final class UvDriver extends AbstractDriver
         $this->events = [];
         $this->uvCallbacks = [];
         $this->streams = [];
+
+        // Reinitialize the loop handle due to indeterminate destruct order.
+        // See https://github.com/revoltphp/event-loop/issues/105
         $this->handle = \uv_loop_new();
     }
 
