@@ -103,6 +103,7 @@ abstract class AbstractDriver implements Driver
         };
     }
 
+    #[\Override]
     public function run(): void
     {
         if ($this->fiber->isRunning()) {
@@ -124,21 +125,25 @@ abstract class AbstractDriver implements Driver
         }
     }
 
+    #[\Override]
     public function stop(): void
     {
         $this->stopped = true;
     }
 
+    #[\Override]
     public function isRunning(): bool
     {
         return $this->fiber->isRunning() || $this->fiber->isSuspended();
     }
 
+    #[\Override]
     public function queue(\Closure $closure, mixed ...$args): void
     {
         $this->microtaskQueue->enqueue([$closure, $args]);
     }
 
+    #[\Override]
     public function defer(\Closure $closure): string
     {
         $deferCallback = new DeferCallback($this->callbackId(), $closure);
@@ -149,6 +154,7 @@ abstract class AbstractDriver implements Driver
         return $deferCallback->id;
     }
 
+    #[\Override]
     public function delay(float $delay, \Closure $closure): string
     {
         if ($delay < 0) {
@@ -163,6 +169,7 @@ abstract class AbstractDriver implements Driver
         return $timerCallback->id;
     }
 
+    #[\Override]
     public function repeat(float $interval, \Closure $closure): string
     {
         if ($interval < 0) {
@@ -177,6 +184,7 @@ abstract class AbstractDriver implements Driver
         return $timerCallback->id;
     }
 
+    #[\Override]
     public function onReadable(mixed $stream, \Closure $closure): string
     {
         $streamCallback = new StreamReadableCallback($this->callbackId(), $closure, $stream);
@@ -187,6 +195,7 @@ abstract class AbstractDriver implements Driver
         return $streamCallback->id;
     }
 
+    #[\Override]
     public function onWritable($stream, \Closure $closure): string
     {
         $streamCallback = new StreamWritableCallback($this->callbackId(), $closure, $stream);
@@ -197,6 +206,7 @@ abstract class AbstractDriver implements Driver
         return $streamCallback->id;
     }
 
+    #[\Override]
     public function onSignal(int $signal, \Closure $closure): string
     {
         $signalCallback = new SignalCallback($this->callbackId(), $closure, $signal);
@@ -207,6 +217,7 @@ abstract class AbstractDriver implements Driver
         return $signalCallback->id;
     }
 
+    #[\Override]
     public function enable(string $callbackId): string
     {
         if (!isset($this->callbacks[$callbackId])) {
@@ -233,12 +244,14 @@ abstract class AbstractDriver implements Driver
         return $callbackId;
     }
 
+    #[\Override]
     public function cancel(string $callbackId): void
     {
         $this->disable($callbackId);
         unset($this->callbacks[$callbackId]);
     }
 
+    #[\Override]
     public function disable(string $callbackId): string
     {
         if (!isset($this->callbacks[$callbackId])) {
@@ -268,6 +281,7 @@ abstract class AbstractDriver implements Driver
         return $callbackId;
     }
 
+    #[\Override]
     public function reference(string $callbackId): string
     {
         if (!isset($this->callbacks[$callbackId])) {
@@ -279,6 +293,7 @@ abstract class AbstractDriver implements Driver
         return $callbackId;
     }
 
+    #[\Override]
     public function unreference(string $callbackId): string
     {
         if (!isset($this->callbacks[$callbackId])) {
@@ -290,6 +305,7 @@ abstract class AbstractDriver implements Driver
         return $callbackId;
     }
 
+    #[\Override]
     public function getSuspension(): Suspension
     {
         $fiber = \Fiber::getCurrent();
@@ -317,16 +333,19 @@ abstract class AbstractDriver implements Driver
         return $suspension;
     }
 
+    #[\Override]
     public function setErrorHandler(?\Closure $errorHandler): void
     {
         $this->errorHandler = $errorHandler;
     }
 
+    #[\Override]
     public function getErrorHandler(): ?\Closure
     {
         return $this->errorHandler;
     }
 
+    #[\Override]
     public function __debugInfo(): array
     {
         // @codeCoverageIgnoreStart
@@ -338,11 +357,13 @@ abstract class AbstractDriver implements Driver
         // @codeCoverageIgnoreEnd
     }
 
+    #[\Override]
     public function getIdentifiers(): array
     {
         return \array_keys($this->callbacks);
     }
 
+    #[\Override]
     public function getType(string $callbackId): CallbackType
     {
         $callback = $this->callbacks[$callbackId] ?? throw InvalidCallbackError::invalidIdentifier($callbackId);
@@ -356,6 +377,7 @@ abstract class AbstractDriver implements Driver
         };
     }
 
+    #[\Override]
     public function isEnabled(string $callbackId): bool
     {
         $callback = $this->callbacks[$callbackId] ?? throw InvalidCallbackError::invalidIdentifier($callbackId);
@@ -363,6 +385,7 @@ abstract class AbstractDriver implements Driver
         return $callback->enabled;
     }
 
+    #[\Override]
     public function isReferenced(string $callbackId): bool
     {
         $callback = $this->callbacks[$callbackId] ?? throw InvalidCallbackError::invalidIdentifier($callbackId);

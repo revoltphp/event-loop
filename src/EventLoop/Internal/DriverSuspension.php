@@ -41,6 +41,7 @@ final class DriverSuspension implements Suspension
         $this->fiberRef = $fiber ? \WeakReference::create($fiber) : null;
     }
 
+    #[\Override]
     public function resume(mixed $value = null): void
     {
         // Ignore spurious resumes to old dead {main} suspension
@@ -70,6 +71,7 @@ final class DriverSuspension implements Suspension
         }
     }
 
+    #[\Override]
     public function suspend(): mixed
     {
         // Throw exception when trying to use old dead {main} suspension
@@ -148,6 +150,7 @@ final class DriverSuspension implements Suspension
         return $result();
     }
 
+    #[\Override]
     public function throw(\Throwable $throwable): void
     {
         // Ignore spurious resumes to old dead {main} suspension

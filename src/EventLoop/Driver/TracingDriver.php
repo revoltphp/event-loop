@@ -30,26 +30,31 @@ final class TracingDriver implements Driver
         $this->driver = $driver;
     }
 
+    #[\Override]
     public function run(): void
     {
         $this->driver->run();
     }
 
+    #[\Override]
     public function stop(): void
     {
         $this->driver->stop();
     }
 
+    #[\Override]
     public function getSuspension(): Suspension
     {
         return $this->driver->getSuspension();
     }
 
+    #[\Override]
     public function isRunning(): bool
     {
         return $this->driver->isRunning();
     }
 
+    #[\Override]
     public function defer(\Closure $closure): string
     {
         $id = $this->driver->defer(function (...$args) use ($closure) {
@@ -63,6 +68,7 @@ final class TracingDriver implements Driver
         return $id;
     }
 
+    #[\Override]
     public function delay(float $delay, \Closure $closure): string
     {
         $id = $this->driver->delay($delay, function (...$args) use ($closure) {
@@ -76,6 +82,7 @@ final class TracingDriver implements Driver
         return $id;
     }
 
+    #[\Override]
     public function repeat(float $interval, \Closure $closure): string
     {
         $id = $this->driver->repeat($interval, $closure);
@@ -86,6 +93,7 @@ final class TracingDriver implements Driver
         return $id;
     }
 
+    #[\Override]
     public function onReadable(mixed $stream, \Closure $closure): string
     {
         $id = $this->driver->onReadable($stream, $closure);
@@ -96,6 +104,7 @@ final class TracingDriver implements Driver
         return $id;
     }
 
+    #[\Override]
     public function onWritable(mixed $stream, \Closure $closure): string
     {
         $id = $this->driver->onWritable($stream, $closure);
@@ -106,6 +115,7 @@ final class TracingDriver implements Driver
         return $id;
     }
 
+    #[\Override]
     public function onSignal(int $signal, \Closure $closure): string
     {
         $id = $this->driver->onSignal($signal, $closure);
@@ -116,6 +126,7 @@ final class TracingDriver implements Driver
         return $id;
     }
 
+    #[\Override]
     public function enable(string $callbackId): string
     {
         try {
@@ -131,6 +142,7 @@ final class TracingDriver implements Driver
         return $callbackId;
     }
 
+    #[\Override]
     public function cancel(string $callbackId): void
     {
         $this->driver->cancel($callbackId);
@@ -142,6 +154,7 @@ final class TracingDriver implements Driver
         unset($this->enabledCallbacks[$callbackId], $this->unreferencedCallbacks[$callbackId]);
     }
 
+    #[\Override]
     public function disable(string $callbackId): string
     {
         $this->driver->disable($callbackId);
@@ -150,6 +163,7 @@ final class TracingDriver implements Driver
         return $callbackId;
     }
 
+    #[\Override]
     public function reference(string $callbackId): string
     {
         try {
@@ -165,6 +179,7 @@ final class TracingDriver implements Driver
         return $callbackId;
     }
 
+    #[\Override]
     public function unreference(string $callbackId): string
     {
         $this->driver->unreference($callbackId);
@@ -173,17 +188,20 @@ final class TracingDriver implements Driver
         return $callbackId;
     }
 
+    #[\Override]
     public function setErrorHandler(?\Closure $errorHandler): void
     {
         $this->driver->setErrorHandler($errorHandler);
     }
 
+    #[\Override]
     public function getErrorHandler(): ?\Closure
     {
         return $this->driver->getErrorHandler();
     }
 
     /** @inheritdoc */
+    #[\Override]
     public function getHandle(): mixed
     {
         return $this->driver->getHandle();
@@ -206,31 +224,37 @@ final class TracingDriver implements Driver
         return \rtrim($dump);
     }
 
+    #[\Override]
     public function getIdentifiers(): array
     {
         return $this->driver->getIdentifiers();
     }
 
+    #[\Override]
     public function getType(string $callbackId): CallbackType
     {
         return $this->driver->getType($callbackId);
     }
 
+    #[\Override]
     public function isEnabled(string $callbackId): bool
     {
         return $this->driver->isEnabled($callbackId);
     }
 
+    #[\Override]
     public function isReferenced(string $callbackId): bool
     {
         return $this->driver->isReferenced($callbackId);
     }
 
+    #[\Override]
     public function __debugInfo(): array
     {
         return $this->driver->__debugInfo();
     }
 
+    #[\Override]
     public function queue(\Closure $closure, mixed ...$args): void
     {
         $this->driver->queue($closure, ...$args);

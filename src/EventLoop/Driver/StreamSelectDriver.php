@@ -92,6 +92,7 @@ final class StreamSelectDriver extends AbstractDriver
     /**
      * @throws UnsupportedFeatureException If the pcntl extension is not available.
      */
+    #[\Override]
     public function onSignal(int $signal, \Closure $closure): string
     {
         if (!$this->signalHandling) {
@@ -101,11 +102,13 @@ final class StreamSelectDriver extends AbstractDriver
         return parent::onSignal($signal, $closure);
     }
 
+    #[\Override]
     public function getHandle(): mixed
     {
         return null;
     }
 
+    #[\Override]
     protected function now(): float
     {
         return (float) \hrtime(true) / 1_000_000_000;
@@ -114,6 +117,7 @@ final class StreamSelectDriver extends AbstractDriver
     /**
      * @throws \Throwable
      */
+    #[\Override]
     protected function dispatch(bool $blocking): void
     {
         if ($this->signalHandling) {
@@ -143,6 +147,7 @@ final class StreamSelectDriver extends AbstractDriver
         }
     }
 
+    #[\Override]
     protected function activate(array $callbacks): void
     {
         foreach ($callbacks as $callback) {
@@ -187,6 +192,7 @@ final class StreamSelectDriver extends AbstractDriver
         }
     }
 
+    #[\Override]
     protected function deactivate(DriverCallback $callback): void
     {
         if ($callback instanceof StreamReadableCallback) {

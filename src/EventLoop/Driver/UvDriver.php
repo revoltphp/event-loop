@@ -80,9 +80,7 @@ final class UvDriver extends AbstractDriver
         };
     }
 
-    /**
-     * {@inheritdoc}
-     */
+    #[\Override]
     public function cancel(string $callbackId): void
     {
         parent::cancel($callbackId);
@@ -124,11 +122,13 @@ final class UvDriver extends AbstractDriver
     /**
      * @return \UVLoop|resource
      */
+    #[\Override]
     public function getHandle(): mixed
     {
         return $this->handle;
     }
 
+    #[\Override]
     protected function now(): float
     {
         \uv_update_time($this->handle);
@@ -137,18 +137,14 @@ final class UvDriver extends AbstractDriver
         return \uv_now($this->handle) / 1000;
     }
 
-    /**
-     * {@inheritdoc}
-     */
+    #[\Override]
     protected function dispatch(bool $blocking): void
     {
         /** @psalm-suppress TooManyArguments */
         \uv_run($this->handle, $blocking ? \UV::RUN_ONCE : \UV::RUN_NOWAIT);
     }
 
-    /**
-     * {@inheritdoc}
-     */
+    #[\Override]
     protected function activate(array $callbacks): void
     {
         $now = $this->now();
@@ -216,9 +212,7 @@ final class UvDriver extends AbstractDriver
         }
     }
 
-    /**
-     * {@inheritdoc}
-     */
+    #[\Override]
     protected function deactivate(DriverCallback $callback): void
     {
         $id = $callback->id;
