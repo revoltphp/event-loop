@@ -47,6 +47,7 @@ function fetch(string $url): string
     do {
         $suspension->suspend();
         $chunk = \fread($stream, 64 * 1024);
+        \assert($chunk !== false);
         $buffer .= $chunk;
     } while ($chunk !== '');
 

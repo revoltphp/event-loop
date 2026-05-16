@@ -15,6 +15,10 @@ use Revolt\EventLoop\Driver;
 require __DIR__ . '/../vendor/autoload.php';
 
 $args = \getopt('t:l:r:');
+if ($args === false) {
+    $args = [];
+}
+
 /** @psalm-suppress RiskyCast */
 $t  = (int) \round((\array_key_exists('t', $args) ? (int) $args['t'] : 0));
 if (\array_key_exists('d', $args)) {

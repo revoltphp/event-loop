@@ -19,9 +19,16 @@ echo "Visit http://localhost:8080/ in your browser." . PHP_EOL;
 // wait for incoming connections on server socket
 EventLoop::onReadable($server, function ($watcher, $server) {
     $conn = \stream_socket_accept($server);
+    if ($conn === false) {
+        echo "Error accepting connection\n";
+        exit(1);
+    }
+
     $data = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 3\r\n\r\nHi\n";
     EventLoop::onWritable($conn, function ($watcher, $conn) use (&$data) {
         $written = \fwrite($conn, $data);
+        \assert($written !== false);
+
         if ($written === \strlen($data)) {
             \fclose($conn);
             EventLoop::cancel($watcher);

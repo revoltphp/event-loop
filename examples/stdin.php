@@ -19,6 +19,7 @@ EventLoop::onReadable(STDIN, function ($watcherId, $stream) use ($suspension) {
     EventLoop::cancel($watcherId);
 
     $chunk = \fread($stream, 8192);
+    \assert($chunk !== false);
 
     print "Read " . \strlen($chunk) . " bytes" . PHP_EOL;
 

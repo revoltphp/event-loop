@@ -17,28 +17,16 @@
     <issueHandlers>
         <DuplicateClass>
             <errorLevel type="suppress">
-                <directory name="examples" />
+                <directory name="examples"/>
             </errorLevel>
         </DuplicateClass>
 
-        <StringIncrement>
+        <InvalidOperand>
             <errorLevel type="suppress">
-                <directory name="examples"/>
-                <directory name="src"/>
+                <directory name="src/EventLoop/Driver"/>
+                <file name="src/EventLoop.php"/>
             </errorLevel>
-        </StringIncrement>
-
-        <RedundantConditionGivenDocblockType>
-            <errorLevel type="suppress">
-                <directory name="src"/>
-            </errorLevel>
-        </RedundantConditionGivenDocblockType>
-
-        <DocblockTypeContradiction>
-            <errorLevel type="suppress">
-                <directory name="src"/>
-            </errorLevel>
-        </DocblockTypeContradiction>
+        </InvalidOperand>
 
         <MissingClosureParamType>
             <errorLevel type="suppress">
@@ -56,9 +44,41 @@
 
         <PossiblyInvalidArgument>
             <errorLevel type="suppress">
+                <directory name="examples"/>
                 <file name="src/EventLoop/Driver/UvDriver.php"/>
             </errorLevel>
         </PossiblyInvalidArgument>
+
+        <PossiblyUnusedMethod>
+            <errorLevel type="suppress">
+                <directory name="src"/>
+            </errorLevel>
+        </PossiblyUnusedMethod>
+
+        <PossiblyUnusedParam>
+            <errorLevel type="suppress">
+                <directory name="src"/>
+            </errorLevel>
+        </PossiblyUnusedParam>
+
+        <PossiblyUnusedReturnValue>
+            <errorLevel type="suppress">
+                <directory name="src"/>
+            </errorLevel>
+        </PossiblyUnusedReturnValue>
+
+        <RedundantConditionGivenDocblockType>
+            <errorLevel type="suppress">
+                <directory name="src"/>
+            </errorLevel>
+        </RedundantConditionGivenDocblockType>
+
+        <StringIncrement>
+            <errorLevel type="suppress">
+                <directory name="examples"/>
+                <directory name="src"/>
+            </errorLevel>
+        </StringIncrement>
 
         <UnsupportedPropertyReferenceUsage>
             <errorLevel type="suppress">
@@ -66,12 +86,18 @@
             </errorLevel>
         </UnsupportedPropertyReferenceUsage>
 
-        <PossiblyInvalidArgument>
+        <UnusedFunctionCall>
             <errorLevel type="suppress">
-                <directory name="examples" />
-                <file name="src/EventLoop/Driver/UvDriver.php" />
+                <file name="src/EventLoop/Driver/UvDriver.php"/>
             </errorLevel>
-        </PossiblyInvalidArgument>
+        </UnusedFunctionCall>
+
+        <UnusedVariable>
+            <errorLevel type="suppress">
+                <file name="src/EventLoop/Driver/EvDriver.php"/>
+                <file name="src/EventLoop/Driver/EventDriver.php"/>
+            </errorLevel>
+        </UnusedVariable>
     </issueHandlers>
 
     <stubs>

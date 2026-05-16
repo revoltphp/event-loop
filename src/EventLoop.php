@@ -413,6 +413,8 @@ final class EventLoop
 
     /**
      * Disable construction as this is a static class.
+     *
+     * @psalm-suppress UnusedConstructor
      */
     private function __construct()
     {

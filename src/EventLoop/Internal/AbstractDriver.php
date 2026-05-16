@@ -595,7 +595,6 @@ abstract class AbstractDriver implements Driver
                 $this->invokeMicrotasks();
 
                 while (!$this->callbackQueue->isEmpty()) {
-                    /** @var DriverCallback $callback */
                     $callback = $this->callbackQueue->dequeue();
 
                     if (!isset($this->callbacks[$callback->id]) || !$callback->invokable) {
@@ -687,6 +686,9 @@ abstract class AbstractDriver implements Driver
         throw new \Error(__CLASS__ . ' does not support serialization');
     }
 
+    /**
+     * @psalm-suppress UnusedParam $data param required.
+     */
     final public function __unserialize(array $data): never
     {
         throw new \Error(__CLASS__ . ' does not support deserialization');

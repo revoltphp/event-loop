@@ -16,7 +16,9 @@ if (!\defined('STDIN') || \stream_set_blocking(STDIN, false) !== true) {
 // for illustration purposes only, should use a package of
 // choice abstracting streams instead, that handles edge cases well
 EventLoop::onReadable(STDIN, static function (string $watcher, $stream): void {
-    $chunk = \trim(\fread($stream, 64 * 1024));
+    $chunk = \fread($stream, 64 * 1024);
+    \assert($chunk !== false);
+    $chunk = \trim($chunk);
 
     // reading nothing means we reached EOF
     if ($chunk === '') {

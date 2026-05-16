@@ -16,6 +16,7 @@ use Revolt\EventLoop\Suspension;
  */
 final class DriverSuspension implements Suspension
 {
+    /** @psalm-suppress UnusedProperty False-positive. */
     private ?\Fiber $suspendedFiber = null;
 
     /** @var \WeakReference<\Fiber>|null */
@@ -55,7 +56,6 @@ final class DriverSuspension implements Suspension
 
         $this->pending = false;
 
-        /** @var \Fiber|null $fiber */
         $fiber = $this->fiberRef?->get();
 
         if ($fiber) {
@@ -164,7 +164,6 @@ final class DriverSuspension implements Suspension
 
         $this->pending = false;
 
-        /** @var \Fiber|null $fiber */
         $fiber = $this->fiberRef?->get();
 
         if ($fiber) {

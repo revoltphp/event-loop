@@ -11,6 +11,8 @@ require __DIR__ . '/../vendor/autoload.php';
  * This logger uses {@see FiberLocal} to automatically log a transaction identifier bound to the current fiber.
  *
  * This might be used to log the current URL, authenticated user, or request identifier in an HTTP server.
+ *
+ * @psalm-suppress UnusedProperty
  */
 final class Logger
 {
@@ -22,6 +24,9 @@ final class Logger
         $this->transactionId = new FiberLocal(fn () => $this->nextId++);
     }
 
+    /**
+     * @psalm-suppress UnusedParam False-positive.
+     */
     public function log(string $message): void
     {
         echo $this->transactionId->get() . ': ' . $message . PHP_EOL;

@@ -41,6 +41,7 @@ EventLoop::onWritable($stream, function ($watcher, $stream) use ($timer) {
     // wait for HTTP response
     EventLoop::onReadable($stream, function ($watcher, $stream) {
         $chunk = \fread($stream, 64 * 1024);
+        \assert($chunk !== false);
 
         // reading nothing means we reached EOF
         if ($chunk === '') {

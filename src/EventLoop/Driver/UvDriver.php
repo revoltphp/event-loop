@@ -37,6 +37,7 @@ final class UvDriver extends AbstractDriver
 
         $this->handle = \uv_loop_new();
 
+        /** @psalm-suppress UnusedClosureParam */
         $this->ioCallback = function ($event, $status, $events, $resource): void {
             $callbacks = $this->uvCallbacks[(int) $event];
 
