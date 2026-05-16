@@ -47,9 +47,16 @@ class TimerQueueTest extends TestCase
         $id = 'a';
         $callbacks = [];
         foreach ($values as $value) {
-            $callback = new TimerCallback($id++, $value, static function () {
+            $callback = new TimerCallback($id, $value, static function () {
             }, $value);
             $callbacks[] = $callback;
+
+            if (\PHP_VERSION_ID >= 80300) {
+                /** @psalm-suppress UndefinedFunction */
+                $id = \str_increment($id);
+            } else {
+                $id++;
+            }
         }
 
         $toRemove = $callbacks[$indexToRemove];

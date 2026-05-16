@@ -498,9 +498,14 @@ abstract class AbstractDriver implements Driver
     {
         while (!$this->microtaskQueue->isEmpty() || !$this->callbackQueue->isEmpty()) {
             /** @noinspection PhpUnhandledExceptionInspection */
-            $yielded = $this->callbackFiber->isStarted()
-                ? $this->callbackFiber->resume()
-                : $this->callbackFiber->start();
+            if ($this->callbackFiber->isSuspended()) {
+                $yielded = $this->callbackFiber->resume();
+            } else {
+                if ($this->callbackFiber->isTerminated()) {
+                    $this->createCallbackFiber();
+                }
+                $yielded = $this->callbackFiber->start();
+            }
 
             if ($yielded !== $this->internalSuspensionMarker) {
                 $this->createCallbackFiber();
