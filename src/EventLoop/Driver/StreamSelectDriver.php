@@ -258,6 +258,11 @@ final class StreamSelectDriver extends AbstractDriver
             try {
                 /** @psalm-suppress InvalidArgument */
                 $result = \stream_select($read, $write, $except, $seconds, $microseconds);
+            } catch (\ValueError $exception) {
+                throw new \Error(
+                    "stream_select() failed: ensure all callbacks on closed stream resources are cancelled",
+                    previous: $exception,
+                );
             } finally {
                 \restore_error_handler();
             }

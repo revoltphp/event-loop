@@ -148,4 +148,34 @@ class StreamSelectDriverTest extends DriverTest
 
         $this->loop->cancel($signalCallbackId);
     }
+
+    public function testActiveCallbackWithInvalidStream(): void
+    {
+        [$left, $right] = \stream_socket_pair(
+            \DIRECTORY_SEPARATOR === "\\" ? STREAM_PF_INET : STREAM_PF_UNIX,
+            STREAM_SOCK_STREAM,
+            STREAM_IPPROTO_IP
+        );
+
+        $this->loop->onReadable($left, function () {
+            // nothing
+        });
+
+        $this->loop->delay(0.01, function () use ($left): void {
+            \fclose($left);
+        });
+
+        $callbackId = $this->loop->delay(0.1, function (): void {
+            $this->loop->stop();
+        });
+
+        $this->expectException(\Error::class);
+        $this->expectExceptionMessage("ensure all callbacks on closed stream resources");
+
+        try {
+            $this->loop->run();
+        } finally {
+            $this->loop->cancel($callbackId);
+        }
+    }
 }
