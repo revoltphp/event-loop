@@ -23,6 +23,24 @@ if (!\defined("PHP_INT_MIN")) {
 
 abstract class DriverTest extends TestCase
 {
+    /**
+     * @return array{resource, resource}
+     */
+    protected static function createSocketPair(): array
+    {
+        $sockets = \stream_socket_pair(
+            \DIRECTORY_SEPARATOR === "\\" ? STREAM_PF_INET : STREAM_PF_UNIX,
+            STREAM_SOCK_STREAM,
+            STREAM_IPPROTO_IP,
+        );
+
+        if (!$sockets) {
+            self::fail("Failed to create socket pair");
+        }
+
+        return $sockets;
+    }
+
     public Driver $loop;
 
     /**
@@ -561,11 +579,7 @@ abstract class DriverTest extends TestCase
 
                             if ($i--) {
                                 // explicitly use *different* streams with *different* resource ids
-                                $ends = \stream_socket_pair(
-                                    \DIRECTORY_SEPARATOR === "\\" ? STREAM_PF_INET : STREAM_PF_UNIX,
-                                    STREAM_SOCK_STREAM,
-                                    STREAM_IPPROTO_IP
-                                );
+                                $ends = self::createSocketPair();
 
                                 $loop->onWritable($ends[0], $fn);
                                 $loop->onReadable($ends[1], function ($callbackId) use ($loop): void {
@@ -1463,11 +1477,7 @@ abstract class DriverTest extends TestCase
                         break;
 
                     case "onReadable":
-                        $ends = \stream_socket_pair(
-                            \DIRECTORY_SEPARATOR === "\\" ? STREAM_PF_INET : STREAM_PF_UNIX,
-                            STREAM_SOCK_STREAM,
-                            STREAM_IPPROTO_IP
-                        );
+                        $ends = self::createSocketPair();
                         \fwrite($ends[0], "trigger readability callback");
                         $args[] = $ends[1];
                         break;
@@ -1502,11 +1512,7 @@ abstract class DriverTest extends TestCase
 
     public function testMultipleCallbacksOnSameDescriptor(): void
     {
-        $sockets = \stream_socket_pair(
-            \DIRECTORY_SEPARATOR === "\\" ? STREAM_PF_INET : STREAM_PF_UNIX,
-            STREAM_SOCK_STREAM,
-            STREAM_IPPROTO_IP
-        );
+        $sockets = self::createSocketPair();
         \fwrite($sockets[1], "testing");
 
         $invoked = 0;

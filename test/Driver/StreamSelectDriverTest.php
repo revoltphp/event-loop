@@ -115,11 +115,12 @@ class StreamSelectDriverTest extends DriverTest
 
         if (!\extension_loaded("pcntl")
             || !\function_exists('pcntl_signal_dispatch')
-            || !\function_exists('pcntl_signal')) {
+            || !\function_exists('pcntl_signal')
+        ) {
             self::markTestSkipped('Skip, PCNTL functions not available');
         }
 
-        $sockets = \stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
+        $sockets = self::createSocketPair();
 
         $this->start(function (Driver $loop) use ($sockets, &$signalCallbackId) {
             $socketCallbackIds = [
@@ -151,11 +152,7 @@ class StreamSelectDriverTest extends DriverTest
 
     public function testActiveCallbackWithInvalidStream(): void
     {
-        [$left, $right] = \stream_socket_pair(
-            \DIRECTORY_SEPARATOR === "\\" ? STREAM_PF_INET : STREAM_PF_UNIX,
-            STREAM_SOCK_STREAM,
-            STREAM_IPPROTO_IP
-        );
+        [$left, $right] = self::createSocketPair();
 
         $this->loop->onReadable($left, function () {
             // nothing
