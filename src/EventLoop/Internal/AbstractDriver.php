@@ -70,7 +70,9 @@ abstract class AbstractDriver implements Driver
             // PHP GC is broken on early 8.1 and 8.2 versions, see https://github.com/php/php-src/issues/10496
             /** @psalm-suppress RiskyTruthyFalsyComparison */
             if (!\getenv('REVOLT_DRIVER_SUPPRESS_ISSUE_10496')) {
-                throw new \Error('Your version of PHP is affected by serious garbage collector bugs related to fibers. Please upgrade to a newer version of PHP, i.e. >= 8.1.17 or => 8.2.4');
+                throw new \Error(
+                    'Your version of PHP is affected by serious garbage collector bugs related to fibers. Please upgrade to a newer version of PHP, i.e. >= 8.1.17 or => 8.2.4'
+                );
             }
         }
 
@@ -120,7 +122,7 @@ abstract class AbstractDriver implements Driver
             $lambda();
 
             throw new \Error(
-                'Interrupt from event loop must throw an exception: ' . ClosureHelper::getDescription($lambda)
+                'Interrupt from event loop must throw an exception: '.ClosureHelper::getDescription($lambda)
             );
         }
     }
@@ -349,7 +351,7 @@ abstract class AbstractDriver implements Driver
     public function __debugInfo(): array
     {
         // @codeCoverageIgnoreStart
-        return \array_map(fn (DriverCallback $callback) => [
+        return \array_map(fn(DriverCallback $callback) => [
             'type' => $this->getType($callback->id),
             'enabled' => $callback->enabled,
             'referenced' => $callback->referenced,
@@ -423,9 +425,10 @@ abstract class AbstractDriver implements Driver
     {
         if ($this->errorHandler === null) {
             // Explicitly override the previous interrupt if it exists in this case, hiding the exception is worse
-            $this->interrupt = static fn () => $exception instanceof UncaughtThrowable
+            $this->interrupt = static fn() => $exception instanceof UncaughtThrowable
                 ? throw $exception
                 : throw UncaughtThrowable::throwingCallback($closure, $exception);
+
             return;
         }
 
@@ -460,8 +463,12 @@ abstract class AbstractDriver implements Driver
             unset($callback, $args);
 
             if ($this->interrupt) {
-                /** @noinspection PhpUnhandledExceptionInspection */
-                \Fiber::suspend($this->internalSuspensionMarker);
+                try {
+                    /** @noinspection PhpUnhandledExceptionInspection */
+                    \Fiber::suspend($this->internalSuspensionMarker);
+                } catch (\Throwable) {
+                    return;
+                }
             }
         }
     }
@@ -649,7 +656,11 @@ abstract class AbstractDriver implements Driver
                 }
 
                 /** @noinspection PhpUnhandledExceptionInspection */
-                \Fiber::suspend($this->internalSuspensionMarker);
+                try {
+                    \Fiber::suspend($this->internalSuspensionMarker);
+                } catch (\Throwable) {
+                    return;
+                }
             } while (true);
         });
     }
@@ -660,7 +671,7 @@ abstract class AbstractDriver implements Driver
             try {
                 $errorHandler($exception);
             } catch (\Throwable $exception) {
-                $this->interrupt = static fn () => $exception instanceof UncaughtThrowable
+                $this->interrupt = static fn() => $exception instanceof UncaughtThrowable
                     ? throw $exception
                     : throw UncaughtThrowable::throwingErrorHandler($errorHandler, $exception);
             }
@@ -683,7 +694,7 @@ abstract class AbstractDriver implements Driver
 
     final public function __serialize(): never
     {
-        throw new \Error(__CLASS__ . ' does not support serialization');
+        throw new \Error(__CLASS__.' does not support serialization');
     }
 
     /**
@@ -691,6 +702,6 @@ abstract class AbstractDriver implements Driver
      */
     final public function __unserialize(array $data): never
     {
-        throw new \Error(__CLASS__ . ' does not support deserialization');
+        throw new \Error(__CLASS__.' does not support deserialization');
     }
 }
