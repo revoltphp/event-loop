@@ -350,7 +350,7 @@ abstract class AbstractDriver implements Driver
     {
         // @codeCoverageIgnoreStart
         return \array_map(fn (DriverCallback $callback) => [
-            'type' => $this->getType($callback->id),
+            'type' => $callback->getType(),
             'enabled' => $callback->enabled,
             'referenced' => $callback->referenced,
         ], $this->callbacks);
@@ -368,13 +368,7 @@ abstract class AbstractDriver implements Driver
     {
         $callback = $this->callbacks[$callbackId] ?? throw InvalidCallbackError::invalidIdentifier($callbackId);
 
-        return match ($callback::class) {
-            DeferCallback::class => CallbackType::Defer,
-            TimerCallback::class => $callback->repeat ? CallbackType::Repeat : CallbackType::Delay,
-            StreamReadableCallback::class => CallbackType::Readable,
-            StreamWritableCallback::class => CallbackType::Writable,
-            SignalCallback::class => CallbackType::Signal,
-        };
+        return $callback->getType();
     }
 
     #[\Override]
@@ -395,6 +389,8 @@ abstract class AbstractDriver implements Driver
 
     /**
      * Activates (enables) all the given callbacks.
+     *
+     * @param array<string, DriverCallback> $callbacks
      */
     abstract protected function activate(array $callbacks): void;
 

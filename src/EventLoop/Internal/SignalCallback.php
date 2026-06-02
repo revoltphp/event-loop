@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Revolt\EventLoop\Internal;
 
+use Revolt\EventLoop\CallbackType;
+
 /** @internal */
 final class SignalCallback extends DriverCallback
 {
@@ -13,5 +15,11 @@ final class SignalCallback extends DriverCallback
         public readonly int $signal
     ) {
         parent::__construct($id, $closure);
+    }
+
+    #[\Override]
+    public function getType(): CallbackType
+    {
+        return CallbackType::Signal;
     }
 }

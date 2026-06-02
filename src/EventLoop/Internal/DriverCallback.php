@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Revolt\EventLoop\Internal;
 
+use Revolt\EventLoop\CallbackType;
+
 /**
  * @internal
  */
@@ -20,6 +22,8 @@ abstract class DriverCallback
         public readonly \Closure $closure
     ) {
     }
+
+    abstract public function getType(): CallbackType;
 
     /**
      * @param string $property
