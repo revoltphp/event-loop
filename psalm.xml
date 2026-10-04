@@ -106,5 +106,6 @@
         <file name="vendor/jetbrains/phpstorm-stubs/uv/UV.php"/>
         <file name="vendor/jetbrains/phpstorm-stubs/uv/uv_functions.php"/>
         <file name="stubs/uv.php"/>
+        <file name="stubs/io-poll.php"/>
     </stubs>
 </psalm>

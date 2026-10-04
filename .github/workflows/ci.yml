@@ -32,6 +32,18 @@ jobs:
             php-version: 8.5
             composer-flags: '--ignore-platform-req=php+'
 
+          - operating-system: 'ubuntu-latest'
+            php-version: 8.6
+            composer-flags: '--ignore-platform-req=php+'
+            psalm: 'skip' # psalm/phar does not run on 8.6 yet
+
+          - operating-system: 'ubuntu-latest'
+            php-version: 8.4
+            composer-flags: '--ignore-platform-req=php+'
+            job-description: 'with the Io\Poll polyfill'
+            io-poll-polyfill: 'yes'
+            psalm: 'skip'
+
     name: PHP ${{ matrix.php-version }} ${{ matrix.job-description }}
     runs-on: ${{ matrix.operating-system }}
 
@@ -57,7 +69,7 @@ jobs:
 
       - name: Get Composer cache directory
         id: composer-cache
-        run: echo "::set-output name=dir::$(composer config cache-dir)"
+        run: echo "dir=$(composer config cache-dir)" >> "$GITHUB_OUTPUT"
 
       - name: Cache dependencies
         uses: actions/cache@v6
@@ -79,6 +91,11 @@ jobs:
           composer update --optimize-autoloader --no-interaction --no-progress ${{ matrix.composer-flags }}
           php -v
           composer info -D
+
+      # 1.x until the Io\Poll fixes the driver needs are released, see symfony/polyfill#655 and #656
+      - name: Install the Io\Poll polyfill
+        run: composer require --dev --no-interaction --no-progress ${{ matrix.composer-flags }} symfony/polyfill-io-poll:1.x-dev symfony/polyfill-time:1.x-dev
+        if: matrix.io-poll-polyfill
 
       - name: Run tests
         run: php vendor/bin/phpunit

@@ -7,6 +7,7 @@ namespace Revolt\EventLoop;
 // @codeCoverageIgnoreStart
 use Revolt\EventLoop\Driver\EvDriver;
 use Revolt\EventLoop\Driver\EventDriver;
+use Revolt\EventLoop\Driver\IoPollDriver;
 use Revolt\EventLoop\Driver\StreamSelectDriver;
 use Revolt\EventLoop\Driver\TracingDriver;
 use Revolt\EventLoop\Driver\UvDriver;
@@ -37,6 +38,10 @@ final class DriverFactory
 
             if (EventDriver::isSupported()) {
                 return new EventDriver();
+            }
+
+            if (IoPollDriver::isSupported()) {
+                return new IoPollDriver();
             }
 
             return new StreamSelectDriver();
