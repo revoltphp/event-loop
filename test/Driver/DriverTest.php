@@ -26,10 +26,15 @@ abstract class DriverTest extends TestCase
     /**
      * @return array{resource, resource}
      */
+    protected static function isWindows(): bool
+    {
+        return \DIRECTORY_SEPARATOR === "\\";
+    }
+
     protected static function createSocketPair(): array
     {
         $sockets = \stream_socket_pair(
-            \DIRECTORY_SEPARATOR === "\\" ? STREAM_PF_INET : STREAM_PF_UNIX,
+            self::isWindows() ? STREAM_PF_INET : STREAM_PF_UNIX,
             STREAM_SOCK_STREAM,
             STREAM_IPPROTO_IP,
         );
@@ -59,6 +64,30 @@ abstract class DriverTest extends TestCase
     public function tearDown(): void
     {
         unset($this->loop);
+    }
+
+    public function testCancelAfterStreamIsClosed(): void
+    {
+        [$left, $right] = self::createSocketPair();
+
+        $callbackId = $this->loop->onReadable($left, static function () {
+            // nothing
+        });
+
+        $this->loop->defer(function () use ($callbackId, $left): void {
+            \fclose($left);
+            $this->loop->cancel($callbackId);
+        });
+
+        $this->loop->delay(0.1, function (): void {
+            $this->loop->stop();
+        });
+
+        $this->loop->run();
+
+        \fclose($right);
+
+        self::assertNotContains($callbackId, $this->loop->getIdentifiers());
     }
 
     public function testCorrectTimeoutIfBlockingBeforeActivate(): void
