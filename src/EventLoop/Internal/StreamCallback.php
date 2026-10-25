@@ -9,6 +9,8 @@ abstract class StreamCallback extends DriverCallback
 {
     /**
      * @param resource $stream
+     *
+     * @psalm-capabilities read-props
      */
     public function __construct(
         string $id,

@@ -9,6 +9,9 @@ use Revolt\EventLoop\CallbackType;
 /** @internal */
 final class SignalCallback extends DriverCallback
 {
+    /**
+     * @psalm-capabilities read-props
+     */
     public function __construct(
         string $id,
         \Closure $closure,
@@ -17,6 +20,9 @@ final class SignalCallback extends DriverCallback
         parent::__construct($id, $closure);
     }
 
+    /**
+     * @psalm-pure
+     */
     #[\Override]
     public function getType(): CallbackType
     {

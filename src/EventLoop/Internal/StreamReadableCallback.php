@@ -9,6 +9,9 @@ use Revolt\EventLoop\CallbackType;
 /** @internal */
 final class StreamReadableCallback extends StreamCallback
 {
+    /**
+     * @psalm-pure
+     */
     #[\Override]
     public function getType(): CallbackType
     {

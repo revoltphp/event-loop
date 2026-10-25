@@ -13,6 +13,8 @@ require __DIR__ . '/../vendor/autoload.php';
  * This might be used to log the current URL, authenticated user, or request identifier in an HTTP server.
  *
  * @psalm-suppress UnusedProperty
+ *
+ * @psalm-mutable
  */
 final class Logger
 {

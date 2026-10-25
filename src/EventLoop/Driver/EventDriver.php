@@ -19,6 +19,9 @@ final class EventDriver extends AbstractDriver
     /** @var array<string, \Event>|null */
     private static ?array $activeSignals = null;
 
+    /**
+     * @psalm-pure
+     */
     public static function isSupported(): bool
     {
         return \extension_loaded("event");

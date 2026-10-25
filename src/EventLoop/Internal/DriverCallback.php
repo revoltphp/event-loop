@@ -23,10 +23,15 @@ abstract class DriverCallback
     ) {
     }
 
+    /**
+     * @psalm-capabilities read-props
+     */
     abstract public function getType(): CallbackType;
 
     /**
      * @param string $property
+     *
+     * @psalm-pure
      */
     public function __get(string $property): never
     {
@@ -36,6 +41,8 @@ abstract class DriverCallback
     /**
      * @param string $property
      * @param mixed  $value
+     *
+     * @psalm-pure
      */
     public function __set(string $property, mixed $value): never
     {

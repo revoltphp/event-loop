@@ -179,6 +179,9 @@ final class DriverSuspension implements Suspension
         }
     }
 
+    /**
+     * @psalm-pure
+     */
     private function formatStacktrace(array $trace): string
     {
         return \implode("\n", \array_map(static function ($e, $i) {

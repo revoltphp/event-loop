@@ -35,24 +35,36 @@ final class EventLoop
         try {
             /** @psalm-suppress InternalClass */
             self::$driver = new class () extends AbstractDriver {
+                /**
+                 * @psalm-pure
+                 */
                 #[\Override]
                 protected function activate(array $callbacks): void
                 {
                     throw new \Error("Can't activate callback during garbage collection.");
                 }
 
+                /**
+                 * @psalm-pure
+                 */
                 #[\Override]
                 protected function dispatch(bool $blocking): void
                 {
                     throw new \Error("Can't dispatch during garbage collection.");
                 }
 
+                /**
+                 * @psalm-capabilities read-props
+                 */
                 #[\Override]
                 protected function deactivate(DriverCallback $callback): void
                 {
                     // do nothing
                 }
 
+                /**
+                 * @psalm-pure
+                 */
                 #[\Override]
                 public function getHandle(): mixed
                 {
@@ -415,6 +427,8 @@ final class EventLoop
      * Disable construction as this is a static class.
      *
      * @psalm-suppress UnusedConstructor
+     *
+     * @psalm-capabilities read-props
      */
     private function __construct()
     {

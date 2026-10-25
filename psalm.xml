@@ -98,6 +98,19 @@
                 <file name="src/EventLoop/Driver/EventDriver.php"/>
             </errorLevel>
         </UnusedVariable>
+
+        <!-- The example prints a raw response header to the CLI. -->
+        <TaintedHtml>
+            <errorLevel type="suppress">
+                <file name="examples/http-client-suspension.php"/>
+            </errorLevel>
+        </TaintedHtml>
+
+        <TaintedTextWithQuotes>
+            <errorLevel type="suppress">
+                <file name="examples/http-client-suspension.php"/>
+            </errorLevel>
+        </TaintedTextWithQuotes>
     </issueHandlers>
 
     <stubs>

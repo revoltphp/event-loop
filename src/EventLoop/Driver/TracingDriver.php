@@ -207,6 +207,9 @@ final class TracingDriver implements Driver
         return $this->driver->getHandle();
     }
 
+    /**
+     * @psalm-capabilities read-props
+     */
     public function dump(): string
     {
         $dump = "Enabled, referenced callbacks keeping the loop running: ";
@@ -260,11 +263,17 @@ final class TracingDriver implements Driver
         $this->driver->queue($closure, ...$args);
     }
 
+    /**
+     * @psalm-capabilities read-props
+     */
     private function getCreationTrace(string $callbackId): string
     {
         return $this->creationTraces[$callbackId] ?? 'No creation trace, yet.';
     }
 
+    /**
+     * @psalm-capabilities read-props
+     */
     private function getCancelTrace(string $callbackId): string
     {
         return $this->cancelTraces[$callbackId] ?? 'No cancellation trace, yet.';
@@ -284,6 +293,8 @@ final class TracingDriver implements Driver
      * }> $trace Output of `debug_backtrace()`.
      *
      * @return string Formatted stacktrace.
+     *
+     * @psalm-pure
      */
     private function formatStacktrace(array $trace): string
     {

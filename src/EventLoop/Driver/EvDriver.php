@@ -19,6 +19,9 @@ final class EvDriver extends AbstractDriver
     /** @var array<string, \EvSignal>|null */
     private static ?array $activeSignals = null;
 
+    /**
+     * @psalm-pure
+     */
     public static function isSupported(): bool
     {
         return \extension_loaded("ev");

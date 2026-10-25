@@ -10,6 +10,8 @@ namespace Revolt\EventLoop;
  * Each instance stores data separately for each fiber. Usage examples include contextual logging data.
  *
  * @template T
+ *
+ * @api
  */
 final class FiberLocal
 {

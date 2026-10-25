@@ -7,6 +7,8 @@ namespace Revolt\EventLoop;
 /**
  * The driver MUST run in its own fiber and execute callbacks in a separate fiber. If fibers are reused, the driver
  * needs to call {@see FiberLocal::clear()} after running the callback.
+ *
+ * @psalm-mutable
  */
 interface Driver
 {
@@ -24,6 +26,8 @@ interface Driver
      * error handler or exceptions that would be passed to an error handler but none exists to handle them.
      *
      * @throws \Error Thrown if the event loop is already running.
+     *
+     * @psalm-impure
      */
     public function run(): void;
 
@@ -32,6 +36,8 @@ interface Driver
      *
      * When an event loop is stopped, it continues with its current tick and exits the loop afterwards. Multiple calls
      * to stop MUST be ignored and MUST NOT raise an exception.
+     *
+     * @psalm-impure
      */
     public function stop(): void;
 
@@ -41,11 +47,15 @@ interface Driver
      * Calls from the same fiber will return the same suspension object.
      *
      * @return Suspension
+     *
+     * @psalm-impure
      */
     public function getSuspension(): Suspension;
 
     /**
      * @return bool True if the event loop is running, false if it is stopped.
+     *
+     * @psalm-impure
      */
     public function isRunning(): bool;
 
@@ -60,6 +70,8 @@ interface Driver
      *
      * @param \Closure(...):void $closure The callback to queue.
      * @param mixed ...$args The callback arguments.
+     *
+     * @psalm-impure
      */
     public function queue(\Closure $closure, mixed ...$args): void;
 
@@ -76,6 +88,8 @@ interface Driver
      *     callback invocation.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
+     *
+     * @psalm-impure
      */
     public function defer(\Closure $closure): string;
 
@@ -93,6 +107,8 @@ interface Driver
      *     callback invocation.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
+     *
+     * @psalm-impure
      */
     public function delay(float $delay, \Closure $closure): string;
 
@@ -110,6 +126,8 @@ interface Driver
      * @param \Closure(string):void $closure The callback to repeat.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
+     *
+     * @psalm-impure
      */
     public function repeat(float $interval, \Closure $closure): string;
 
@@ -130,6 +148,8 @@ interface Driver
      * @param \Closure(string, resource):void $closure The callback to execute.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
+     *
+     * @psalm-impure
      */
     public function onReadable(mixed $stream, \Closure $closure): string;
 
@@ -150,6 +170,8 @@ interface Driver
      * @param \Closure(string, resource):void $closure The callback to execute.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
+     *
+     * @psalm-impure
      */
     public function onWritable(mixed $stream, \Closure $closure): string;
 
@@ -171,6 +193,8 @@ interface Driver
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      *
      * @throws UnsupportedFeatureException If signal handling is not supported.
+     *
+     * @psalm-impure
      */
     public function onSignal(int $signal, \Closure $closure): string;
 
@@ -185,6 +209,8 @@ interface Driver
      * @return string The callback identifier.
      *
      * @throws InvalidCallbackError If the callback identifier is invalid.
+     *
+     * @psalm-impure
      */
     public function enable(string $callbackId): string;
 
@@ -195,6 +221,8 @@ interface Driver
      * callback is permanently invalid. Calling this function MUST NOT fail, even if passed an invalid identifier.
      *
      * @param string $callbackId The callback identifier.
+     *
+     * @psalm-impure
      */
     public function cancel(string $callbackId): void;
 
@@ -210,6 +238,8 @@ interface Driver
      * @param string $callbackId The callback identifier.
      *
      * @return string The callback identifier.
+     *
+     * @psalm-impure
      */
     public function disable(string $callbackId): string;
 
@@ -224,6 +254,8 @@ interface Driver
      * @return string The callback identifier.
      *
      * @throws InvalidCallbackError If the callback identifier is invalid.
+     *
+     * @psalm-impure
      */
     public function reference(string $callbackId): string;
 
@@ -236,6 +268,8 @@ interface Driver
      * @param string $callbackId The callback identifier.
      *
      * @return string The callback identifier.
+     *
+     * @psalm-impure
      */
     public function unreference(string $callbackId): string;
 
@@ -250,6 +284,8 @@ interface Driver
      *
      * @param null|\Closure(\Throwable):void $errorHandler The callback to execute. `null` will clear the current
      *     handler.
+     *
+     * @psalm-impure
      */
     public function setErrorHandler(?\Closure $errorHandler): void;
 
@@ -257,6 +293,8 @@ interface Driver
      * Gets the error handler closure or {@code null} if none is set.
      *
      * @return null|\Closure(\Throwable):void The previous handler, `null` if there was none.
+     *
+     * @psalm-impure
      */
     public function getErrorHandler(): ?\Closure;
 
@@ -270,6 +308,8 @@ interface Driver
      * instance.
      *
      * @return null|object|resource The loop handle the event loop operates on. `null` if there is none.
+     *
+     * @psalm-impure
      */
     public function getHandle(): mixed;
 
@@ -277,6 +317,8 @@ interface Driver
      * Returns all registered non-cancelled callback identifiers.
      *
      * @return string[] Callback identifiers.
+     *
+     * @psalm-impure
      */
     public function getIdentifiers(): array;
 
@@ -286,6 +328,8 @@ interface Driver
      * @param string $callbackId The callback identifier.
      *
      * @return CallbackType The callback type.
+     *
+     * @psalm-impure
      */
     public function getType(string $callbackId): CallbackType;
 
@@ -295,6 +339,8 @@ interface Driver
      * @param string $callbackId The callback identifier.
      *
      * @return bool `true` if the callback is currently enabled, otherwise `false`.
+     *
+     * @psalm-impure
      */
     public function isEnabled(string $callbackId): bool;
 
@@ -304,6 +350,8 @@ interface Driver
      * @param string $callbackId The callback identifier.
      *
      * @return bool `true` if the callback is currently referenced, otherwise `false`.
+     *
+     * @psalm-impure
      */
     public function isReferenced(string $callbackId): bool;
 
@@ -313,6 +361,8 @@ interface Driver
      * If this method isn't implemented, dumping the event loop in a busy application, even indirectly, is a pain.
      *
      * @return array
+     *
+     * @psalm-impure
      */
     public function __debugInfo(): array;
 }
