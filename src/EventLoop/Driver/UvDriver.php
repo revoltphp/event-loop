@@ -14,9 +14,37 @@ use Revolt\EventLoop\Internal\TimerCallback;
 
 final class UvDriver extends AbstractDriver
 {
+    private static string $libuvVersion;
+    private static bool $libuvStopWorkaround;
+
     public static function isSupported(): bool
     {
         return \extension_loaded("uv");
+    }
+
+    private static function getLibuvVersion(): ?string
+    {
+        if (isset(self::$libuvVersion)) {
+            if (self::$libuvVersion === '') {
+                return null;
+            }
+
+            return self::$libuvVersion;
+        }
+
+        \ob_start();
+        \phpinfo(\INFO_MODULES);
+        $info = \ob_get_clean();
+
+        if (\preg_match('/libuv Version[^0-9]+([0-9.]+)/', $info, $matches)) {
+            self::$libuvVersion = $matches[1];
+
+            return $matches[1];
+        }
+
+        self::$libuvVersion = '';
+
+        return null;
     }
 
     /** @var resource|\UVLoop A uv_loop resource created with uv_loop_new() */
@@ -34,6 +62,13 @@ final class UvDriver extends AbstractDriver
     public function __construct()
     {
         parent::__construct();
+
+        $libuvVersion = self::getLibuvVersion();
+
+        // libuv < 1.45 runs the due timers before polling in UV_RUN_ONCE, then polls with the timeout of the
+        // next timer: without one, it blocks until an I/O event while another handle keeps the loop alive.
+        // If we can't determine the version, assume it is a newer version including the fix.
+        self::$libuvStopWorkaround ??= $libuvVersion !== null && \version_compare($libuvVersion, '1.45', '<');
 
         $this->handle = \uv_loop_new();
 
@@ -73,10 +108,9 @@ final class UvDriver extends AbstractDriver
 
             $this->enqueueCallback($callback);
 
-            // libuv < 1.45 runs the due timers before polling in UV_RUN_ONCE, then polls with the timeout of the
-            // next timer: without one, it blocks until an I/O event while another handle keeps the loop alive.
-            // A stopped loop polls without blocking (the flag is reset when uv_run() returns).
-            \uv_stop($this->handle);
+            if (self::$libuvStopWorkaround) {
+                \uv_stop($this->handle);
+            }
         };
 
         $this->signalCallback = function ($event): void {
