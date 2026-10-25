@@ -72,6 +72,11 @@ final class UvDriver extends AbstractDriver
             \assert($callback instanceof TimerCallback);
 
             $this->enqueueCallback($callback);
+
+            // libuv < 1.45 runs the due timers before polling in UV_RUN_ONCE, then polls with the timeout of the
+            // next timer: without one, it blocks until an I/O event while another handle keeps the loop alive.
+            // A stopped loop polls without blocking (the flag is reset when uv_run() returns).
+            \uv_stop($this->handle);
         };
 
         $this->signalCallback = function ($event): void {
