@@ -13,8 +13,8 @@ namespace Revolt\EventLoop;
  */
 final class FiberLocal
 {
-    /** @var \Fiber|null Dummy fiber for {main} */
-    private static ?\Fiber $mainFiber = null;
+    /** @var object|null Dummy object for {main} */
+    private static ?object $dummyMain = null;
     private static ?\WeakMap $localStorage = null;
 
     public static function clear(): void
@@ -23,7 +23,7 @@ final class FiberLocal
             return;
         }
 
-        $fiber = \Fiber::getCurrent() ?? self::$mainFiber;
+        $fiber = \Fiber::getCurrent() ?? self::$dummyMain;
 
         if ($fiber === null) {
             return;
@@ -37,9 +37,8 @@ final class FiberLocal
         $fiber = \Fiber::getCurrent();
 
         if ($fiber === null) {
-            $fiber = self::$mainFiber ??= new \Fiber(static function (): void {
-                // dummy fiber for main, as we need some object for the WeakMap
-            });
+            $fiber = self::$dummyMain ??= new class () {
+            };
         }
 
         $localStorage = self::$localStorage ??= new \WeakMap();
