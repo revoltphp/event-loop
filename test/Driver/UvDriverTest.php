@@ -53,7 +53,7 @@ class UvDriverTest extends DriverTest
         );
         self::assertIsResource($process);
 
-        $deadline = \hrtime(true) + 30;
+        $deadline = \hrtime(true) + 30_000_000_000;
         while (\proc_get_status($process)['running'] && \hrtime(true) < $deadline) {
             \usleep(50_000);
         }
