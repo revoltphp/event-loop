@@ -47,6 +47,7 @@ final class Config extends PhpCsFixerConfig
                     'uv_now',
                     'uv_run',
                     'uv_poll_init_socket',
+                    'uv_stop',
                     'uv_timer_init',
                     'uv_timer_start',
                     'uv_timer_stop',
