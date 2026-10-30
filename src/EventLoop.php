@@ -16,6 +16,9 @@ use Revolt\EventLoop\UnsupportedFeatureException;
 /**
  * Accessor to allow global access to the event loop.
  *
+ * Scheduling and suspension are `io` for callers, like `usleep()`: the driver is the scheduler, and
+ * what other fibers do while the current one is suspended is their own effect.
+ *
  * @see Driver
  */
 final class EventLoop
@@ -95,6 +98,9 @@ final class EventLoop
      *
      * @param \Closure(...):void $closure The callback to queue.
      * @param mixed ...$args The callback arguments.
+     *
+     * @psalm-capabilities io
+     * @psalm-suppress ImpureMethodCall
      */
     public static function queue(\Closure $closure, mixed ...$args): void
     {
@@ -114,6 +120,9 @@ final class EventLoop
      *     invalidated before the callback invocation.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
+     *
+     * @psalm-capabilities io
+     * @psalm-suppress ImpureMethodCall
      */
     public static function defer(\Closure $closure): string
     {
@@ -134,6 +143,9 @@ final class EventLoop
      *     before the callback invocation.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
+     *
+     * @psalm-capabilities io
+     * @psalm-suppress ImpureMethodCall
      */
     public static function delay(float $delay, \Closure $closure): string
     {
@@ -154,6 +166,9 @@ final class EventLoop
      * @param \Closure(string):void $closure The callback to repeat.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
+     *
+     * @psalm-capabilities io
+     * @psalm-suppress ImpureMethodCall
      */
     public static function repeat(float $interval, \Closure $closure): string
     {
@@ -177,6 +192,9 @@ final class EventLoop
      * @param \Closure(string, resource):void $closure The callback to execute.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
+     *
+     * @psalm-capabilities io
+     * @psalm-suppress ImpureMethodCall
      */
     public static function onReadable(mixed $stream, \Closure $closure): string
     {
@@ -200,6 +218,9 @@ final class EventLoop
      * @param \Closure(string, resource):void $closure The callback to execute.
      *
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
+     *
+     * @psalm-capabilities io
+     * @psalm-suppress ImpureMethodCall
      */
     public static function onWritable(mixed $stream, \Closure $closure): string
     {
@@ -224,6 +245,9 @@ final class EventLoop
      * @return string A unique identifier that can be used to cancel, enable or disable the callback.
      *
      * @throws UnsupportedFeatureException If signal handling is not supported.
+     *
+     * @psalm-capabilities io
+     * @psalm-suppress ImpureMethodCall
      */
     public static function onSignal(int $signal, \Closure $closure): string
     {
@@ -241,6 +265,9 @@ final class EventLoop
      * @return string The callback identifier.
      *
      * @throws InvalidCallbackError If the callback identifier is invalid.
+     *
+     * @psalm-capabilities io
+     * @psalm-suppress ImpureMethodCall
      */
     public static function enable(string $callbackId): string
     {
@@ -259,6 +286,9 @@ final class EventLoop
      * @param string $callbackId The callback identifier.
      *
      * @return string The callback identifier.
+     *
+     * @psalm-capabilities io
+     * @psalm-suppress ImpureMethodCall
      */
     public static function disable(string $callbackId): string
     {
@@ -272,6 +302,9 @@ final class EventLoop
      * callback is permanently invalid. Calling this function MUST NOT fail, even if passed an invalid identifier.
      *
      * @param string $callbackId The callback identifier.
+     *
+     * @psalm-capabilities io
+     * @psalm-suppress ImpureMethodCall
      */
     public static function cancel(string $callbackId): void
     {
@@ -289,6 +322,9 @@ final class EventLoop
      * @return string The callback identifier.
      *
      * @throws InvalidCallbackError If the callback identifier is invalid.
+     *
+     * @psalm-capabilities io
+     * @psalm-suppress ImpureMethodCall
      */
     public static function reference(string $callbackId): string
     {
@@ -304,6 +340,9 @@ final class EventLoop
      * @param string $callbackId The callback identifier.
      *
      * @return string The callback identifier.
+     *
+     * @psalm-capabilities io
+     * @psalm-suppress ImpureMethodCall
      */
     public static function unreference(string $callbackId): string
     {
@@ -364,6 +403,9 @@ final class EventLoop
      * @param string $callbackId The callback identifier.
      *
      * @return bool `true` if the callback is currently enabled, otherwise `false`.
+     *
+     * @psalm-capabilities io
+     * @psalm-suppress ImpureMethodCall
      */
     public static function isEnabled(string $callbackId): bool
     {
@@ -376,6 +418,9 @@ final class EventLoop
      * @param string $callbackId The callback identifier.
      *
      * @return bool `true` if the callback is currently referenced, otherwise `false`.
+     *
+     * @psalm-capabilities io
+     * @psalm-suppress ImpureMethodCall
      */
     public static function isReferenced(string $callbackId): bool
     {
@@ -403,6 +448,9 @@ final class EventLoop
      * Calls from the same fiber will return the same suspension object.
      *
      * @return Suspension
+     *
+     * @psalm-capabilities io
+     * @psalm-suppress ImpureMethodCall
      */
     public static function getSuspension(): Suspension
     {

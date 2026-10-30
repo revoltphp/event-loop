@@ -29,7 +29,7 @@ interface Suspension
     /**
      * @param T $value The value to return from the call to {@see suspend()}.
      *
-     * @psalm-impure
+     * @psalm-capabilities io
      */
     public function resume(mixed $value = null): void;
 
@@ -38,14 +38,14 @@ interface Suspension
      *
      * @return T
      *
-     * @psalm-impure
+     * @psalm-capabilities io
      */
     public function suspend(): mixed;
 
     /**
      * Throws the given exception from the call to {@see suspend()}.
      *
-     * @psalm-impure
+     * @psalm-capabilities io
      */
     public function throw(\Throwable $throwable): void;
 }

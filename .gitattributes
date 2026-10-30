@@ -1,7 +1,6 @@
 .github export-ignore
 examples export-ignore
-stubs/* export-ignore
-stubs/EventLoop.phpstub -export-ignore
+stubs export-ignore
 test export-ignore
 tools export-ignore
 .editorconfig export-ignore
