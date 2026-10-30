@@ -21,6 +21,9 @@ final class Logger
     private int $nextId = 1;
     private FiberLocal $transactionId;
 
+    /**
+     * @psalm-capabilities read-props
+     */
     public function __construct()
     {
         $this->transactionId = new FiberLocal(fn () => $this->nextId++);

@@ -15,12 +15,6 @@
     </projectFiles>
 
     <issueHandlers>
-        <DuplicateClass>
-            <errorLevel type="suppress">
-                <directory name="examples"/>
-            </errorLevel>
-        </DuplicateClass>
-
         <InvalidOperand>
             <errorLevel type="suppress">
                 <directory name="src/EventLoop/Driver"/>
