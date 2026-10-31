@@ -44,8 +44,27 @@ jobs:
             io-poll-polyfill: 'yes'
             psalm: 'skip'
 
+          # kqueue and WSAPoll back IoPollDriver there, instead of epoll
+          - operating-system: 'macos-latest'
+            php-version: 8.6
+            composer-flags: '--ignore-platform-req=php+'
+            job-description: 'on macOS'
+            extensions: ':xdebug'
+            psalm: 'skip'
+
+          - operating-system: 'windows-latest'
+            php-version: 8.6
+            composer-flags: '--ignore-platform-req=php+'
+            job-description: 'on Windows'
+            extensions: ':xdebug'
+            psalm: 'skip'
+
     name: PHP ${{ matrix.php-version }} ${{ matrix.job-description }}
     runs-on: ${{ matrix.operating-system }}
+
+    defaults:
+      run:
+        shell: bash
 
     steps:
       - name: Set git to use LF
@@ -60,12 +79,13 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install libuv1-dev libevent-dev
+        if: runner.os == 'Linux'
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-version }}
-          extensions: uv-amphp/ext-uv@0.3.x, event, :xdebug
+          extensions:  ${{ matrix.extensions || 'uv-amphp/ext-uv@0.3.x, event, :xdebug'  }}
           tools: pie
         env:
           # Workaround for https://github.com/shivammathur/setup-php/issues/1146 (cd "" fails on bash 5.3)
@@ -125,3 +145,4 @@ jobs:
         run: |
           composer install --optimize-autoloader --no-interaction --no-progress --working-dir=tools/php-cs-fixer
           tools/php-cs-fixer/vendor/bin/php-cs-fixer --diff --dry-run -v fix
+        if: runner.os == 'Linux'
