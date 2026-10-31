@@ -30,4 +30,9 @@ class EventDriverTest extends DriverTest
     {
         self::markTestSkipped('libevent refuses to watch /dev/null, epoll rejects it with EPERM');
     }
+
+    public function testEmptyRegularFileIsReadable(): void
+    {
+        self::markTestSkipped('libevent refuses to watch regular files, epoll rejects them with EPERM');
+    }
 }

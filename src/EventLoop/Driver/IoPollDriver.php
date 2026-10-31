@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Revolt\EventLoop\Driver;
 
-use Io\Poll\Backend;
 use Io\Poll\Context;
 use Io\Poll\Event;
 use Io\Poll\FailedHandleAddException;
@@ -12,7 +11,6 @@ use Io\Poll\FailedPollOperationException;
 use Io\Poll\FailedPollWaitException;
 use Io\Poll\HandleAlreadyWatchedException;
 use Io\Poll\InvalidHandleException;
-use Io\Poll\PollException;
 use Io\Poll\Watcher;
 use Revolt\EventLoop\Internal\AbstractDriver;
 use Revolt\EventLoop\Internal\DriverCallback;
@@ -26,6 +24,15 @@ use Time\Duration;
 
 final class IoPollDriver extends AbstractDriver
 {
+    /**
+     * Codes of a FailedHandleAddException for handles the backend cannot poll: epoll reports EPERM,
+     * kqueue reports EINVAL.
+     */
+    private const UNPOLLABLE_HANDLE_ERRORS = [
+        FailedPollOperationException::ERROR_PERMISSION,
+        FailedPollOperationException::ERROR_INVALID,
+    ];
+
     /**
      * Whether this driver is worth choosing over StreamSelectDriver.
      *
@@ -45,13 +52,13 @@ final class IoPollDriver extends AbstractDriver
     private array $watchers = [];
 
     /**
-     * Context for the streams the preferred backend refuses. epoll and kqueue only accept handles that
-     * implement polling, while regular files, /dev/null and the like are accepted by poll(), which
-     * reports them as always ready, the way stream_select() does.
+     * Regular files and the streams the backend refuses to poll, keyed by stream id. epoll and kqueue
+     * only refuse handles that never block, such as /dev/null, so they are always ready, the way
+     * stream_select() reports them. Watching them makes sense for STDIN, which may be redirected
+     * from a file.
+     *
+     * @var array<int, true>
      */
-    private ?Context $alwaysReadyContext = null;
-
-    /** @var array<int, true> Streams watched in the context above, keyed by stream id. */
     private array $alwaysReadyStreams = [];
 
     /** @var array<int, array<string, StreamReadableCallback>> */
@@ -248,8 +255,10 @@ final class IoPollDriver extends AbstractDriver
         $watcher = $this->watchers[$streamId] ?? null;
 
         if (!$events || !\is_resource($stream)) {
+            unset($this->alwaysReadyStreams[$streamId]);
+
             if ($watcher !== null) {
-                unset($this->watchers[$streamId], $this->alwaysReadyStreams[$streamId]);
+                unset($this->watchers[$streamId]);
 
                 // Removing the watcher of a closed stream crashes 8.6 builds before php/php-src#23791
                 if (\is_resource($stream)) {
@@ -260,9 +269,21 @@ final class IoPollDriver extends AbstractDriver
             return;
         }
 
+        if (isset($this->alwaysReadyStreams[$streamId])) {
+            return; // ready for whichever events are enabled, there is nothing to update
+        }
+
         try {
             if ($watcher !== null) {
                 $watcher->modifyEvents($events);
+
+                return;
+            }
+
+            // Only regular files are seekable. kqueue accepts them, but stops reporting them readable at
+            // EOF, so a reader would never see the end. PHP determines the flag when opening the stream.
+            if (\stream_get_meta_data($stream)['seekable']) {
+                $this->alwaysReadyStreams[$streamId] = true;
 
                 return;
             }
@@ -272,12 +293,10 @@ final class IoPollDriver extends AbstractDriver
             try {
                 $this->watchers[$streamId] = $this->context->add($handle, $events, $streamId);
             } catch (FailedHandleAddException $exception) {
-                $this->alwaysReadyContext ??= new Context(Backend::Poll);
-
-                try {
-                    $this->watchers[$streamId] = $this->alwaysReadyContext->add($handle, $events, $streamId);
-                } catch (PollException) {
-                    throw $exception; // the refusal of the preferred backend is the one worth reporting
+                // Any other failure, such as running out of epoll watches, says nothing about the
+                // stream being ready, so treating it as always ready would turn into a busy loop.
+                if (!\in_array($exception->getCode(), self::UNPOLLABLE_HANDLE_ERRORS, true)) {
+                    throw $exception;
                 }
 
                 $this->alwaysReadyStreams[$streamId] = true;
@@ -292,7 +311,7 @@ final class IoPollDriver extends AbstractDriver
 
     private function poll(?float $timeout): void
     {
-        if (!$this->watchers) {
+        if (!$this->watchers && !$this->alwaysReadyStreams) {
             if ($timeout === null) { // Only signal callbacks are enabled, so sleep indefinitely.
                 /** @psalm-suppress ArgumentTypeCoercion */
                 \usleep(\PHP_INT_MAX);
@@ -308,8 +327,7 @@ final class IoPollDriver extends AbstractDriver
         }
 
         if ($this->alwaysReadyStreams) {
-            // Those streams are ready by definition, so there is nothing to wait for.
-            $timeout = 0.0;
+            $timeout = 0.0; // their callbacks run in this tick, so there is nothing to wait for
         }
 
         if ($timeout === null) {
@@ -329,8 +347,14 @@ final class IoPollDriver extends AbstractDriver
             return; // A signal arrived, it is dispatched at the start of the next tick.
         }
 
-        if ($this->alwaysReadyContext !== null) {
-            $watchers = [...$watchers, ...$this->alwaysReadyContext->wait(Duration::fromSeconds(0))];
+        foreach ($this->alwaysReadyStreams as $streamId => $_) {
+            foreach ($this->readCallbacks[$streamId] ?? [] as $callback) {
+                $this->enqueueCallback($callback);
+            }
+
+            foreach ($this->writeCallbacks[$streamId] ?? [] as $callback) {
+                $this->enqueueCallback($callback);
+            }
         }
 
         foreach ($watchers as $watcher) {
