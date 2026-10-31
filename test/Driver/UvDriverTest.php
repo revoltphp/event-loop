@@ -67,4 +67,9 @@ class UvDriverTest extends DriverTest
         self::assertFalse($running, "3000 delays of 1 ms didn't complete in 30 seconds: $output");
         self::assertSame('done', $output);
     }
+
+    public function testRefusedStreamDoesNotSpin(): void
+    {
+        self::markTestSkipped('ext-uv refuses to watch /dev/null and other non-socket files');
+    }
 }
