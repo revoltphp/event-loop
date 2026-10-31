@@ -90,6 +90,48 @@ abstract class DriverTest extends TestCase
         self::assertNotContains($callbackId, $this->loop->getIdentifiers());
     }
 
+    /**
+     * epoll and kqueue both refuse /dev/null, so a driver needs a fallback to watch it at all. That
+     * fallback must not turn into a busy loop while there is nothing to do.
+     *
+     * The test measures the CPU time of the process, because counting callback invocations cannot
+     * tell a busy loop apart: where poll() never reports /dev/null as ready (macOS), the loop spins
+     * without invoking the callback at all, and where it does (Linux), a callback left enabled is
+     * rightly invoked on every tick. The loop itself has no hook to count its ticks.
+     */
+    public function testRefusedStreamDoesNotSpin(): void
+    {
+        if (self::isWindows()) {
+            self::markTestSkipped('Skip on Windows');
+        }
+
+        $devNull = \fopen('/dev/null', 'r');
+        $before = \getrusage();
+
+        try {
+            $this->start(function (Driver $loop) use ($devNull): void {
+                // runs once where /dev/null is reported readable, never where it is not
+                $readableId = $loop->onReadable($devNull, static function (string $callbackId) use ($loop): void {
+                    $loop->cancel($callbackId);
+                });
+
+                $loop->delay(0.5, function () use ($loop, $readableId): void {
+                    $loop->cancel($readableId);
+                });
+            });
+        } finally {
+            \fclose($devNull);
+        }
+
+        $after = \getrusage();
+
+        $cpu = static fn (array $usage): float => $usage['ru_utime.tv_sec'] + $usage['ru_utime.tv_usec'] / 1e6
+            + $usage['ru_stime.tv_sec'] + $usage['ru_stime.tv_usec'] / 1e6;
+
+        // Idle waiting for half a second costs about a millisecond of CPU, spinning costs a lot more.
+        self::assertLessThan(0.05, $cpu($after) - $cpu($before));
+    }
+
     public function testCorrectTimeoutIfBlockingBeforeActivate(): void
     {
         $start = 0;
