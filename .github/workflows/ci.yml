@@ -117,6 +117,15 @@ jobs:
         run: composer require --dev --no-interaction --no-progress ${{ matrix.composer-flags }} symfony/polyfill-io-poll:1.x-dev symfony/polyfill-time:1.x-dev
         if: matrix.io-poll-polyfill
 
+      # Temporary, to find out why IoPollDriverTest hangs on Windows
+      - name: Diagnose Io\Poll on Windows
+        if: runner.os == 'Windows'
+        timeout-minutes: 2
+        continue-on-error: true
+        run: |
+          php .github/diagnostics/io-poll-stdio.php
+          php vendor/bin/phpunit --debug --filter 'IoPollDriverTest::testExecutionOrderGuarantees'
+
       - name: Run tests
         run: php vendor/bin/phpunit
 
