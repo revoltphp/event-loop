@@ -34,7 +34,7 @@
     },
     "require-dev": {
         "ext-json": "*",
-        "phpunit/phpunit": "^9",
+        "phpunit/phpunit": "^13",
         "jetbrains/phpstorm-stubs": "^2019.3",
         "psalm/phar": "6.20.*"
     },
