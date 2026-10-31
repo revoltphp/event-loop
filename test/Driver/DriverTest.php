@@ -180,7 +180,9 @@ abstract class DriverTest extends TestCase
         self::assertNotSame(0, $invoked);
 
         self::assertGreaterThanOrEqual(0.9995, $invoked - $start);
-        self::assertLessThan(1.1, $invoked - $start);
+        // Counting from the activation after blocking would take 1.5 seconds. The margin to that
+        // leaves room for runners that oversleep, which CI runners on macOS do.
+        self::assertLessThan(1.25, $invoked - $start);
     }
 
     public function testCorrectTimeoutIfBlockingBeforeDelay(): void
@@ -201,8 +203,10 @@ abstract class DriverTest extends TestCase
         self::assertNotSame(0, $start);
         self::assertNotSame(0, $invoked);
 
+        // Counting from the tick start before blocking would take only 1 second.
         self::assertGreaterThanOrEqual(1.5, $invoked - $start);
-        self::assertLessThan(1.6, $invoked - $start);
+        // Generous, as CI runners on macOS oversleep by more than 0.1 seconds.
+        self::assertLessThan(1.75, $invoked - $start);
     }
 
     public function testLoopTerminatesWithOnlyUnreferencedCallbacks(): void
