@@ -6,6 +6,7 @@ namespace Revolt\EventLoop\Driver;
 
 use Io\Poll\Backend;
 use Io\Poll\Context;
+use PHPUnit\Framework\ExpectationFailedException;
 use Revolt\EventLoop\Driver;
 use Time\Duration;
 
@@ -35,15 +36,18 @@ class IoPollDriverTest extends DriverTest
      */
     public function testNoMemoryLeak(string $type, array $args): void
     {
-        // the kqueue backend leaks on every Watcher::modifyEvents(), see https://github.com/php/php-src/issues/25086
-        if (\PHP_VERSION === '8.6.0RC4'
-            && \in_array($type, ['onReadable', 'onWritable'], true)
-            && $this->loop->getHandle()->getBackend() === Backend::Kqueue
-        ) {
-            self::markTestSkipped('Io\\Poll leaks memory with kqueue in PHP 8.6.0RC4, see php/php-src#25086');
-        }
+        try {
+            parent::testNoMemoryLeak($type, $args);
+        } catch (ExpectationFailedException $exception) {
+            // the kqueue backend leaks on every Watcher::modifyEvents(), see https://github.com/php/php-src/issues/25086
+            if (\in_array($type, ['onReadable', 'onWritable'], true)
+                && $this->loop->getHandle()->getBackend() === Backend::Kqueue
+            ) {
+                self::markTestSkipped('Io\\Poll leaks memory with kqueue, see php/php-src#25086: ' . $exception->getMessage());
+            }
 
-        parent::testNoMemoryLeak($type, $args);
+            throw $exception;
+        }
     }
 
     public function testHandle(): void
