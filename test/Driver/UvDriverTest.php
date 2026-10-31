@@ -72,4 +72,9 @@ class UvDriverTest extends DriverTest
     {
         self::markTestSkipped('ext-uv refuses to watch /dev/null and other non-socket files');
     }
+
+    public function testEmptyRegularFileIsReadable(): void
+    {
+        self::markTestSkipped('ext-uv refuses to watch regular files');
+    }
 }
