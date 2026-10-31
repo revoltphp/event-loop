@@ -14,6 +14,9 @@ use Revolt\EventLoop\Internal\TimerCallback;
 
 final class UvDriver extends AbstractDriver
 {
+    /**
+     * @psalm-pure
+     */
     public static function isSupported(): bool
     {
         return \extension_loaded("uv");
@@ -129,6 +132,9 @@ final class UvDriver extends AbstractDriver
         return $this->handle;
     }
 
+    /**
+     * @psalm-capabilities read-props
+     */
     #[\Override]
     protected function now(): float
     {
@@ -138,6 +144,9 @@ final class UvDriver extends AbstractDriver
         return \uv_now($this->handle) / 1000;
     }
 
+    /**
+     * @psalm-capabilities read-props
+     */
     #[\Override]
     protected function dispatch(bool $blocking): void
     {
@@ -145,6 +154,9 @@ final class UvDriver extends AbstractDriver
         \uv_run($this->handle, $blocking ? \UV::RUN_ONCE : \UV::RUN_NOWAIT);
     }
 
+    /**
+     * @psalm-capabilities read-props|write-this-props|write-refs
+     */
     #[\Override]
     protected function activate(array $callbacks): void
     {
@@ -213,6 +225,9 @@ final class UvDriver extends AbstractDriver
         }
     }
 
+    /**
+     * @psalm-capabilities read-props
+     */
     #[\Override]
     protected function deactivate(DriverCallback $callback): void
     {
@@ -252,6 +267,9 @@ final class UvDriver extends AbstractDriver
         }
     }
 
+    /**
+     * @psalm-pure
+     */
     private function getStreamCallbackFlags(StreamCallback $callback): int
     {
         if ($callback instanceof StreamWritableCallback) {

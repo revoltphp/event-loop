@@ -8,6 +8,9 @@ use Revolt\EventLoop\Internal\ClosureHelper;
 
 final class UncaughtThrowable extends \Error
 {
+    /**
+     * @psalm-pure
+     */
     public static function throwingCallback(\Closure $closure, \Throwable $previous): self
     {
         return new self(
@@ -17,11 +20,17 @@ final class UncaughtThrowable extends \Error
         );
     }
 
+    /**
+     * @psalm-pure
+     */
     public static function throwingErrorHandler(\Closure $closure, \Throwable $previous): self
     {
         return new self("Uncaught %s thrown in event loop error handler %s%s", $closure, $previous);
     }
 
+    /**
+     * @psalm-capabilities read-props
+     */
     private function __construct(string $message, \Closure $closure, \Throwable $previous)
     {
         parent::__construct(\sprintf(

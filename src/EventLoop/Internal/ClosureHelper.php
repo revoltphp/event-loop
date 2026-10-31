@@ -4,9 +4,16 @@ declare(strict_types=1);
 
 namespace Revolt\EventLoop\Internal;
 
-/** @internal */
+/**
+ * @internal
+ *
+ * @psalm-immutable
+ */
 final class ClosureHelper
 {
+    /**
+     * @psalm-capabilities read-props
+     */
     public static function getDescription(\Closure $closure): string
     {
         try {

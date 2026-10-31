@@ -53,7 +53,10 @@ final class StreamSelectDriver extends AbstractDriver
             && \function_exists('pcntl_signal_dispatch')
             && \function_exists('pcntl_signal');
 
-        $this->streamSelectErrorHandler = function (int $errno, string $message): void {
+        $this->streamSelectErrorHandler = /**
+         * @psalm-capabilities read-props|write-this-props|write-refs
+         */
+        function (int $errno, string $message): void {
             // Casing changed in PHP 8 from 'unable' to 'Unable'
             if (\stripos($message, "stream_select(): unable to select [4]: ") === 0) { // EINTR
                 $this->streamSelectIgnoreResult = true;
@@ -102,6 +105,9 @@ final class StreamSelectDriver extends AbstractDriver
         return parent::onSignal($signal, $closure);
     }
 
+    /**
+     * @psalm-pure
+     */
     #[\Override]
     public function getHandle(): mixed
     {

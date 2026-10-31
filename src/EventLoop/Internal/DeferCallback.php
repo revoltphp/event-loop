@@ -9,6 +9,9 @@ use Revolt\EventLoop\CallbackType;
 /** @internal */
 final class DeferCallback extends DriverCallback
 {
+    /**
+     * @psalm-pure
+     */
     #[\Override]
     public function getType(): CallbackType
     {

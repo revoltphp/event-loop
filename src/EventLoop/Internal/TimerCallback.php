@@ -9,6 +9,9 @@ use Revolt\EventLoop\CallbackType;
 /** @internal */
 final class TimerCallback extends DriverCallback
 {
+    /**
+     * @psalm-capabilities read-props
+     */
     public function __construct(
         string $id,
         public readonly float $interval,
@@ -19,6 +22,9 @@ final class TimerCallback extends DriverCallback
         parent::__construct($id, $callback);
     }
 
+    /**
+     * @psalm-capabilities read-props
+     */
     #[\Override]
     public function getType(): CallbackType
     {

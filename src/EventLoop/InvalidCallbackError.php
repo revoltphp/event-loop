@@ -6,6 +6,11 @@ namespace Revolt\EventLoop;
 
 use Revolt\EventLoop\Internal\ClosureHelper;
 
+/**
+ * Error thrown for an invalid event-loop callback.
+ *
+ * @api
+ */
 final class InvalidCallbackError extends \Error
 {
     public const E_NONNULL_RETURN = 1;
@@ -13,6 +18,8 @@ final class InvalidCallbackError extends \Error
 
     /**
      * MUST be thrown if any callback returns a non-null value.
+     *
+     * @psalm-capabilities read-props
      */
     public static function nonNullReturn(string $callbackId, \Closure $closure): self
     {
@@ -27,6 +34,8 @@ final class InvalidCallbackError extends \Error
      * MUST be thrown if any operation (except disable() and cancel()) is attempted with an invalid callback identifier.
      *
      * An invalid callback identifier is any identifier that is not yet emitted by the driver or cancelled by the user.
+     *
+     * @psalm-pure
      */
     public static function invalidIdentifier(string $callbackId): self
     {
@@ -45,6 +54,8 @@ final class InvalidCallbackError extends \Error
     /**
      * @param string $callbackId The callback identifier.
      * @param string $message The exception message.
+     *
+     * @psalm-capabilities read-props
      */
     private function __construct(string $callbackId, int $code, string $message)
     {
@@ -62,6 +73,9 @@ final class InvalidCallbackError extends \Error
         return $this->callbackId;
     }
 
+    /**
+     * @psalm-capabilities read-props|write-this-props|write-refs
+     */
     public function addInfo(string $key, string $message): void
     {
         $this->info[$key] = $message;

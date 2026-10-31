@@ -57,9 +57,15 @@ function fetch(string $url): string
     return $buffer;
 }
 
+/**
+ * Returns the header block of an HTTP response.
+ *
+ * @psalm-pure
+ */
 function extractHeader(string $httpResponse): string
 {
     return \explode("\r\n\r\n", $httpResponse, 2)[0];
 }
 
+// Printed on the CLI, where the header is text rather than HTML.
 echo extractHeader(fetch('http://www.google.com/'));

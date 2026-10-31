@@ -14,10 +14,13 @@ require __DIR__ . '/../vendor/autoload.php';
  *
  * @psalm-suppress UnusedProperty
  */
-final class Logger
+final class ManualLogger
 {
     private FiberLocal $transactionId;
 
+    /**
+     * @psalm-capabilities read-props
+     */
     public function __construct()
     {
         $this->transactionId = new FiberLocal(fn () => throw new \Exception('Unknown transaction ID'));
@@ -45,7 +48,7 @@ final class Logger
     }
 }
 
-$logger = new Logger();
+$logger = new ManualLogger();
 $logger->setTransactionId(1);
 
 EventLoop::delay(1, static function () use ($logger) {

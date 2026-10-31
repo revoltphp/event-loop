@@ -131,6 +131,9 @@ abstract class AbstractDriver implements Driver
         $this->stopped = true;
     }
 
+    /**
+     * @psalm-capabilities read-props
+     */
     #[\Override]
     public function isRunning(): bool
     {
@@ -143,6 +146,9 @@ abstract class AbstractDriver implements Driver
         $this->microtaskQueue->enqueue([$closure, $args]);
     }
 
+    /**
+     * @psalm-capabilities read-props|write-this-props|write-refs
+     */
     #[\Override]
     public function defer(\Closure $closure): string
     {
@@ -184,6 +190,9 @@ abstract class AbstractDriver implements Driver
         return $timerCallback->id;
     }
 
+    /**
+     * @psalm-capabilities read-props|write-this-props|write-refs
+     */
     #[\Override]
     public function onReadable(mixed $stream, \Closure $closure): string
     {
@@ -195,6 +204,9 @@ abstract class AbstractDriver implements Driver
         return $streamCallback->id;
     }
 
+    /**
+     * @psalm-capabilities read-props|write-this-props|write-refs
+     */
     #[\Override]
     public function onWritable($stream, \Closure $closure): string
     {
@@ -333,6 +345,9 @@ abstract class AbstractDriver implements Driver
         return $suspension;
     }
 
+    /**
+     * @psalm-capabilities read-props|write-this-props|write-refs
+     */
     #[\Override]
     public function setErrorHandler(?\Closure $errorHandler): void
     {
@@ -345,6 +360,9 @@ abstract class AbstractDriver implements Driver
         return $this->errorHandler;
     }
 
+    /**
+     * @psalm-capabilities read-props
+     */
     #[\Override]
     public function __debugInfo(): array
     {
@@ -357,12 +375,18 @@ abstract class AbstractDriver implements Driver
         // @codeCoverageIgnoreEnd
     }
 
+    /**
+     * @psalm-capabilities read-props
+     */
     #[\Override]
     public function getIdentifiers(): array
     {
         return \array_keys($this->callbacks);
     }
 
+    /**
+     * @psalm-capabilities read-props
+     */
     #[\Override]
     public function getType(string $callbackId): CallbackType
     {
@@ -371,6 +395,9 @@ abstract class AbstractDriver implements Driver
         return $callback->getType();
     }
 
+    /**
+     * @psalm-capabilities read-props
+     */
     #[\Override]
     public function isEnabled(string $callbackId): bool
     {
@@ -379,6 +406,9 @@ abstract class AbstractDriver implements Driver
         return $callback->enabled;
     }
 
+    /**
+     * @psalm-capabilities read-props
+     */
     #[\Override]
     public function isReferenced(string $callbackId): bool
     {
@@ -391,16 +421,22 @@ abstract class AbstractDriver implements Driver
      * Activates (enables) all the given callbacks.
      *
      * @param array<string, DriverCallback> $callbacks
+     *
+     * @psalm-impure
      */
     abstract protected function activate(array $callbacks): void;
 
     /**
      * Dispatches any pending read/write, timer, and signal events.
+     *
+     * @psalm-impure
      */
     abstract protected function dispatch(bool $blocking): void;
 
     /**
      * Deactivates (disables) the given callback.
+     *
+     * @psalm-impure
      */
     abstract protected function deactivate(DriverCallback $callback): void;
 
@@ -436,6 +472,8 @@ abstract class AbstractDriver implements Driver
      *
      * Note this value does not necessarily correlate to wall-clock time, rather the value returned is meant to be used
      * in relative comparisons to prior values returned by this method (intervals, expiration calculations, etc.).
+     *
+     * @psalm-impure
      */
     abstract protected function now(): float;
 
@@ -464,6 +502,8 @@ abstract class AbstractDriver implements Driver
 
     /**
      * @return bool True if no enabled and referenced callbacks remain in the loop.
+     *
+     * @psalm-capabilities read-props
      */
     private function isEmpty(): bool
     {
@@ -538,6 +578,8 @@ abstract class AbstractDriver implements Driver
 
     /**
      * @param \Closure():mixed $interrupt
+     *
+     * @psalm-capabilities read-props|write-this-props|write-refs
      */
     private function setInterrupt(\Closure $interrupt): void
     {
@@ -546,6 +588,9 @@ abstract class AbstractDriver implements Driver
         $this->interrupt = $interrupt;
     }
 
+    /**
+     * @psalm-capabilities read-props|write-this-props|write-refs
+     */
     private function invokeInterrupt(): void
     {
         \assert($this->interrupt !== null);
@@ -663,6 +708,9 @@ abstract class AbstractDriver implements Driver
         };
     }
 
+    /**
+     * @psalm-capabilities read-props|write-this-props|write-refs
+     */
     private function callbackId(): string
     {
         $callbackId = $this->nextId;
@@ -677,6 +725,9 @@ abstract class AbstractDriver implements Driver
         return $callbackId;
     }
 
+    /**
+     * @psalm-pure
+     */
     final public function __serialize(): never
     {
         throw new \Error(__CLASS__ . ' does not support serialization');
@@ -684,6 +735,8 @@ abstract class AbstractDriver implements Driver
 
     /**
      * @psalm-suppress UnusedParam $data param required.
+     *
+     * @psalm-pure
      */
     final public function __unserialize(array $data): never
     {

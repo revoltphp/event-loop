@@ -13,12 +13,17 @@ require __DIR__ . '/../vendor/autoload.php';
  * This might be used to log the current URL, authenticated user, or request identifier in an HTTP server.
  *
  * @psalm-suppress UnusedProperty
+ *
+ * @psalm-mutable
  */
 final class Logger
 {
     private int $nextId = 1;
     private FiberLocal $transactionId;
 
+    /**
+     * @psalm-capabilities read-props
+     */
     public function __construct()
     {
         $this->transactionId = new FiberLocal(fn () => $this->nextId++);

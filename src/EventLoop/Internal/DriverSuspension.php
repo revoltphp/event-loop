@@ -13,6 +13,8 @@ use Revolt\EventLoop\Suspension;
  *
  * @template T
  * @implements Suspension<T>
+ *
+ * @psalm-suppress ImmutableDependency The driver's bookkeeping and the fibers it runs are not the caller's effects.
  */
 final class DriverSuspension implements Suspension
 {
@@ -179,6 +181,9 @@ final class DriverSuspension implements Suspension
         }
     }
 
+    /**
+     * @psalm-pure
+     */
     private function formatStacktrace(array $trace): string
     {
         return \implode("\n", \array_map(static function ($e, $i) {

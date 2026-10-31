@@ -11,6 +11,10 @@ declare(strict_types=1);
 
 use Revolt\EventLoop;
 use Revolt\EventLoop\Driver;
+use Revolt\EventLoop\Driver\EvDriver;
+use Revolt\EventLoop\Driver\EventDriver;
+use Revolt\EventLoop\Driver\StreamSelectDriver;
+use Revolt\EventLoop\Driver\UvDriver;
 
 require __DIR__ . '/../vendor/autoload.php';
 
@@ -21,15 +25,17 @@ if ($args === false) {
 
 /** @psalm-suppress RiskyCast */
 $t  = (int) \round((\array_key_exists('t', $args) ? (int) $args['t'] : 0));
-if (\array_key_exists('d', $args)) {
-    if (\is_string($args['d'])) {
-        $loopClass = 'Revolt\EventLoop\Driver\\' . $args['d'] . 'Driver';
-        if (\class_exists($loopClass)) {
-            $loop = new ($loopClass)();
-            if ($loop instanceof Driver) {
-                EventLoop::setDriver($loop);
-            }
-        }
+if (\array_key_exists('d', $args) && \is_string($args['d'])) {
+    $loop = match ($args['d']) {
+        'Ev' => EvDriver::isSupported() ? new EvDriver() : null,
+        'Event' => EventDriver::isSupported() ? new EventDriver() : null,
+        'StreamSelect' => new StreamSelectDriver(),
+        'Uv' => UvDriver::isSupported() ? new UvDriver() : null,
+        default => null,
+    };
+
+    if ($loop instanceof Driver) {
+        EventLoop::setDriver($loop);
     }
 }
 

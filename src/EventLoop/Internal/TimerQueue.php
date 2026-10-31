@@ -8,6 +8,8 @@ namespace Revolt\EventLoop\Internal;
  * Uses a binary tree stored in an array to implement a heap.
  *
  * @internal
+ *
+ * @psalm-capabilities read-props|write-this-props|write-refs
  */
 final class TimerQueue
 {
@@ -21,6 +23,8 @@ final class TimerQueue
      * Inserts the callback into the queue.
      *
      * Time complexity: O(log(n)).
+     *
+     * @psalm-capabilities read-props|write-this-props|write-refs
      */
     public function insert(TimerCallback $callback): void
     {
@@ -37,6 +41,8 @@ final class TimerQueue
      * Removes the given callback from the queue.
      *
      * Time complexity: O(log(n)).
+     *
+     * @psalm-capabilities read-props|write-this-props|write-refs
      */
     public function remove(TimerCallback $callback): void
     {
@@ -57,6 +63,8 @@ final class TimerQueue
      * @param float $now Current event loop time.
      *
      * @return TimerCallback|null Expired callback at the top of the heap or null if the callback has not expired.
+     *
+     * @psalm-capabilities read-props|write-this-props|write-refs
      */
     public function extract(float $now): ?TimerCallback
     {
@@ -80,6 +88,8 @@ final class TimerQueue
      * Time complexity: O(1).
      *
      * @return float|null Expiration time of the callback at the top of the heap or null if the heap is empty.
+     *
+     * @psalm-capabilities read-props
      */
     public function peek(): ?float
     {
@@ -88,6 +98,8 @@ final class TimerQueue
 
     /**
      * @param int $node Rebuild the data array from the given node upward.
+     *
+     * @psalm-capabilities read-props|write-this-props|write-refs
      */
     private function heapifyUp(int $node): void
     {
@@ -100,6 +112,8 @@ final class TimerQueue
 
     /**
      * @param int $node Rebuild the data array from the given node downward.
+     *
+     * @psalm-capabilities read-props|write-this-props|write-refs
      */
     private function heapifyDown(int $node): void
     {
@@ -122,6 +136,9 @@ final class TimerQueue
         }
     }
 
+    /**
+     * @psalm-capabilities read-props|write-this-props|write-refs
+     */
     private function swap(int $left, int $right): void
     {
         $temp = $this->callbacks[$left];
@@ -135,6 +152,8 @@ final class TimerQueue
 
     /**
      * @param int $node Remove the given node and then rebuild the data array.
+     *
+     * @psalm-capabilities read-props|write-this-props|write-refs
      */
     private function removeAndRebuild(int $node): void
     {
