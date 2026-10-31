@@ -132,6 +132,33 @@ abstract class DriverTest extends TestCase
         self::assertLessThan(0.05, $cpu($after) - $cpu($before));
     }
 
+    /**
+     * stream_select() reports regular files as readable, at EOF too, so a reader sees the end.
+     */
+    public function testEmptyRegularFileIsReadable(): void
+    {
+        $file = \tmpfile();
+        $invoked = false;
+
+        $this->loop->onReadable($file, function (string $callbackId) use (&$invoked): void {
+            $invoked = true;
+            $this->loop->cancel($callbackId);
+        });
+
+        $guardId = $this->loop->delay(0.5, function (): void {
+            $this->loop->stop();
+        });
+
+        try {
+            $this->loop->run();
+        } finally {
+            $this->loop->cancel($guardId);
+            \fclose($file);
+        }
+
+        self::assertTrue($invoked);
+    }
+
     public function testCorrectTimeoutIfBlockingBeforeActivate(): void
     {
         $start = 0;
