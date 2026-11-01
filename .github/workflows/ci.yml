@@ -75,7 +75,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          pie install osmanov/pecl-ev
+          # PIE refuses to call sudo itself in a non-interactive terminal, but the runner has passwordless sudo
+          sudo --preserve-env=GITHUB_TOKEN pie install osmanov/pecl-ev
           php --ri ev
 
       - name: Get Composer cache directory
