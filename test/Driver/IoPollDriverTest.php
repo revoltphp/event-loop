@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Revolt\EventLoop\Driver;
 
+use Io\Poll\Backend;
 use Io\Poll\Context;
+use PHPUnit\Framework\ExpectationFailedException;
 use Revolt\EventLoop\Driver;
 use Time\Duration;
 
@@ -25,7 +27,31 @@ class IoPollDriverTest extends DriverTest
             self::markTestSkipped("Skip, the Io\\Poll API requires PHP 8.6 or symfony/polyfill-io-poll");
         }
 
+        if (self::isWindows()) {
+            self::markTestSkipped("Skip on Windows, WSAPoll never reports pipes such as STDOUT, so tests hang");
+        }
+
         parent::setUp();
+    }
+
+    /**
+     * @dataProvider provideRegistrationArgs
+     * @group memoryleak
+     */
+    public function testNoMemoryLeak(string $type, array $args): void
+    {
+        try {
+            parent::testNoMemoryLeak($type, $args);
+        } catch (ExpectationFailedException $exception) {
+            // the kqueue backend leaks on every Watcher::modifyEvents(), see https://github.com/php/php-src/issues/25086
+            if (\in_array($type, ['onReadable', 'onWritable'], true)
+                && $this->loop->getHandle()->getBackend() === Backend::Kqueue
+            ) {
+                self::markTestSkipped('Io\\Poll leaks memory with kqueue, see php/php-src#25086: ' . $exception->getMessage());
+            }
+
+            throw $exception;
+        }
     }
 
     public function testHandle(): void
@@ -173,9 +199,9 @@ class IoPollDriverTest extends DriverTest
         self::assertTrue($invoked);
     }
 
-    public function testSupportedOnlyWhenNative(): void
+    public function testSupportedOnlyWhenNativeAndNotOnWindows(): void
     {
         // the polyfill runs the driver, but it is backed by stream_select() and slower than using it directly
-        self::assertSame(\PHP_VERSION_ID >= 80600, IoPollDriver::isSupported());
+        self::assertSame(\PHP_VERSION_ID >= 80600 && !self::isWindows(), IoPollDriver::isSupported());
     }
 }

@@ -25,4 +25,14 @@ class EventDriverTest extends DriverTest
     {
         self::assertTrue(EventDriver::isSupported());
     }
+
+    public function testRefusedStreamDoesNotSpin(): void
+    {
+        self::markTestSkipped('libevent refuses to watch devices such as /dev/null, epoll rejects them with EPERM');
+    }
+
+    public function testEmptyRegularFileIsReadable(): void
+    {
+        self::markTestSkipped('libevent refuses to watch regular files, epoll rejects them with EPERM');
+    }
 }

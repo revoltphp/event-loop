@@ -90,6 +90,76 @@ abstract class DriverTest extends TestCase
         self::assertNotContains($callbackId, $this->loop->getIdentifiers());
     }
 
+    /**
+     * epoll and kqueue refuse devices such as /dev/null and /dev/urandom, so a driver needs a fallback
+     * to watch them at all. That fallback must not turn into a busy loop while there is nothing to do.
+     *
+     * The test measures the CPU time of the process, because counting callback invocations cannot
+     * tell a busy loop apart: a loop can spin without invoking the callback at all, while a callback
+     * left enabled on a stream that is always ready is rightly invoked on every tick. The loop itself
+     * has no hook to count its ticks.
+     */
+    public function testRefusedStreamDoesNotSpin(): void
+    {
+        if (self::isWindows()) {
+            self::markTestSkipped('Skip on Windows');
+        }
+
+        // PHP flags /dev/null as seekable on Linux, while /dev/urandom isn't, and epoll refuses both
+        $stream = \fopen(\PHP_OS_FAMILY === 'Linux' ? '/dev/urandom' : '/dev/null', 'r');
+        $before = \getrusage();
+
+        try {
+            $this->start(function (Driver $loop) use ($stream): void {
+                // runs once where the stream is reported readable, never where it is not
+                $readableId = $loop->onReadable($stream, static function (string $callbackId) use ($loop): void {
+                    $loop->cancel($callbackId);
+                });
+
+                $loop->delay(0.5, function () use ($loop, $readableId): void {
+                    $loop->cancel($readableId);
+                });
+            });
+        } finally {
+            \fclose($stream);
+        }
+
+        $after = \getrusage();
+
+        $cpu = static fn (array $usage): float => $usage['ru_utime.tv_sec'] + $usage['ru_utime.tv_usec'] / 1e6
+            + $usage['ru_stime.tv_sec'] + $usage['ru_stime.tv_usec'] / 1e6;
+
+        // Idle waiting for half a second costs about a millisecond of CPU, spinning costs a lot more.
+        self::assertLessThan(0.05, $cpu($after) - $cpu($before));
+    }
+
+    /**
+     * stream_select() reports regular files as readable, at EOF too, so a reader sees the end.
+     */
+    public function testEmptyRegularFileIsReadable(): void
+    {
+        $file = \tmpfile();
+        $invoked = false;
+
+        $this->loop->onReadable($file, function (string $callbackId) use (&$invoked): void {
+            $invoked = true;
+            $this->loop->cancel($callbackId);
+        });
+
+        $guardId = $this->loop->delay(0.5, function (): void {
+            $this->loop->stop();
+        });
+
+        try {
+            $this->loop->run();
+        } finally {
+            $this->loop->cancel($guardId);
+            \fclose($file);
+        }
+
+        self::assertTrue($invoked);
+    }
+
     public function testCorrectTimeoutIfBlockingBeforeActivate(): void
     {
         $start = 0;
@@ -110,8 +180,11 @@ abstract class DriverTest extends TestCase
         self::assertNotSame(0, $start);
         self::assertNotSame(0, $invoked);
 
-        self::assertGreaterThanOrEqual(0.9995, $invoked - $start);
-        self::assertLessThan(1.1, $invoked - $start);
+        // The tolerance is for timers firing slightly early, see the test below.
+        self::assertGreaterThanOrEqual(0.995, $invoked - $start);
+        // Counting from the activation after blocking would take 1.5 seconds. The margin to that
+        // leaves room for runners that oversleep, which CI runners on macOS do.
+        self::assertLessThan(1.25, $invoked - $start);
     }
 
     public function testCorrectTimeoutIfBlockingBeforeDelay(): void
@@ -132,8 +205,12 @@ abstract class DriverTest extends TestCase
         self::assertNotSame(0, $start);
         self::assertNotSame(0, $invoked);
 
-        self::assertGreaterThanOrEqual(1.5, $invoked - $start);
-        self::assertLessThan(1.6, $invoked - $start);
+        // Counting from the tick start before blocking would take only 1 second. The tolerance is for
+        // timers firing slightly early: microtime() here and the clocks of the drivers drift apart, as
+        // they do on Windows, and libevent rounds timeouts to milliseconds.
+        self::assertGreaterThanOrEqual(1.495, $invoked - $start);
+        // Generous, as CI runners on macOS oversleep by more than 0.1 seconds.
+        self::assertLessThan(1.75, $invoked - $start);
     }
 
     public function testLoopTerminatesWithOnlyUnreferencedCallbacks(): void

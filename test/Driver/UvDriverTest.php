@@ -26,4 +26,14 @@ class UvDriverTest extends DriverTest
     {
         self::assertTrue(UvDriver::isSupported());
     }
+
+    public function testRefusedStreamDoesNotSpin(): void
+    {
+        self::markTestSkipped('ext-uv refuses to watch devices such as /dev/null and other non-socket files');
+    }
+
+    public function testEmptyRegularFileIsReadable(): void
+    {
+        self::markTestSkipped('ext-uv refuses to watch regular files');
+    }
 }
