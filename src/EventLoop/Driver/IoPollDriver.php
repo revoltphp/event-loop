@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Revolt\EventLoop\Driver;
 
+use Io\Poll\Backend;
 use Io\Poll\Context;
 use Io\Poll\Event;
 use Io\Poll\FailedHandleAddException;
@@ -25,11 +26,11 @@ use Time\Duration;
 final class IoPollDriver extends AbstractDriver
 {
     /**
-     * Codes of a FailedHandleAddException for handles the backend cannot poll: epoll reports EPERM,
-     * kqueue reports EINVAL.
+     * Codes of a FailedHandleAddException for handles the backend cannot poll: epoll reports EPERM
+     * as ERROR_NOSUPPORT, kqueue reports EINVAL as ERROR_INVALID.
      */
     private const UNPOLLABLE_HANDLE_ERRORS = [
-        FailedPollOperationException::ERROR_PERMISSION,
+        FailedPollOperationException::ERROR_NOSUPPORT,
         FailedPollOperationException::ERROR_INVALID,
     ];
 
@@ -284,9 +285,11 @@ final class IoPollDriver extends AbstractDriver
                 return;
             }
 
-            // Only regular files are seekable. kqueue accepts them, but stops reporting them readable at
-            // EOF, so a reader would never see the end. PHP determines the flag when opening the stream.
-            if (\stream_get_meta_data($stream)['seekable']) {
+            // kqueue accepts regular files, but stops reporting them readable at EOF, so a reader would
+            // never see the end. Other backends refuse them or always report them ready. On macOS and BSD,
+            // PHP never flags pipes or devices as seekable, so there the flag means regular files and
+            // directories. PHP determines it when opening the stream.
+            if ($this->context->getBackend() === Backend::Kqueue && \stream_get_meta_data($stream)['seekable']) {
                 $this->alwaysReadyStreams[$streamId] = true;
 
                 return;
