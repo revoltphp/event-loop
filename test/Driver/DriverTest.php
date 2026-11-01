@@ -91,13 +91,13 @@ abstract class DriverTest extends TestCase
     }
 
     /**
-     * epoll and kqueue both refuse /dev/null, so a driver needs a fallback to watch it at all. That
-     * fallback must not turn into a busy loop while there is nothing to do.
+     * epoll and kqueue refuse devices such as /dev/null and /dev/urandom, so a driver needs a fallback
+     * to watch them at all. That fallback must not turn into a busy loop while there is nothing to do.
      *
      * The test measures the CPU time of the process, because counting callback invocations cannot
-     * tell a busy loop apart: where poll() never reports /dev/null as ready (macOS), the loop spins
-     * without invoking the callback at all, and where it does (Linux), a callback left enabled is
-     * rightly invoked on every tick. The loop itself has no hook to count its ticks.
+     * tell a busy loop apart: a loop can spin without invoking the callback at all, while a callback
+     * left enabled on a stream that is always ready is rightly invoked on every tick. The loop itself
+     * has no hook to count its ticks.
      */
     public function testRefusedStreamDoesNotSpin(): void
     {
@@ -105,13 +105,14 @@ abstract class DriverTest extends TestCase
             self::markTestSkipped('Skip on Windows');
         }
 
-        $devNull = \fopen('/dev/null', 'r');
+        // PHP flags /dev/null as seekable on Linux, while /dev/urandom isn't, and epoll refuses both
+        $stream = \fopen(\PHP_OS_FAMILY === 'Linux' ? '/dev/urandom' : '/dev/null', 'r');
         $before = \getrusage();
 
         try {
-            $this->start(function (Driver $loop) use ($devNull): void {
-                // runs once where /dev/null is reported readable, never where it is not
-                $readableId = $loop->onReadable($devNull, static function (string $callbackId) use ($loop): void {
+            $this->start(function (Driver $loop) use ($stream): void {
+                // runs once where the stream is reported readable, never where it is not
+                $readableId = $loop->onReadable($stream, static function (string $callbackId) use ($loop): void {
                     $loop->cancel($callbackId);
                 });
 
@@ -120,7 +121,7 @@ abstract class DriverTest extends TestCase
                 });
             });
         } finally {
-            \fclose($devNull);
+            \fclose($stream);
         }
 
         $after = \getrusage();
