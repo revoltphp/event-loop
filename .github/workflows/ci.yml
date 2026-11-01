@@ -65,10 +65,18 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-version }}
-          extensions: uv-amphp/ext-uv@0.3.x, ev, event, :xdebug
+          extensions: uv-amphp/ext-uv@0.3.x, event, :xdebug
+          tools: pie
         env:
           # Workaround for https://github.com/shivammathur/setup-php/issues/1146 (cd "" fails on bash 5.3)
           UV_PATH: .
+
+      - name: Install ev
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pie install osmanov/pecl-ev
+          php --ri ev
 
       - name: Get Composer cache directory
         id: composer-cache
