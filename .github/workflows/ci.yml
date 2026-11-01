@@ -65,7 +65,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-version }}
-          extensions: uv-amphp/ext-uv@master, ev-beta, event, :xdebug
+          extensions: uv-amphp/ext-uv@0.3.x, ev-beta, event, :xdebug
 
       - name: Get Composer cache directory
         id: composer-cache
