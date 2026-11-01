@@ -40,10 +40,14 @@ final class IoPollDriver extends AbstractDriver
      * below that, but that polyfill is backed by stream_select() itself, so it is slower than using
      * stream_select() directly and is not picked automatically. Set REVOLT_DRIVER to this class to
      * use it there anyway.
+     *
+     * On Windows, the only backend is WSAPoll, which accepts pipes such as STDOUT, but never reports
+     * them, so callbacks on them never run. stream_select() handles them, so the driver is not
+     * supported there for now.
      */
     public static function isSupported(): bool
     {
-        return \PHP_VERSION_ID >= 80600;
+        return \PHP_VERSION_ID >= 80600 && \PHP_OS_FAMILY !== 'Windows';
     }
 
     private readonly Context $context;
