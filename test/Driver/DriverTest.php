@@ -203,8 +203,9 @@ abstract class DriverTest extends TestCase
         self::assertNotSame(0, $start);
         self::assertNotSame(0, $invoked);
 
-        // Counting from the tick start before blocking would take only 1 second.
-        self::assertGreaterThanOrEqual(1.5, $invoked - $start);
+        // Counting from the tick start before blocking would take only 1 second. The tolerance is for
+        // microtime() here and the hrtime() of the drivers drifting apart, as they do on Windows.
+        self::assertGreaterThanOrEqual(1.4995, $invoked - $start);
         // Generous, as CI runners on macOS oversleep by more than 0.1 seconds.
         self::assertLessThan(1.75, $invoked - $start);
     }
