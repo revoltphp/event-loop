@@ -411,6 +411,150 @@ class EventLoopTest extends TestCase
         self::assertSame($send, $received);
     }
 
+    public function testResumedQueueFibersDoNotNestInEachOther(): void
+    {
+        $fibers = 25;
+        $suspensions = [];
+        $depths = [];
+
+        for ($i = 0; $i < $fibers; $i++) {
+            EventLoop::queue(static function () use (&$suspensions, &$depths): void {
+                $suspension = EventLoop::getSuspension();
+                $suspensions[] = $suspension;
+                $suspension->suspend();
+
+                $exception = new \Exception();
+                $depths[] = \count($exception->getTrace());
+            });
+        }
+
+        EventLoop::defer(static function () use (&$suspensions): void {
+            foreach ($suspensions as $suspension) {
+                $suspension->resume();
+            }
+        });
+
+        EventLoop::run();
+
+        self::assertCount($fibers, $depths);
+        self::assertSame($depths[0], \max($depths));
+    }
+
+    public function testResumedCallbackFibersDoNotNestInEachOther(): void
+    {
+        $fibers = 25;
+        $suspensions = [];
+        $depths = [];
+
+        for ($i = 0; $i < $fibers; $i++) {
+            EventLoop::defer(static function () use (&$suspensions, &$depths): void {
+                $suspension = EventLoop::getSuspension();
+                $suspensions[] = $suspension;
+                $suspension->suspend();
+
+                $exception = new \Exception();
+                $depths[] = \count($exception->getTrace());
+            });
+        }
+
+        EventLoop::delay(0, static function () use (&$suspensions): void {
+            foreach ($suspensions as $suspension) {
+                $suspension->resume();
+            }
+        });
+
+        EventLoop::run();
+
+        self::assertCount($fibers, $depths);
+        self::assertSame($depths[0], \max($depths));
+    }
+
+    public function testResumedQueueFiberLeavesCallbacksToCurrentCallbackFiber(): void
+    {
+        EventLoop::queue(static function () use (&$suspension): void {
+            $suspension = EventLoop::getSuspension();
+            $suspension->suspend();
+        });
+
+        EventLoop::defer(static function () use (&$suspension, &$resumingDepth): void {
+            $exception = new \Exception();
+            $resumingDepth = \count($exception->getTrace());
+
+            $suspension->resume();
+        });
+
+        EventLoop::defer(static function () use (&$nextDepth): void {
+            $exception = new \Exception();
+            $nextDepth = \count($exception->getTrace());
+        });
+
+        EventLoop::run();
+
+        self::assertSame($resumingDepth, $nextDepth);
+    }
+
+    public function testResumedFibersKeepMicrotaskOrder(): void
+    {
+        $order = [];
+
+        EventLoop::queue(static function () use (&$first, &$order): void {
+            $first = EventLoop::getSuspension();
+            $first->suspend();
+            $order[] = 'first';
+        });
+
+        EventLoop::queue(static function () use (&$second, &$order): void {
+            $second = EventLoop::getSuspension();
+            $second->suspend();
+            $order[] = 'second';
+        });
+
+        EventLoop::defer(static function () use (&$first, &$second, &$order): void {
+            $first->resume();
+            EventLoop::queue(static function () use (&$order): void {
+                $order[] = 'microtask';
+            });
+            $second->resume();
+        });
+
+        EventLoop::run();
+
+        self::assertSame(['first', 'microtask', 'second'], $order);
+    }
+
+    public function testExceptionFromResumedFiberStopsNextMicrotask(): void
+    {
+        $exception = new \Exception();
+        $invoked = false;
+
+        EventLoop::queue(static function () use (&$suspension, $exception): void {
+            $suspension = EventLoop::getSuspension();
+            $suspension->suspend();
+
+            throw $exception;
+        });
+
+        EventLoop::defer(static function () use (&$suspension, &$invoked): void {
+            $suspension->resume();
+            EventLoop::queue(static function () use (&$invoked): void {
+                $invoked = true;
+            });
+        });
+
+        try {
+            EventLoop::run();
+            self::fail('The exception must leave the event loop');
+        } catch (UncaughtThrowable $throwable) {
+            self::assertSame($exception, $throwable->getPrevious());
+        }
+
+        self::assertFalse($invoked);
+
+        EventLoop::run();
+
+        self::assertTrue($invoked);
+    }
+
     public function testSuspensionThrowingErrorViaInterrupt(): void
     {
         $suspension = EventLoop::getSuspension();
