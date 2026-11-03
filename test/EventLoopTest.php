@@ -469,7 +469,7 @@ class EventLoopTest extends TestCase
         self::assertSame($depths[0], \max($depths));
     }
 
-    public function testResumedQueueFiberLeavesCallbacksToCurrentCallbackFiber(): void
+    public function testDeferredCallbackDoesNotRunInsideResumedFiber(): void
     {
         EventLoop::queue(static function () use (&$suspension): void {
             $suspension = EventLoop::getSuspension();
