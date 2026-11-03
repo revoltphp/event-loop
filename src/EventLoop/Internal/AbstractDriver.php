@@ -439,7 +439,7 @@ abstract class AbstractDriver implements Driver
      */
     abstract protected function now(): float;
 
-    private function invokeMicrotasks(): void
+    private function invokeMicrotasks(\Fiber $fiber): void
     {
         while (!$this->microtaskQueue->isEmpty()) {
             [$callback, $args] = $this->microtaskQueue->dequeue();
@@ -455,7 +455,7 @@ abstract class AbstractDriver implements Driver
 
             unset($callback, $args);
 
-            if (!$this->isCurrentCallbackFiber()) {
+            if ($fiber !== $this->callbackFiber) {
                 return;
             }
 
@@ -591,10 +591,13 @@ abstract class AbstractDriver implements Driver
     private function createCallbackFiber(): void
     {
         $this->callbackFiber = new \Fiber(function (): void {
-            do {
-                $this->invokeMicrotasks();
+            /** @var \Fiber $fiber */
+            $fiber = \Fiber::getCurrent();
 
-                while ($this->isCurrentCallbackFiber() && !$this->callbackQueue->isEmpty()) {
+            do {
+                $this->invokeMicrotasks($fiber);
+
+                while ($fiber === $this->callbackFiber && !$this->callbackQueue->isEmpty()) {
                     $callback = $this->callbackQueue->dequeue();
 
                     if (!isset($this->callbacks[$callback->id]) || !$callback->invokable) {
@@ -640,7 +643,7 @@ abstract class AbstractDriver implements Driver
 
                     unset($callback);
 
-                    if (!$this->isCurrentCallbackFiber()) {
+                    if ($fiber !== $this->callbackFiber) {
                         return;
                     }
 
@@ -649,10 +652,10 @@ abstract class AbstractDriver implements Driver
                         \Fiber::suspend($this->internalSuspensionMarker);
                     }
 
-                    $this->invokeMicrotasks();
+                    $this->invokeMicrotasks($fiber);
                 }
 
-                if (!$this->isCurrentCallbackFiber()) {
+                if ($fiber !== $this->callbackFiber) {
                     return;
                 }
 
@@ -660,11 +663,6 @@ abstract class AbstractDriver implements Driver
                 \Fiber::suspend($this->internalSuspensionMarker);
             } while (true);
         });
-    }
-
-    private function isCurrentCallbackFiber(): bool
-    {
-        return \Fiber::getCurrent() === $this->callbackFiber;
     }
 
     private function createErrorCallback(): void
