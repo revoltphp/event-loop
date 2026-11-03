@@ -411,6 +411,314 @@ class EventLoopTest extends TestCase
         self::assertSame($send, $received);
     }
 
+    public function testResumedQueueFibersDoNotNestInEachOther(): void
+    {
+        $fibers = 25;
+        $suspensions = [];
+        $depths = [];
+
+        for ($i = 0; $i < $fibers; $i++) {
+            EventLoop::queue(static function () use (&$suspensions, &$depths): void {
+                $suspension = EventLoop::getSuspension();
+                $suspensions[] = $suspension;
+                $suspension->suspend();
+
+                $exception = new \Exception();
+                $depths[] = \count($exception->getTrace());
+            });
+        }
+
+        EventLoop::defer(static function () use (&$suspensions): void {
+            foreach ($suspensions as $suspension) {
+                $suspension->resume();
+            }
+        });
+
+        EventLoop::run();
+
+        self::assertCount($fibers, $depths);
+        self::assertCount(1, \array_unique($depths));
+    }
+
+    public function testResumedCallbackFibersDoNotNestInEachOther(): void
+    {
+        $fibers = 25;
+        $suspensions = [];
+        $depths = [];
+
+        for ($i = 0; $i < $fibers; $i++) {
+            EventLoop::defer(static function () use (&$suspensions, &$depths): void {
+                $suspension = EventLoop::getSuspension();
+                $suspensions[] = $suspension;
+                $suspension->suspend();
+
+                $exception = new \Exception();
+                $depths[] = \count($exception->getTrace());
+            });
+        }
+
+        EventLoop::delay(0, static function () use (&$suspensions): void {
+            foreach ($suspensions as $suspension) {
+                $suspension->resume();
+            }
+        });
+
+        EventLoop::run();
+
+        self::assertCount($fibers, $depths);
+        self::assertCount(1, \array_unique($depths));
+    }
+
+    public function testDeferredCallbackDoesNotRunInsideResumedFiber(): void
+    {
+        EventLoop::queue(static function () use (&$suspension): void {
+            $suspension = EventLoop::getSuspension();
+            $suspension->suspend();
+        });
+
+        EventLoop::defer(static function () use (&$suspension, &$resumingDepth): void {
+            $exception = new \Exception();
+            $resumingDepth = \count($exception->getTrace());
+
+            $suspension->resume();
+        });
+
+        EventLoop::defer(static function () use (&$nextDepth): void {
+            $exception = new \Exception();
+            $nextDepth = \count($exception->getTrace());
+        });
+
+        EventLoop::run();
+
+        self::assertSame($resumingDepth, $nextDepth);
+    }
+
+    public function testResumedFibersRunInOrderWithQueuedMicrotasks(): void
+    {
+        $order = [];
+
+        EventLoop::queue(static function () use (&$first, &$order): void {
+            $first = EventLoop::getSuspension();
+            $first->suspend();
+            $order[] = 'first';
+        });
+
+        EventLoop::queue(static function () use (&$second, &$order): void {
+            $second = EventLoop::getSuspension();
+            $second->suspend();
+            $order[] = 'second';
+        });
+
+        EventLoop::defer(static function () use (&$first, &$second, &$order): void {
+            $first->resume();
+            EventLoop::queue(static function () use (&$order): void {
+                $order[] = 'microtask';
+            });
+            $second->resume();
+        });
+
+        EventLoop::run();
+
+        self::assertSame(['first', 'microtask', 'second'], $order);
+    }
+
+    public function testExceptionFromResumedFiberLeavesNextMicrotaskToNextRun(): void
+    {
+        $exception = new \Exception();
+        $invoked = false;
+
+        EventLoop::queue(static function () use (&$suspension, $exception): void {
+            $suspension = EventLoop::getSuspension();
+            $suspension->suspend();
+
+            throw $exception;
+        });
+
+        EventLoop::defer(static function () use (&$suspension, &$invoked): void {
+            $suspension->resume();
+            EventLoop::queue(static function () use (&$invoked): void {
+                $invoked = true;
+            });
+        });
+
+        try {
+            EventLoop::run();
+            self::fail('The exception must leave the event loop');
+        } catch (UncaughtThrowable $throwable) {
+            self::assertSame($exception, $throwable->getPrevious());
+        }
+
+        self::assertFalse($invoked);
+
+        EventLoop::run();
+
+        self::assertTrue($invoked);
+    }
+
+    public function testFiberResumedDirectlyFromMainLeavesMicrotasksToNextRun(): void
+    {
+        $log = [];
+
+        EventLoop::defer(static function () use (&$fiber, &$log): void {
+            $fiber = \Fiber::getCurrent();
+            \Fiber::suspend();
+
+            EventLoop::queue(static function () use (&$log): void {
+                $log[] = 'microtask';
+            });
+
+            $log[] = 'callback';
+        });
+
+        EventLoop::run();
+
+        $fiber->resume();
+        $log[] = 'resumed';
+
+        EventLoop::run();
+
+        self::assertSame(['callback', 'resumed', 'microtask'], $log);
+        self::assertTrue($fiber->isTerminated());
+    }
+
+    public function testFiberResumedDirectlyFromCallbackLeavesMicrotasksUntilCallbackReturns(): void
+    {
+        $log = [];
+
+        EventLoop::defer(static function () use (&$fiber, &$log): void {
+            $fiber = \Fiber::getCurrent();
+            \Fiber::suspend();
+
+            EventLoop::queue(static function () use (&$log): void {
+                $log[] = 'microtask';
+            });
+
+            $log[] = 'callback';
+        });
+
+        EventLoop::delay(0, static function () use (&$fiber, &$log): void {
+            $fiber->resume();
+            $log[] = 'resumed';
+        });
+
+        EventLoop::run();
+
+        self::assertSame(['callback', 'resumed', 'microtask'], $log);
+        self::assertTrue($fiber->isTerminated());
+    }
+
+    public function testTimerCallbackDoesNotRunInsideDirectlyResumedFiber(): void
+    {
+        $log = [];
+
+        EventLoop::defer(static function () use (&$fiber, &$log): void {
+            $fiber = \Fiber::getCurrent();
+            \Fiber::suspend();
+
+            $log[] = 'callback';
+        });
+
+        EventLoop::delay(0, static function () use (&$fiber, &$log): void {
+            $fiber->resume();
+            $log[] = 'resumed';
+        });
+
+        EventLoop::delay(0, static function () use (&$log): void {
+            $log[] = 'other callback';
+        });
+
+        EventLoop::run();
+
+        self::assertSame(['callback', 'resumed', 'other callback'], $log);
+        self::assertTrue($fiber->isTerminated());
+    }
+
+    /**
+     * Switching fibers in destructors is only supported since PHP 8.4.
+     *
+     * @requires PHP >= 8.4
+     */
+    public function testDeferredCallbackDoesNotRunInsideFiberSuspendedByDestructor(): void
+    {
+        // Suspending in a destructor replaces the callback fiber the destructor runs in.
+        $suspendOnDestruct = new class (static function () use (&$replacedFiber, &$suspension): void {
+            $replacedFiber = \Fiber::getCurrent();
+            $suspension = EventLoop::getSuspension();
+            $suspension->suspend();
+        }) {
+            public function __construct(private readonly \Closure $onDestruct)
+            {
+            }
+
+            public function __destruct()
+            {
+                ($this->onDestruct)();
+            }
+        };
+
+        // Runs first and cancels the next callback while it is already queued for this tick.
+        EventLoop::defer(static function () use (&$callbackId): void {
+            EventLoop::cancel($callbackId);
+        });
+
+        $callbackId = EventLoop::defer(static function () use ($suspendOnDestruct): void {
+            self::fail('Callback must not be invoked after being cancelled');
+        });
+
+        // The callback now holds the only reference, so the destructor runs when the loop discards it after the cancel.
+        unset($suspendOnDestruct);
+
+        EventLoop::defer(static function () use (&$suspension): void {
+            $suspension->resume();
+        });
+
+        EventLoop::defer(static function () use (&$lastCallbackFiber): void {
+            $lastCallbackFiber = \Fiber::getCurrent();
+        });
+
+        EventLoop::run();
+
+        self::assertNotSame($replacedFiber, $lastCallbackFiber);
+        self::assertTrue($replacedFiber->isTerminated());
+    }
+
+    public function testExceptionFromDirectlyResumedFiberIsThrownAfterResumingCallbackReturns(): void
+    {
+        $exception = new \Exception();
+        $log = [];
+
+        EventLoop::defer(static function () use (&$fiber, $exception): void {
+            $fiber = \Fiber::getCurrent();
+            \Fiber::suspend();
+
+            throw $exception;
+        });
+
+        EventLoop::delay(0, static function () use (&$fiber, &$log): void {
+            $fiber->resume();
+            $log[] = 'resumed';
+
+            EventLoop::queue(static function () use (&$log): void {
+                $log[] = 'microtask';
+            });
+        });
+
+        try {
+            EventLoop::run();
+            self::fail('The exception must leave the event loop');
+        } catch (UncaughtThrowable $throwable) {
+            self::assertSame($exception, $throwable->getPrevious());
+        }
+
+        // A raw Fiber::resume() cannot be stopped, so the resuming callback finishes before the interrupt is thrown.
+        self::assertTrue($fiber->isTerminated());
+        self::assertSame(['resumed'], $log);
+
+        EventLoop::run();
+
+        self::assertSame(['resumed', 'microtask'], $log);
+    }
+
     public function testSuspensionThrowingErrorViaInterrupt(): void
     {
         $suspension = EventLoop::getSuspension();
