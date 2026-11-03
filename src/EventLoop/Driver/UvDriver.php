@@ -14,9 +14,37 @@ use Revolt\EventLoop\Internal\TimerCallback;
 
 final class UvDriver extends AbstractDriver
 {
+    private static ?bool $libuvStopWorkaround = null;
+
     public static function isSupported(): bool
     {
         return \extension_loaded("uv");
+    }
+
+    private static function getLibuvVersion(): ?string
+    {
+        \ob_start();
+        \phpinfo(\INFO_MODULES);
+        $info = (string) \ob_get_clean();
+
+        if (\preg_match('/libuv Version[^0-9]+([0-9.]+)/', $info, $matches)) {
+            return $matches[1];
+        }
+
+        return null;
+    }
+
+    private static function needsStopWorkaround(): bool
+    {
+        if (self::$libuvStopWorkaround === null) {
+            // libuv < 1.45 runs the due timers before polling in UV_RUN_ONCE, then polls with the timeout of the
+            // next timer: without one, it blocks until an I/O event while another handle keeps the loop alive.
+            // If we can't determine the version, assume it is a newer version including the fix.
+            $libuvVersion = self::getLibuvVersion();
+            self::$libuvStopWorkaround = $libuvVersion !== null && \version_compare($libuvVersion, '1.45', '<');
+        }
+
+        return self::$libuvStopWorkaround;
     }
 
     /** @var resource|\UVLoop A uv_loop resource created with uv_loop_new() */
@@ -34,6 +62,8 @@ final class UvDriver extends AbstractDriver
     public function __construct()
     {
         parent::__construct();
+
+        $stopWorkaround = self::needsStopWorkaround();
 
         $this->handle = \uv_loop_new();
 
@@ -66,12 +96,16 @@ final class UvDriver extends AbstractDriver
             }
         };
 
-        $this->timerCallback = function ($event): void {
+        $this->timerCallback = function ($event) use ($stopWorkaround): void {
             $callback = $this->uvCallbacks[(int) $event][0];
 
             \assert($callback instanceof TimerCallback);
 
             $this->enqueueCallback($callback);
+
+            if ($stopWorkaround) {
+                \uv_stop($this->handle);
+            }
         };
 
         $this->signalCallback = function ($event): void {
