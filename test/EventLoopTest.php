@@ -555,7 +555,7 @@ class EventLoopTest extends TestCase
         self::assertTrue($invoked);
     }
 
-    public function testReplacedFiberResumedFromMainLeavesMicrotasksToNextRun(): void
+    public function testFiberResumedDirectlyFromMainLeavesMicrotasksToNextRun(): void
     {
         $log = [];
 
@@ -581,7 +581,7 @@ class EventLoopTest extends TestCase
         self::assertTrue($fiber->isTerminated());
     }
 
-    public function testReplacedFiberResumedFromCallbackLeavesMicrotasksToCurrentCallbackFiber(): void
+    public function testFiberResumedDirectlyFromCallbackLeavesMicrotasksUntilCallbackReturns(): void
     {
         $log = [];
 
@@ -607,7 +607,7 @@ class EventLoopTest extends TestCase
         self::assertTrue($fiber->isTerminated());
     }
 
-    public function testReplacedFiberResumedFromCallbackDoesNotRunOtherCallbacks(): void
+    public function testTimerCallbackDoesNotRunInsideDirectlyResumedFiber(): void
     {
         $log = [];
 
@@ -638,7 +638,7 @@ class EventLoopTest extends TestCase
      *
      * @requires PHP >= 8.4
      */
-    public function testFiberReplacedByDestructorOfCancelledCallbackLeavesCallbacksToCurrentCallbackFiber(): void
+    public function testDeferredCallbackDoesNotRunInsideFiberSuspendedByDestructor(): void
     {
         // Suspending in a destructor replaces the callback fiber the destructor runs in.
         $suspendOnDestruct = new class (static function () use (&$replacedFiber, &$suspension): void {
@@ -682,7 +682,7 @@ class EventLoopTest extends TestCase
         self::assertTrue($replacedFiber->isTerminated());
     }
 
-    public function testExceptionFromReplacedFiberResumedFromCallbackInterruptsAfterResumingCallback(): void
+    public function testExceptionFromDirectlyResumedFiberIsThrownAfterResumingCallbackReturns(): void
     {
         $exception = new \Exception();
         $log = [];
