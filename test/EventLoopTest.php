@@ -437,7 +437,7 @@ class EventLoopTest extends TestCase
         EventLoop::run();
 
         self::assertCount($fibers, $depths);
-        self::assertSame($depths[0], \max($depths));
+        self::assertCount(1, \array_unique($depths));
     }
 
     public function testResumedCallbackFibersDoNotNestInEachOther(): void
@@ -466,7 +466,7 @@ class EventLoopTest extends TestCase
         EventLoop::run();
 
         self::assertCount($fibers, $depths);
-        self::assertSame($depths[0], \max($depths));
+        self::assertCount(1, \array_unique($depths));
     }
 
     public function testDeferredCallbackDoesNotRunInsideResumedFiber(): void
@@ -553,6 +553,170 @@ class EventLoopTest extends TestCase
         EventLoop::run();
 
         self::assertTrue($invoked);
+    }
+
+    public function testReplacedFiberResumedFromMainLeavesMicrotasksToNextRun(): void
+    {
+        $log = [];
+
+        EventLoop::defer(static function () use (&$fiber, &$log): void {
+            $fiber = \Fiber::getCurrent();
+            \Fiber::suspend();
+
+            EventLoop::queue(static function () use (&$log): void {
+                $log[] = 'microtask';
+            });
+
+            $log[] = 'callback';
+        });
+
+        EventLoop::run();
+
+        $fiber->resume();
+        $log[] = 'resumed';
+
+        EventLoop::run();
+
+        self::assertSame(['callback', 'resumed', 'microtask'], $log);
+        self::assertTrue($fiber->isTerminated());
+    }
+
+    public function testReplacedFiberResumedFromCallbackLeavesMicrotasksToCurrentCallbackFiber(): void
+    {
+        $log = [];
+
+        EventLoop::defer(static function () use (&$fiber, &$log): void {
+            $fiber = \Fiber::getCurrent();
+            \Fiber::suspend();
+
+            EventLoop::queue(static function () use (&$log): void {
+                $log[] = 'microtask';
+            });
+
+            $log[] = 'callback';
+        });
+
+        EventLoop::delay(0, static function () use (&$fiber, &$log): void {
+            $fiber->resume();
+            $log[] = 'resumed';
+        });
+
+        EventLoop::run();
+
+        self::assertSame(['callback', 'resumed', 'microtask'], $log);
+        self::assertTrue($fiber->isTerminated());
+    }
+
+    public function testReplacedFiberResumedFromCallbackDoesNotRunOtherCallbacks(): void
+    {
+        $log = [];
+
+        EventLoop::defer(static function () use (&$fiber, &$log): void {
+            $fiber = \Fiber::getCurrent();
+            \Fiber::suspend();
+
+            $log[] = 'callback';
+        });
+
+        EventLoop::delay(0, static function () use (&$fiber, &$log): void {
+            $fiber->resume();
+            $log[] = 'resumed';
+        });
+
+        EventLoop::delay(0, static function () use (&$log): void {
+            $log[] = 'other callback';
+        });
+
+        EventLoop::run();
+
+        self::assertSame(['callback', 'resumed', 'other callback'], $log);
+        self::assertTrue($fiber->isTerminated());
+    }
+
+    /**
+     * Switching fibers in destructors is only supported since PHP 8.4.
+     *
+     * @requires PHP >= 8.4
+     */
+    public function testFiberReplacedByDestructorOfCancelledCallbackLeavesCallbacksToCurrentCallbackFiber(): void
+    {
+        // Suspending in a destructor replaces the callback fiber the destructor runs in.
+        $suspendOnDestruct = new class (static function () use (&$replacedFiber, &$suspension): void {
+            $replacedFiber = \Fiber::getCurrent();
+            $suspension = EventLoop::getSuspension();
+            $suspension->suspend();
+        }) {
+            public function __construct(private readonly \Closure $onDestruct)
+            {
+            }
+
+            public function __destruct()
+            {
+                ($this->onDestruct)();
+            }
+        };
+
+        // Runs first and cancels the next callback while it is already queued for this tick.
+        EventLoop::defer(static function () use (&$callbackId): void {
+            EventLoop::cancel($callbackId);
+        });
+
+        $callbackId = EventLoop::defer(static function () use ($suspendOnDestruct): void {
+            self::fail('Callback must not be invoked after being cancelled');
+        });
+
+        // The callback now holds the only reference, so the destructor runs when the loop discards it after the cancel.
+        unset($suspendOnDestruct);
+
+        EventLoop::defer(static function () use (&$suspension): void {
+            $suspension->resume();
+        });
+
+        EventLoop::defer(static function () use (&$lastCallbackFiber): void {
+            $lastCallbackFiber = \Fiber::getCurrent();
+        });
+
+        EventLoop::run();
+
+        self::assertNotSame($replacedFiber, $lastCallbackFiber);
+        self::assertTrue($replacedFiber->isTerminated());
+    }
+
+    public function testExceptionFromReplacedFiberResumedFromCallbackInterruptsAfterResumingCallback(): void
+    {
+        $exception = new \Exception();
+        $log = [];
+
+        EventLoop::defer(static function () use (&$fiber, $exception): void {
+            $fiber = \Fiber::getCurrent();
+            \Fiber::suspend();
+
+            throw $exception;
+        });
+
+        EventLoop::delay(0, static function () use (&$fiber, &$log): void {
+            $fiber->resume();
+            $log[] = 'resumed';
+
+            EventLoop::queue(static function () use (&$log): void {
+                $log[] = 'microtask';
+            });
+        });
+
+        try {
+            EventLoop::run();
+            self::fail('The exception must leave the event loop');
+        } catch (UncaughtThrowable $throwable) {
+            self::assertSame($exception, $throwable->getPrevious());
+        }
+
+        // A raw Fiber::resume() cannot be stopped, so the resuming callback finishes before the interrupt is thrown.
+        self::assertTrue($fiber->isTerminated());
+        self::assertSame(['resumed'], $log);
+
+        EventLoop::run();
+
+        self::assertSame(['resumed', 'microtask'], $log);
     }
 
     public function testSuspensionThrowingErrorViaInterrupt(): void
