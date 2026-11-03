@@ -455,7 +455,7 @@ abstract class AbstractDriver implements Driver
 
             unset($callback, $args);
 
-            if ($this->isCallbackFiberReplaced()) {
+            if (!$this->isCurrentCallbackFiber()) {
                 return;
             }
 
@@ -594,7 +594,7 @@ abstract class AbstractDriver implements Driver
             do {
                 $this->invokeMicrotasks();
 
-                while (!$this->isCallbackFiberReplaced() && !$this->callbackQueue->isEmpty()) {
+                while ($this->isCurrentCallbackFiber() && !$this->callbackQueue->isEmpty()) {
                     $callback = $this->callbackQueue->dequeue();
 
                     if (!isset($this->callbacks[$callback->id]) || !$callback->invokable) {
@@ -640,7 +640,7 @@ abstract class AbstractDriver implements Driver
 
                     unset($callback);
 
-                    if ($this->isCallbackFiberReplaced()) {
+                    if (!$this->isCurrentCallbackFiber()) {
                         return;
                     }
 
@@ -652,7 +652,7 @@ abstract class AbstractDriver implements Driver
                     $this->invokeMicrotasks();
                 }
 
-                if ($this->isCallbackFiberReplaced()) {
+                if (!$this->isCurrentCallbackFiber()) {
                     return;
                 }
 
@@ -662,9 +662,9 @@ abstract class AbstractDriver implements Driver
         });
     }
 
-    private function isCallbackFiberReplaced(): bool
+    private function isCurrentCallbackFiber(): bool
     {
-        return \Fiber::getCurrent() !== $this->callbackFiber;
+        return \Fiber::getCurrent() === $this->callbackFiber;
     }
 
     private function createErrorCallback(): void
