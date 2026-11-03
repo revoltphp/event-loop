@@ -493,7 +493,7 @@ class EventLoopTest extends TestCase
         self::assertSame($resumingDepth, $nextDepth);
     }
 
-    public function testResumedFibersKeepMicrotaskOrder(): void
+    public function testResumedFibersRunInOrderWithQueuedMicrotasks(): void
     {
         $order = [];
 
@@ -522,7 +522,7 @@ class EventLoopTest extends TestCase
         self::assertSame(['first', 'microtask', 'second'], $order);
     }
 
-    public function testExceptionFromResumedFiberStopsNextMicrotask(): void
+    public function testExceptionFromResumedFiberLeavesNextMicrotaskToNextRun(): void
     {
         $exception = new \Exception();
         $invoked = false;
