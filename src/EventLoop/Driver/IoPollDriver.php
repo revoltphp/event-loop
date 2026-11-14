@@ -35,20 +35,24 @@ final class IoPollDriver extends AbstractDriver
     ];
 
     /**
-     * Whether this driver is worth choosing over StreamSelectDriver.
+     * Whether this driver can run in the current environment.
      *
-     * The Io\Poll API ships with every PHP 8.6 build. The driver also runs on symfony/polyfill-io-poll
-     * below that, but that polyfill is backed by stream_select() itself, so it is slower than using
-     * stream_select() directly and is not picked automatically. Set REVOLT_DRIVER to this class to
-     * use it there anyway.
+     * The Io\Poll API ships with every PHP 8.6 build. Below that, the driver runs on
+     * symfony/polyfill-io-poll (with symfony/polyfill-time). That polyfill is backed by stream_select()
+     * itself, so it is slower than StreamSelectDriver, and DriverFactory only picks this driver
+     * automatically on PHP 8.6+. Set REVOLT_DRIVER to this class to use it with the polyfill anyway.
      *
-     * On Windows, the only backend is WSAPoll, which accepts pipes such as STDOUT, but never reports
-     * them, so callbacks on them never run. stream_select() handles them, so the driver is not
-     * supported there for now.
+     * On Windows with PHP 8.6+, the only native backend is WSAPoll, which accepts pipes such as
+     * STDOUT, but never reports them, so callbacks on them never run. stream_select() handles them,
+     * so the driver is not supported there for now.
      */
     public static function isSupported(): bool
     {
-        return \PHP_VERSION_ID >= 80600 && \PHP_OS_FAMILY !== 'Windows';
+        if (\PHP_VERSION_ID >= 80600) {
+            return \PHP_OS_FAMILY !== 'Windows';
+        }
+
+        return \class_exists(Context::class) && \class_exists(Duration::class);
     }
 
     private readonly Context $context;
