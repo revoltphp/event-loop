@@ -59,14 +59,16 @@ jobs:
             extensions: ':xdebug'
             psalm: 'skip'
 
-          # the polyfill is backed by stream_select() instead of WSAPoll, so IoPollDriver is supported there
-          - operating-system: 'windows-latest'
-            php-version: 8.4
-            composer-flags: '--ignore-platform-req=php+'
-            job-description: 'on Windows with the Io\Poll polyfill'
-            io-poll-polyfill: 'yes'
-            extensions: ':xdebug'
-            psalm: 'skip'
+          # IoPollDriver is not supported on Windows with the polyfill yet, as it never reports failed
+          # non-blocking connects there (Winsock only signals them in select()'s except set). Re-enable
+          # once the polyfill passes the except set to stream_select().
+          # - operating-system: 'windows-latest'
+          #   php-version: 8.4
+          #   composer-flags: '--ignore-platform-req=php+'
+          #   job-description: 'on Windows with the Io\Poll polyfill'
+          #   io-poll-polyfill: 'yes'
+          #   extensions: ':xdebug'
+          #   psalm: 'skip'
 
     name: PHP ${{ matrix.php-version }} ${{ matrix.job-description }}
     runs-on: ${{ matrix.operating-system }}
