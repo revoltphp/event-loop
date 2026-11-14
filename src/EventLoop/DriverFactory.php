@@ -40,7 +40,9 @@ final class DriverFactory
                 return new EventDriver();
             }
 
-            if (IoPollDriver::isSupported()) {
+            // Below PHP 8.6, IoPollDriver runs on symfony/polyfill-io-poll, which is backed by
+            // stream_select() and therefore slower than StreamSelectDriver.
+            if (\PHP_VERSION_ID >= 80600 && IoPollDriver::isSupported()) {
                 return new IoPollDriver();
             }
 

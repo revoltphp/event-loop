@@ -28,6 +28,9 @@ composer require revolt/event-loop
 ```
 
 Applications with many concurrent file descriptors require one of the [extensions](https://revolt.run/extensions).
+On PHP 8.6 and later, the built-in `Io\Poll` API (epoll, kqueue, …) is used automatically if no extension is available, except on Windows.
+On older versions, `IoPollDriver` also works with [`symfony/polyfill-io-poll`](https://github.com/symfony/polyfill-io-poll), but is not selected automatically, as the polyfill is backed by `stream_select()`.
+Set `REVOLT_DRIVER=Revolt\EventLoop\Driver\IoPollDriver` to use it anyway.
 
 →&nbsp;&nbsp;[View documentation](https://revolt.run/)
 <br>

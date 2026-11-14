@@ -44,7 +44,7 @@ jobs:
             io-poll-polyfill: 'yes'
             psalm: 'skip'
 
-          # kqueue and WSAPoll back IoPollDriver there, instead of epoll
+          # kqueue backs IoPollDriver on macOS instead of epoll; on Windows, the IoPollDriver tests are skipped (WSAPoll)
           - operating-system: 'macos-latest'
             php-version: 8.6
             composer-flags: '--ignore-platform-req=php+'
@@ -56,6 +56,15 @@ jobs:
             php-version: 8.6
             composer-flags: '--ignore-platform-req=php+'
             job-description: 'on Windows'
+            extensions: ':xdebug'
+            psalm: 'skip'
+
+          # the polyfill is backed by stream_select() instead of WSAPoll, so IoPollDriver is supported there
+          - operating-system: 'windows-latest'
+            php-version: 8.4
+            composer-flags: '--ignore-platform-req=php+'
+            job-description: 'on Windows with the Io\Poll polyfill'
+            io-poll-polyfill: 'yes'
             extensions: ':xdebug'
             psalm: 'skip'
 

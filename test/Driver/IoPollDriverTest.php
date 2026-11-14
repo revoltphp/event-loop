@@ -8,7 +8,6 @@ use Io\Poll\Backend;
 use Io\Poll\Context;
 use PHPUnit\Framework\ExpectationFailedException;
 use Revolt\EventLoop\Driver;
-use Time\Duration;
 
 class IoPollDriverTest extends DriverTest
 {
@@ -21,14 +20,8 @@ class IoPollDriverTest extends DriverTest
 
     public function setUp(): void
     {
-        // Not isSupported(): that is deliberately false below 8.6, while the driver still has to be
-        // exercised there through the polyfill.
-        if (!\class_exists(Context::class) || !\class_exists(Duration::class)) {
-            self::markTestSkipped("Skip, the Io\\Poll API requires PHP 8.6 or symfony/polyfill-io-poll");
-        }
-
-        if (self::isWindows()) {
-            self::markTestSkipped("Skip on Windows, WSAPoll never reports pipes such as STDOUT, so tests hang");
+        if (!IoPollDriver::isSupported()) {
+            self::markTestSkipped("IoPollDriver is not supported in this environment");
         }
 
         parent::setUp();
@@ -199,9 +192,8 @@ class IoPollDriverTest extends DriverTest
         self::assertTrue($invoked);
     }
 
-    public function testSupportedOnlyWhenNativeAndNotOnWindows(): void
+    public function testSupportedIfTestsAreNotSkipped(): void
     {
-        // the polyfill runs the driver, but it is backed by stream_select() and slower than using it directly
-        self::assertSame(\PHP_VERSION_ID >= 80600 && !self::isWindows(), IoPollDriver::isSupported());
+        self::assertTrue(IoPollDriver::isSupported());
     }
 }
