@@ -42,17 +42,21 @@ final class IoPollDriver extends AbstractDriver
      * itself, so it is slower than StreamSelectDriver, and DriverFactory only picks this driver
      * automatically on PHP 8.6+. Set REVOLT_DRIVER to this class to use it with the polyfill anyway.
      *
-     * On Windows with PHP 8.6+, the only native backend is WSAPoll, which accepts pipes such as
-     * STDOUT, but never reports them, so callbacks on them never run. stream_select() handles them,
-     * so the driver is not supported there for now.
+     * The driver is not supported on Windows for now:
+     * - With PHP 8.6+, the only native backend is WSAPoll, which accepts pipes such as STDOUT, but
+     *   never reports them, so callbacks on them never run. stream_select() handles them.
+     * - The polyfill never reports a failed non-blocking connect(), because Winsock signals that only
+     *   in select()'s except set, which the polyfill does not pass to stream_select(), so writable
+     *   callbacks on such sockets never run. StreamSelectDriver handles this.
      */
     public static function isSupported(): bool
     {
-        if (\PHP_VERSION_ID >= 80600) {
-            return \PHP_OS_FAMILY !== 'Windows';
+        if (\PHP_OS_FAMILY === 'Windows') {
+            return false;
         }
 
-        return \class_exists(Context::class) && \class_exists(Duration::class);
+        return \PHP_VERSION_ID >= 80600
+            || (\class_exists(Context::class) && \class_exists(Duration::class));
     }
 
     private readonly Context $context;
